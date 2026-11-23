@@ -1,4 +1,4 @@
-# VAL Manifest — m_Tgt_C_S_WIC_Pty_Validation, bare-bones step-driver variant (WIC ONLY)
+# VAL Manifest - m_Tgt_C_S_WIC_Pty_Validation, bare-bones step-driver variant (WIC ONLY)
 Workflow: `wf_WIC_Stage_Load`. Base dir: `snowflake_all_barebones/WIC/`.
 Install schema is `WIC_ETL_WRK` in database `MDM_ETL_WIC`; all table names are unqualified.
 
@@ -16,9 +16,9 @@ Driver behaviour: step 5 cleanup (bare `DROP TABLE IF EXISTS`, no framework call
 
 | STEP_NO | Proc | Produces | Consumes |
 |---|---|---|---|
-| 10 | `sp_snow_step_WIC_VAL_S10_ENRICHED` | `WRK_WIC_VAL_S10_ENRICHED` — Source parties joined to the current deactivation status (latest row per source key) and the cross-reference hub state, with standardised names computed. The status and cross-reference lookups stay inline here because they are reference lookups, not data stages. Only step that reads V_WIC_ETL_SRC. | (base tables — no work-table input) |
-| 20 | `sp_snow_step_WIC_VAL_S20_NAMED` | `WRK_WIC_VAL_S20_NAMED` — Standardised first, middle and last names pulled out; the blank-name test applied (name_missing). | `WRK_WIC_VAL_S10_ENRICHED` |
-| 30 | `sp_snow_step_WIC_VAL_S30_ROUTED` | `WRK_WIC_VAL_S30_ROUTED` — Exception code, attribute name and value, new deactivation status from hub state, looked-up exception description and type, run constants, and the first-row-per-exception-key flag (uq_exc_name). Computed before publish, so routing sees the pre-run status. | `WRK_WIC_VAL_S20_NAMED` |
+| 10 | `sp_snow_step_WIC_VAL_S10_ENRICHED` | `WRK_WIC_VAL_S10_ENRICHED` - Source parties joined to the current deactivation status (latest row per source key) and the cross-reference hub state, with standardised names computed. The status and cross-reference lookups stay inline here because they are reference lookups, not data stages. Only step that reads V_WIC_ETL_SRC. | (base tables - no work-table input) |
+| 20 | `sp_snow_step_WIC_VAL_S20_NAMED` | `WRK_WIC_VAL_S20_NAMED` - Standardised first, middle and last names pulled out; the blank-name test applied (name_missing). | `WRK_WIC_VAL_S10_ENRICHED` |
+| 30 | `sp_snow_step_WIC_VAL_S30_ROUTED` | `WRK_WIC_VAL_S30_ROUTED` - Exception code, attribute name and value, new deactivation status from hub state, looked-up exception description and type, run constants, and the first-row-per-exception-key flag (uq_exc_name). Computed before publish, so routing sees the pre-run status. | `WRK_WIC_VAL_S20_NAMED` |
 
 Step proc signatures: the step's used original params (in original order) + `P_RUN_TS`. Where an original param carries a default, `P_RUN_TS` carries `DEFAULT NULL` (Snowflake forbids a required parameter after an optional one; drivers pass all parameters positionally, so behaviour is unchanged). Each step runs its CTAS verbatim and RETURNs its row count. Step files live in `steps/` under their v2.1 names.
 

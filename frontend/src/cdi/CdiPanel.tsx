@@ -95,7 +95,7 @@ export function CdiPanel({
           <div className="run-box" data-testid="cdi-task-detail">
             <h2>{task.name}</h2>
             <p className="muted">
-              {CDI_TYPE_LABEL[task.type]} · {task.path}
+              {CDI_TYPE_LABEL[task.type]} - {task.path}
             </p>
             {task.type === "TASKFLOW" && (
               <Input

@@ -1,6 +1,6 @@
-# Spec — agent interface (contract)
+# Spec - agent interface (contract)
 
-**Version:** 1.0.0 (2026-11-22) · **State:** Reconciled. Status: CODE.
+**Version:** 1.0.0 (2026-11-22) - **State:** Reconciled. Status: CODE.
 
 Everything in this file is a public contract: renaming or removing any of it is a spec change
 (constitution IX).
@@ -25,18 +25,18 @@ pixels or guess at selectors.
 - `src/shared/routes.ts` (`parseRoute` / `formatRoute`) is the only place paths are built.
   `routes.test.ts` covers it.
 
-## FR-A02 Declared actions — `window.txmdm`
+## FR-A02 Declared actions - `window.txmdm`
 
 | Action | Side effect |
 |---|---|
-| `describe()` → the action list | none |
-| `currentRoute()` → `{route, path}` | none |
+| `describe()` -> the action list | none |
+| `currentRoute()` -> `{route, path}` | none |
 | `openSection(service)` | navigates |
 | `listMdmJobs()` / `listCdiTasks()` | none (reads the backend) |
 | `selectJob(service, jobId)` | navigates |
 | `runJob(service, jobId, apiName?)` | **starts a run, after `window.confirm`**, then navigates to its results screen |
 | `openRun(service, runKey)` | navigates |
-| `getRun(service, runKey)` → RunView | none (refreshes the run on the backend) |
+| `getRun(service, runKey)` -> RunView | none (refreshes the run on the backend) |
 
 - `service` is `"mdm"` or `"cdi"`.
 - The UI SDK agent bridge (`src/agent.ts`) is registered alongside these actions. Its

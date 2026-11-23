@@ -1,6 +1,6 @@
-# Spec — shared behaviour (session, run rules, results)
+# Spec - shared behaviour (session, run rules, results)
 
-**Version:** 1.0.0 (2026-11-22) · **State:** Reconciled. The code exists and this spec was
+**Version:** 1.0.0 (2026-11-22) - **State:** Reconciled. The code exists and this spec was
 written alongside it. It is not yet authoritative against the live org.
 
 ## Why
@@ -43,7 +43,7 @@ consistent results view, and with no risk of double-starting or silently retryin
 - Only a person (or an agent with a person's confirmation) can start a new run.
 
 **FR-S07 Run statuses.** `CODE`
-- A run is QUEUED → RUNNING → one of SUCCESS / WARNING / FAILED / STOPPED (the final states),
+- A run is QUEUED -> RUNNING -> one of SUCCESS / WARNING / FAILED / STOPPED (the final states),
   or UNKNOWN when the IDMC state cannot be mapped.
 - Polling stops at a final state.
 

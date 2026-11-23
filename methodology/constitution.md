@@ -1,4 +1,4 @@
-# tx-mdm — Constitution
+# tx-mdm - Constitution
 
 **Version:** 1.0.0 (ratified 2026-11-22)
 
@@ -59,6 +59,8 @@ behind a named, pluggable, clearly-marked component. Do not paper over it.
 - **TypeScript:** `strict` on, no `any`, discriminated unions plus `switch` for state, small
   components and hooks.
 - Comments explain **why**, not what.
+- **ASCII only** in code, logs, terminal output and docs - no emoji, icons or special Unicode
+  (Windows terminals garble them). Enforced by `backend/tests/test_ascii_only.py`.
 - No clever abstractions; mid-level-engineer simplicity.
 
 ### VIII. Necessary-only
@@ -84,7 +86,7 @@ This repo is public:
 - The IDMC username and hostnames are allowed.
 - Content from other private projects does not come in here.
 
-## Mandatory questions — every change proposal answers these
+## Mandatory questions - every change proposal answers these
 
 1. **Who is this for?** Name the actor: Vamsi in the UI, an agent through `window.txmdm`, an
    agent through the OpenAPI, or the backend itself.

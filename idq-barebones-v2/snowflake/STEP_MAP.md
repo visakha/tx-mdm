@@ -1,10 +1,10 @@
-# STEP_MAP — bare-bones step maps (all sources)
+# STEP_MAP - bare-bones step maps (all sources)
 
 Step maps for all 40 mappings, same maps as v2.1 minus checkpoint/config columns. Assembled from the per-source fragments (content unchanged).
 
 ---
 
-# STEP_MAP_TRS — TRS bare-bones step-driver maps (all 15 mappings)
+# STEP_MAP_TRS - TRS bare-bones step-driver maps (all 15 mappings)
 
 Bare-bones fragment for coordinator assembly. Same step maps as the v2.1
 TRS step map, minus completion-record and run-config columns. No run-config
@@ -12,7 +12,7 @@ table, no job-control calls, no flags: every step runs unconditionally.
 
 ## Notes (apply to every mapping below)
 
-- **Step 5:** `CLEANUP_PREVIOUS_RUN` — bare `DROP TABLE IF EXISTS` for
+- **Step 5:** `CLEANUP_PREVIOUS_RUN` - bare `DROP TABLE IF EXISTS` for
   that mapping's own work tables only. Every run rebuilds all steps from
   scratch; there is no step-level resume.
 - **Publish:** the only step that writes to final targets and the only
@@ -139,15 +139,15 @@ table, no job-control calls, no flags: every step runs unconditionally.
 
 ---
 
-# STEP_MAP_ECI — step maps (bare-bones)
+# STEP_MAP_ECI - step maps (bare-bones)
 
 Same step maps as the v2.1 manifests, minus gating and checkpoint columns. Step 5 (cleanup) drops the mapping's work tables and is not a data step; work tables are left standing at the end of a run.
 
-## ADR — m_Tgt_C_S_ECI_Pty_Addr — driver `sp_snow_main_m_Tgt_C_S_ECI_Pty_Addr(P_MEMBER_HIERARCHY_CODE VARCHAR DEFAULT 'Member', P_MEMBER_HM_REL_TP_CD VARCHAR DEFAULT 'Member Addr')`
+## ADR - m_Tgt_C_S_ECI_Pty_Addr - driver `sp_snow_main_m_Tgt_C_S_ECI_Pty_Addr(P_MEMBER_HIERARCHY_CODE VARCHAR DEFAULT 'Member', P_MEMBER_HM_REL_TP_CD VARCHAR DEFAULT 'Member Addr')`
 
 | Step | Step name | Procedure | Target / produces | Consumes |
 | --- | --- | --- | --- | --- |
-| 5 | CLEANUP_PREVIOUS_RUN | — | (drops: WRK_ECI_ADR_S10_SRC, WRK_ECI_ADR_S20_KEYED, WRK_ECI_ADR_S30_VALIDATED, WRK_ECI_ADR_S40_FLAT, WRK_ECI_ADR_S50_READY) | — |
+| 5 | CLEANUP_PREVIOUS_RUN | - | (drops: WRK_ECI_ADR_S10_SRC, WRK_ECI_ADR_S20_KEYED, WRK_ECI_ADR_S30_VALIDATED, WRK_ECI_ADR_S40_FLAT, WRK_ECI_ADR_S50_READY) | - |
 | 10 | SRC_ADDRESSES | `sp_snow_step_ECI_ADR_S10_SRC` | WRK_ECI_ADR_S10_SRC | V_ECI_ETL_SRC_FAMILY_ADDRESS |
 | 20 | KEYED_ACTIVE | `sp_snow_step_ECI_ADR_S20_KEYED` | WRK_ECI_ADR_S20_KEYED | WRK_ECI_ADR_S10_SRC |
 | 30 | ADDR_VALIDATION | `sp_snow_step_ECI_ADR_S30_VALIDATED` | WRK_ECI_ADR_S30_VALIDATED | WRK_ECI_ADR_S20_KEYED |
@@ -157,11 +157,11 @@ Same step maps as the v2.1 manifests, minus gating and checkpoint columns. Step 
 | 70 | PUBLISH_C_S_ECI_PTY_RLE_ADDR | `sp_snow_pub_ECI_ADR_C_S_ECI_PTY_RLE_ADDR` | C_S_ECI_PTY_RLE_ADDR | WRK_ECI_ADR_S50_READY |
 | 80 | PUBLISH_EXC_STG_BAD_REC_MEMB | `sp_snow_pub_ECI_ADR_EXC_STG_BAD_REC_MEMB` | EXC_STG_BAD_REC_MEMB | WRK_ECI_ADR_S50_READY |
 
-## ALT — m_Tgt_C_S_ECI_Pty_Rle_Alt_Id — driver `sp_snow_main_m_Tgt_C_S_ECI_Pty_Rle_Alt_Id((none))`
+## ALT - m_Tgt_C_S_ECI_Pty_Rle_Alt_Id - driver `sp_snow_main_m_Tgt_C_S_ECI_Pty_Rle_Alt_Id((none))`
 
 | Step | Step name | Procedure | Target / produces | Consumes |
 | --- | --- | --- | --- | --- |
-| 5 | CLEANUP_PREVIOUS_RUN | — | (drops: WRK_ECI_ALT_S10_SRC, WRK_ECI_ALT_S20_ACTIVE, WRK_ECI_ALT_S30_ROUTED, WRK_ECI_ALT_S40_READY) | — |
+| 5 | CLEANUP_PREVIOUS_RUN | - | (drops: WRK_ECI_ALT_S10_SRC, WRK_ECI_ALT_S20_ACTIVE, WRK_ECI_ALT_S30_ROUTED, WRK_ECI_ALT_S40_READY) | - |
 | 10 | SRC_ALT_IDS | `sp_snow_step_ECI_ALT_S10_SRC` | WRK_ECI_ALT_S10_SRC | STG_ECI_D_CHILD, STG_ECI_D_FAMILY, STG_ECI_D_MEDICAID, STG_ECI_SN_CASE |
 | 20 | ACTIVE_ALT_IDS | `sp_snow_step_ECI_ALT_S20_ACTIVE` | WRK_ECI_ALT_S20_ACTIVE | WRK_ECI_ALT_S10_SRC |
 | 30 | VALIDATED_ROUTED | `sp_snow_step_ECI_ALT_S30_ROUTED` | WRK_ECI_ALT_S30_ROUTED | WRK_ECI_ALT_S20_ACTIVE |
@@ -170,11 +170,11 @@ Same step maps as the v2.1 manifests, minus gating and checkpoint columns. Step 
 | 60 | PUBLISH_EXC_STG_BAD_REC_MEMB_SSN | `sp_snow_pub_ECI_ALT_EXC_STG_BAD_REC_MEMB_SSN` | EXC_STG_BAD_REC_MEMB | WRK_ECI_ALT_S40_READY |
 | 70 | PUBLISH_EXC_STG_BAD_REC_MEMB_MEDICAID | `sp_snow_pub_ECI_ALT_EXC_STG_BAD_REC_MEMB_MEDICAID` | EXC_STG_BAD_REC_MEMB | WRK_ECI_ALT_S40_READY |
 
-## PHN — m_Tgt_C_S_ECI_Pty_Rle_Phn_And_EAddr — driver `sp_snow_main_m_Tgt_C_S_ECI_Pty_Rle_Phn_And_EAddr((none))`
+## PHN - m_Tgt_C_S_ECI_Pty_Rle_Phn_And_EAddr - driver `sp_snow_main_m_Tgt_C_S_ECI_Pty_Rle_Phn_And_EAddr((none))`
 
 | Step | Step name | Procedure | Target / produces | Consumes |
 | --- | --- | --- | --- | --- |
-| 5 | CLEANUP_PREVIOUS_RUN | — | (drops: WRK_ECI_PHN_S10_SRC, WRK_ECI_PHN_S20_ACTIVE, WRK_ECI_PHN_S30_DQ, WRK_ECI_PHN_S40_ROUTED, WRK_ECI_PHN_S50_READY) | — |
+| 5 | CLEANUP_PREVIOUS_RUN | - | (drops: WRK_ECI_PHN_S10_SRC, WRK_ECI_PHN_S20_ACTIVE, WRK_ECI_PHN_S30_DQ, WRK_ECI_PHN_S40_ROUTED, WRK_ECI_PHN_S50_READY) | - |
 | 10 | SRC_PHN_EADDR | `sp_snow_step_ECI_PHN_S10_SRC` | WRK_ECI_PHN_S10_SRC | V_ECI_ETL_SRC_FAMILY_PHONE |
 | 20 | ACTIVE_PHN_EADDR | `sp_snow_step_ECI_PHN_S20_ACTIVE` | WRK_ECI_PHN_S20_ACTIVE | WRK_ECI_PHN_S10_SRC |
 | 30 | DQ_CLEAN_VALIDATE | `sp_snow_step_ECI_PHN_S30_DQ` | WRK_ECI_PHN_S30_DQ | WRK_ECI_PHN_S20_ACTIVE |
@@ -185,11 +185,11 @@ Same step maps as the v2.1 manifests, minus gating and checkpoint columns. Step 
 | 80 | PUBLISH_C_S_ECI_PTY_RLE_EADDR | `sp_snow_pub_ECI_PHN_C_S_ECI_PTY_RLE_EADDR` | C_S_ECI_PTY_RLE_EADDR | WRK_ECI_PHN_S50_READY |
 | 90 | PUBLISH_EXC_STG_BAD_REC_MEMB_EMAIL | `sp_snow_pub_ECI_PHN_EXC_STG_BAD_REC_MEMB_EMAIL` | EXC_STG_BAD_REC_MEMB | WRK_ECI_PHN_S50_READY |
 
-## PTY — m_Tgt_C_S_ECI_Pty — driver `sp_snow_main_m_Tgt_C_S_ECI_Pty(P_PTY_BO_CLASS_CD_MEMBER VARCHAR DEFAULT 'Indv', P_RLE_BO_CLASS_CD_MEMBER VARCHAR DEFAULT 'Member')`
+## PTY - m_Tgt_C_S_ECI_Pty - driver `sp_snow_main_m_Tgt_C_S_ECI_Pty(P_PTY_BO_CLASS_CD_MEMBER VARCHAR DEFAULT 'Indv', P_RLE_BO_CLASS_CD_MEMBER VARCHAR DEFAULT 'Member')`
 
 | Step | Step name | Procedure | Target / produces | Consumes |
 | --- | --- | --- | --- | --- |
-| 5 | CLEANUP_PREVIOUS_RUN | — | (drops: WRK_ECI_PTY_S10_SRC, WRK_ECI_PTY_S20_ACTIVE, WRK_ECI_PTY_S30_DQ, WRK_ECI_PTY_S40_DQ2, WRK_ECI_PTY_S50_READY) | — |
+| 5 | CLEANUP_PREVIOUS_RUN | - | (drops: WRK_ECI_PTY_S10_SRC, WRK_ECI_PTY_S20_ACTIVE, WRK_ECI_PTY_S30_DQ, WRK_ECI_PTY_S40_DQ2, WRK_ECI_PTY_S50_READY) | - |
 | 10 | SRC_DELTA_PARTIES | `sp_snow_step_ECI_PTY_S10_SRC` | WRK_ECI_PTY_S10_SRC | STG_ECI_D_CHILD, STG_ECI_D_FAMILY |
 | 20 | ACTIVE_PARTIES | `sp_snow_step_ECI_PTY_S20_ACTIVE` | WRK_ECI_PTY_S20_ACTIVE | WRK_ECI_PTY_S10_SRC |
 | 30 | DQ_RULES | `sp_snow_step_ECI_PTY_S30_DQ` | WRK_ECI_PTY_S30_DQ | WRK_ECI_PTY_S20_ACTIVE |
@@ -203,11 +203,11 @@ Same step maps as the v2.1 manifests, minus gating and checkpoint columns. Step 
 | 110 | PUBLISH_EXC_RACE | `sp_snow_pub_ECI_PTY_EXC_STG_BAD_REC_MEMB_RACE` | EXC_STG_BAD_REC_MEMB | WRK_ECI_PTY_S50_READY |
 | 120 | PUBLISH_EXC_LANGUAGE | `sp_snow_pub_ECI_PTY_EXC_STG_BAD_REC_MEMB_LANGUAGE` | EXC_STG_BAD_REC_MEMB | WRK_ECI_PTY_S50_READY |
 
-## REL — m_Tgt_C_S_ECI_Pty_Rle_Rel — driver `sp_snow_main_m_Tgt_C_S_ECI_Pty_Rle_Rel((none))`
+## REL - m_Tgt_C_S_ECI_Pty_Rle_Rel - driver `sp_snow_main_m_Tgt_C_S_ECI_Pty_Rle_Rel((none))`
 
 | Step | Step name | Procedure | Target / produces | Consumes |
 | --- | --- | --- | --- | --- |
-| 5 | CLEANUP_PREVIOUS_RUN | — | (drops: WRK_ECI_REL_S10_SRC, WRK_ECI_REL_S20_KEYED, WRK_ECI_REL_S30_TYPED, WRK_ECI_REL_S40_READY) | — |
+| 5 | CLEANUP_PREVIOUS_RUN | - | (drops: WRK_ECI_REL_S10_SRC, WRK_ECI_REL_S20_KEYED, WRK_ECI_REL_S30_TYPED, WRK_ECI_REL_S40_READY) | - |
 | 10 | SRC_BOTH_DIRECTIONS | `sp_snow_step_ECI_REL_S10_SRC` | WRK_ECI_REL_S10_SRC | STG_ECI_D_FAMILY |
 | 20 | KEYED_BOTH_ACTIVE | `sp_snow_step_ECI_REL_S20_KEYED` | WRK_ECI_REL_S20_KEYED | WRK_ECI_REL_S10_SRC |
 | 30 | CODED_TRANSLATED | `sp_snow_step_ECI_REL_S30_TYPED` | WRK_ECI_REL_S30_TYPED | WRK_ECI_REL_S20_KEYED |
@@ -215,38 +215,38 @@ Same step maps as the v2.1 manifests, minus gating and checkpoint columns. Step 
 | 50 | PUBLISH_C_S_ECI_PTY_RLE_REL | `sp_snow_pub_ECI_REL_C_S_ECI_PTY_RLE_REL` | C_S_ECI_PTY_RLE_REL | WRK_ECI_REL_S40_READY |
 | 60 | PUBLISH_EXC_STG_BAD_REC_MEMB | `sp_snow_pub_ECI_REL_EXC_STG_BAD_REC_MEMB` | EXC_STG_BAD_REC_MEMB | WRK_ECI_REL_S40_READY |
 
-## RFA — m_Tgt_Stg_ECI_Pty_Reactivation_D_Family_Addr — driver `sp_snow_main_m_Tgt_Stg_ECI_Pty_Reactivation_D_Family_Addr((none))`
+## RFA - m_Tgt_Stg_ECI_Pty_Reactivation_D_Family_Addr - driver `sp_snow_main_m_Tgt_Stg_ECI_Pty_Reactivation_D_Family_Addr((none))`
 
 | Step | Step name | Procedure | Target / produces | Consumes |
 | --- | --- | --- | --- | --- |
-| 5 | CLEANUP_PREVIOUS_RUN | — | (drops: WRK_ECI_RFA_S10_LATEST, WRK_ECI_RFA_S20_KEEPNEW) | — |
+| 5 | CLEANUP_PREVIOUS_RUN | - | (drops: WRK_ECI_RFA_S10_LATEST, WRK_ECI_RFA_S20_KEEPNEW) | - |
 | 10 | LATEST_HISTORY_ROWS | `sp_snow_step_ECI_RFA_S10_LATEST` | WRK_ECI_RFA_S10_LATEST | STG_ECI_H_FAMILY_ADDRESS, V_ECI_ETL_LU_REACTIVATED_ID |
 | 20 | KEEP_NEW_ONLY | `sp_snow_step_ECI_RFA_S20_KEEPNEW` | WRK_ECI_RFA_S20_KEEPNEW | WRK_ECI_RFA_S10_LATEST |
 | 30 | PUBLISH_STG_ECI_D_FAMILY_ADDRESS | `sp_snow_pub_ECI_RFA_STG_ECI_D_FAMILY_ADDRESS` | STG_ECI_D_FAMILY_ADDRESS | WRK_ECI_RFA_S20_KEEPNEW |
 
-## RFM — m_Tgt_Stg_ECI_Pty_Reactivation_D_Medicaid — driver `sp_snow_main_m_Tgt_Stg_ECI_Pty_Reactivation_D_Medicaid(P_TEST_LOOKUP_RESULT VARCHAR DEFAULT 'N')`
+## RFM - m_Tgt_Stg_ECI_Pty_Reactivation_D_Medicaid - driver `sp_snow_main_m_Tgt_Stg_ECI_Pty_Reactivation_D_Medicaid(P_TEST_LOOKUP_RESULT VARCHAR DEFAULT 'N')`
 
 | Step | Step name | Procedure | Target / produces | Consumes |
 | --- | --- | --- | --- | --- |
-| 5 | CLEANUP_PREVIOUS_RUN | — | (drops: WRK_ECI_RFM_S10_LATEST, WRK_ECI_RFM_S20_KEEPNEW) | — |
+| 5 | CLEANUP_PREVIOUS_RUN | - | (drops: WRK_ECI_RFM_S10_LATEST, WRK_ECI_RFM_S20_KEEPNEW) | - |
 | 10 | LATEST_HISTORY_ROWS | `sp_snow_step_ECI_RFM_S10_LATEST` | WRK_ECI_RFM_S10_LATEST | STG_ECI_D_MEDICAID, STG_ECI_H_MEDICAID, STG_ECI_SN_CASE, V_ECI_ETL_LU_REACTIVATED_ID |
 | 20 | KEEP_NEW_ONLY | `sp_snow_step_ECI_RFM_S20_KEEPNEW` | WRK_ECI_RFM_S20_KEEPNEW | WRK_ECI_RFM_S10_LATEST |
 | 30 | PUBLISH_STG_ECI_D_MEDICAID | `sp_snow_pub_ECI_RFM_STG_ECI_D_MEDICAID` | STG_ECI_D_MEDICAID | WRK_ECI_RFM_S20_KEEPNEW |
 
-## RFP — m_Tgt_Stg_ECI_Pty_Reactivation_D_Family_Phn — driver `sp_snow_main_m_Tgt_Stg_ECI_Pty_Reactivation_D_Family_Phn((none))`
+## RFP - m_Tgt_Stg_ECI_Pty_Reactivation_D_Family_Phn - driver `sp_snow_main_m_Tgt_Stg_ECI_Pty_Reactivation_D_Family_Phn((none))`
 
 | Step | Step name | Procedure | Target / produces | Consumes |
 | --- | --- | --- | --- | --- |
-| 5 | CLEANUP_PREVIOUS_RUN | — | (drops: WRK_ECI_RFP_S10_LATEST, WRK_ECI_RFP_S20_KEEPNEW) | — |
+| 5 | CLEANUP_PREVIOUS_RUN | - | (drops: WRK_ECI_RFP_S10_LATEST, WRK_ECI_RFP_S20_KEEPNEW) | - |
 | 10 | LATEST_HISTORY_ROWS | `sp_snow_step_ECI_RFP_S10_LATEST` | WRK_ECI_RFP_S10_LATEST | STG_ECI_H_FAMILY_PHONE, V_ECI_ETL_LU_REACTIVATED_ID |
 | 20 | KEEP_NEW_ONLY | `sp_snow_step_ECI_RFP_S20_KEEPNEW` | WRK_ECI_RFP_S20_KEEPNEW | WRK_ECI_RFP_S10_LATEST |
 | 30 | PUBLISH_STG_ECI_D_FAMILY_PHONE | `sp_snow_pub_ECI_RFP_STG_ECI_D_FAMILY_PHONE` | STG_ECI_D_FAMILY_PHONE | WRK_ECI_RFP_S20_KEEPNEW |
 
-## VAL — m_Tgt_C_S_ECI_Pty_Validation — driver `sp_snow_main_m_Tgt_C_S_ECI_Pty_Validation((none))`
+## VAL - m_Tgt_C_S_ECI_Pty_Validation - driver `sp_snow_main_m_Tgt_C_S_ECI_Pty_Validation((none))`
 
 | Step | Step name | Procedure | Target / produces | Consumes |
 | --- | --- | --- | --- | --- |
-| 5 | CLEANUP_PREVIOUS_RUN | — | (drops: WRK_ECI_VAL_S10_SRC, WRK_ECI_VAL_S20_ENRICHED, WRK_ECI_VAL_S30_ROUTED) | — |
+| 5 | CLEANUP_PREVIOUS_RUN | - | (drops: WRK_ECI_VAL_S10_SRC, WRK_ECI_VAL_S20_ENRICHED, WRK_ECI_VAL_S30_ROUTED) | - |
 | 10 | SRC_DELTA_PARTIES | `sp_snow_step_ECI_VAL_S10_SRC` | WRK_ECI_VAL_S10_SRC | STG_ECI_D_CHILD, STG_ECI_D_FAMILY |
 | 20 | ENRICHED_STD_NAMES | `sp_snow_step_ECI_VAL_S20_ENRICHED` | WRK_ECI_VAL_S20_ENRICHED | WRK_ECI_VAL_S10_SRC |
 | 30 | ROUTED_GROUPS | `sp_snow_step_ECI_VAL_S30_ROUTED` | WRK_ECI_VAL_S30_ROUTED | WRK_ECI_VAL_S20_ENRICHED |
@@ -257,7 +257,7 @@ Same step maps as the v2.1 manifests, minus gating and checkpoint columns. Step 
 
 ---
 
-# WIC Step Map — wf_WIC_Stage_Load (bare-bones variant)
+# WIC Step Map - wf_WIC_Stage_Load (bare-bones variant)
 Install location: database `MDM_ETL_WIC`, schema `WIC_ETL_WRK`. All table and procedure names in the bare-bones code are unqualified.
 Driver names are as in the v2.1 step-driver package, minus the removed trailing run-id parameter. Run order is unchanged from the multisource runner: Validation, Party, Address, Phone/E-mail, Alt Id.
 
@@ -271,7 +271,7 @@ Driver names are as in the v2.1 step-driver package, minus the removed trailing 
 | `m_Tgt_C_S_WIC_Pty_Rle_Phn_And_EAddr` | `sp_snow_main_m_Tgt_C_S_WIC_Pty_Rle_Phn_And_EAddr` | `WIC_PHN` | PHN |
 | `m_Tgt_C_S_WIC_Pty_Rle_Alt_Id` | `sp_snow_main_m_Tgt_C_S_WIC_Pty_Rle_Alt_Id` | `WIC_ALT` | ALT |
 
-## VAL — `m_Tgt_C_S_WIC_Pty_Validation`
+## VAL - `m_Tgt_C_S_WIC_Pty_Validation`
 
 Driver: `drivers/driver_sp_snow_main_m_Tgt_C_S_WIC_Pty_Validation.sql`. Manifest: `manifests/VAL_MANIFEST.md`.
 
@@ -285,9 +285,9 @@ Driver: `drivers/driver_sp_snow_main_m_Tgt_C_S_WIC_Pty_Validation.sql`. Manifest
 | 60 | `sp_snow_pub_WIC_VAL_STG_WIC_PTY_INACTIVE_STS` | STATUS | `STG_WIC_PTY_INACTIVE_STS` (new deactivation-status rows) | `WRK_WIC_VAL_S30_ROUTED` |
 | 70 | `sp_snow_pub_WIC_VAL_STG_WIC_PTY_INACTIVE_LOG_REACTIVATION` | STATUS | `STG_WIC_PTY_INACTIVE_LOG` (reactivation log rows) | `WRK_WIC_VAL_S30_ROUTED` |
 
-Step 5: drops `WRK_WIC_VAL_S10_ENRICHED`, `WRK_WIC_VAL_S20_NAMED`, `WRK_WIC_VAL_S30_ROUTED` — bare `DROP TABLE IF EXISTS`. Publish branches run inside ONE transaction; the first branch takes step number 40, +10 per branch.
+Step 5: drops `WRK_WIC_VAL_S10_ENRICHED`, `WRK_WIC_VAL_S20_NAMED`, `WRK_WIC_VAL_S30_ROUTED` - bare `DROP TABLE IF EXISTS`. Publish branches run inside ONE transaction; the first branch takes step number 40, +10 per branch.
 
-## PTY — `m_Tgt_C_S_WIC_Pty`
+## PTY - `m_Tgt_C_S_WIC_Pty`
 
 Driver: `drivers/driver_sp_snow_main_m_Tgt_C_S_WIC_Pty.sql`. Manifest: `manifests/PTY_MANIFEST.md`.
 
@@ -305,9 +305,9 @@ Driver: `drivers/driver_sp_snow_main_m_Tgt_C_S_WIC_Pty.sql`. Manifest: `manifest
 | 100 | `sp_snow_pub_WIC_PTY_EXC_STG_BAD_REC_MEMB_RACE` | EXCEPTION | `EXC_STG_BAD_REC_MEMB` (invalid-race exceptions) | `WRK_WIC_PTY_S40_ROUTED` |
 | 110 | `sp_snow_pub_WIC_PTY_EXC_STG_BAD_REC_MEMB_LANGUAGE` | EXCEPTION | `EXC_STG_BAD_REC_MEMB` (invalid-language exceptions) | `WRK_WIC_PTY_S40_ROUTED` |
 
-Step 5: drops `WRK_WIC_PTY_S10_ACTIVE`, `WRK_WIC_PTY_S20_DQ`, `WRK_WIC_PTY_S30_DQ2`, `WRK_WIC_PTY_S40_ROUTED` — bare `DROP TABLE IF EXISTS`. Publish branches run inside ONE transaction; the first branch takes step number 50, +10 per branch.
+Step 5: drops `WRK_WIC_PTY_S10_ACTIVE`, `WRK_WIC_PTY_S20_DQ`, `WRK_WIC_PTY_S30_DQ2`, `WRK_WIC_PTY_S40_ROUTED` - bare `DROP TABLE IF EXISTS`. Publish branches run inside ONE transaction; the first branch takes step number 50, +10 per branch.
 
-## ADR — `m_Tgt_C_S_WIC_Pty_Addr`
+## ADR - `m_Tgt_C_S_WIC_Pty_Addr`
 
 Driver: `drivers/driver_sp_snow_main_m_Tgt_C_S_WIC_Pty_Addr.sql`. Manifest: `manifests/ADR_MANIFEST.md`.
 
@@ -321,9 +321,9 @@ Driver: `drivers/driver_sp_snow_main_m_Tgt_C_S_WIC_Pty_Addr.sql`. Manifest: `man
 | 60 | `sp_snow_pub_WIC_ADR_C_S_WIC_PTY_RLE_ADDR` | SPINE | `C_S_WIC_PTY_RLE_ADDR` (good addresses) | `WRK_WIC_ADDR_S40_SCORED` |
 | 70 | `sp_snow_pub_WIC_ADR_EXC_STG_BAD_REC_MEMB` | EXCEPTION | `EXC_STG_BAD_REC_MEMB` (exception addresses) | `WRK_WIC_ADDR_S40_SCORED` |
 
-Step 5: drops `WRK_WIC_ADDR_S10_ACTIVE`, `WRK_WIC_ADDR_S20_VALIDATED`, `WRK_WIC_ADDR_S30_FLAT`, `WRK_WIC_ADDR_S40_SCORED` — bare `DROP TABLE IF EXISTS`. Publish branches run inside ONE transaction; the first branch takes step number 50, +10 per branch.
+Step 5: drops `WRK_WIC_ADDR_S10_ACTIVE`, `WRK_WIC_ADDR_S20_VALIDATED`, `WRK_WIC_ADDR_S30_FLAT`, `WRK_WIC_ADDR_S40_SCORED` - bare `DROP TABLE IF EXISTS`. Publish branches run inside ONE transaction; the first branch takes step number 50, +10 per branch.
 
-## PHN — `m_Tgt_C_S_WIC_Pty_Rle_Phn_And_EAddr`
+## PHN - `m_Tgt_C_S_WIC_Pty_Rle_Phn_And_EAddr`
 
 Driver: `drivers/driver_sp_snow_main_m_Tgt_C_S_WIC_Pty_Rle_Phn_And_EAddr.sql`. Manifest: `manifests/PHN_MANIFEST.md`.
 
@@ -338,9 +338,9 @@ Driver: `drivers/driver_sp_snow_main_m_Tgt_C_S_WIC_Pty_Rle_Phn_And_EAddr.sql`. M
 | 70 | `sp_snow_pub_WIC_PHN_C_S_WIC_PTY_RLE_EADDR` | SPINE | `C_S_WIC_PTY_RLE_EADDR` (valid e-mails) | `WRK_WIC_PHN_S40_READY` |
 | 80 | `sp_snow_pub_WIC_PHN_EXC_STG_BAD_REC_MEMB_EMAIL` | EXCEPTION | `EXC_STG_BAD_REC_MEMB` (bad-e-mail exceptions) | `WRK_WIC_PHN_S40_READY` |
 
-Step 5: drops `WRK_WIC_PHN_S10_SRC`, `WRK_WIC_PHN_S20_CHECKED`, `WRK_WIC_PHN_S30_ROUTED`, `WRK_WIC_PHN_S40_READY` — bare `DROP TABLE IF EXISTS`. Publish branches run inside ONE transaction; the first branch takes step number 50, +10 per branch.
+Step 5: drops `WRK_WIC_PHN_S10_SRC`, `WRK_WIC_PHN_S20_CHECKED`, `WRK_WIC_PHN_S30_ROUTED`, `WRK_WIC_PHN_S40_READY` - bare `DROP TABLE IF EXISTS`. Publish branches run inside ONE transaction; the first branch takes step number 50, +10 per branch.
 
-## ALT — `m_Tgt_C_S_WIC_Pty_Rle_Alt_Id`
+## ALT - `m_Tgt_C_S_WIC_Pty_Rle_Alt_Id`
 
 Driver: `drivers/driver_sp_snow_main_m_Tgt_C_S_WIC_Pty_Rle_Alt_Id.sql`. Manifest: `manifests/ALT_MANIFEST.md`.
 
@@ -350,7 +350,7 @@ Driver: `drivers/driver_sp_snow_main_m_Tgt_C_S_WIC_Pty_Rle_Alt_Id.sql`. Manifest
 | 20 | `sp_snow_step_WIC_ALT_S20_READY` | TRANSFORM | `WRK_WIC_ALT_S20_READY` | `WRK_WIC_ALT_S10_KEYS` |
 | 30 | `sp_snow_pub_WIC_ALT_C_S_WIC_PTY_RLE_ALT_ID` | SPINE | `C_S_WIC_PTY_RLE_ALT_ID` (one alternate id per active party) | `WRK_WIC_ALT_S20_READY` |
 
-Step 5: drops `WRK_WIC_ALT_S10_KEYS`, `WRK_WIC_ALT_S20_READY` — bare `DROP TABLE IF EXISTS`. Publish branches run inside ONE transaction; the first branch takes step number 30, +10 per branch.
+Step 5: drops `WRK_WIC_ALT_S10_KEYS`, `WRK_WIC_ALT_S20_READY` - bare `DROP TABLE IF EXISTS`. Publish branches run inside ONE transaction; the first branch takes step number 30, +10 per branch.
 
 ---
 
@@ -534,7 +534,7 @@ Totals: 6 drivers + 21 steps + 23 branches = 50 procedures. No seed rows.
 
 ---
 
-# STEP_MAP_CRE — CRE bare-bones step-driver package
+# STEP_MAP_CRE - CRE bare-bones step-driver package
 
 Source of truth: the step numbers, step names, work tables and publish targets below are copied
 from the simplified-v2 CRE main procedure
@@ -550,15 +550,15 @@ adaptation is the bare-bones driver split (see the manifest). Prefix: `CRE_CARE`
   summary string; the runner prefixes it with a header line and RETURNs it.
 - **Install schema:** all table names are unqualified. Install in schema `CRE_ETL_WRK` in
   database `MDM_ETL_CRE`, so unqualified names resolve to that schema's tables.
-- **Step 5 (not listed per step):** `CLEANUP_PREVIOUS_RUN` — bare `DROP TABLE IF EXISTS` for
+- **Step 5 (not listed per step):** `CLEANUP_PREVIOUS_RUN` - bare `DROP TABLE IF EXISTS` for
   this mapping's own work tables only. Every run then rebuilds all steps from scratch; there
   is no step-level resume. Step 5 drops ALL work tables on every run.
 - **Publish:** the only step that writes to final targets and the only step inside an explicit
   transaction (one transaction, all branches, or nothing). Work tables are TRANSIENT, are NOT
   dropped at the end of a run, and are left standing until the next run of the same mapping
   cleans them up at its step 5. No step-level resume parameter, no end-of-run drops.
-- **Summary:** the driver appends one `fn_snow_helper36_common` line per step (10–50) and per
-  publish branch (60–230), in execution order, each carrying that unit's row count. There is
+- **Summary:** the driver appends one `fn_snow_helper36_common` line per step (10-50) and per
+  publish branch (60-230), in execution order, each carrying that unit's row count. There is
   no longer a single combined publish row, and the members-only headline count (`is_member`)
   is no longer computed as a separate line (same as the v2.1 refactor, where the per-branch
   lines replaced the single step-60 publish row).
@@ -580,13 +580,13 @@ Runner: `runners/sp_etl_run_wf_CRE_Stage_Load_Ongoing.sql` (run script:
 
 | STEP_NO | Proc | Kind | Produces (work table) | Consumes | Original params used |
 |---|---|---|---|---|---|
-| 10 | `sp_snow_step_CRE_CARE_S10_SRC_MRG` | TRANSFORM | `WRK_CRE_CARE_S1_SRC_MRG` | _(none — base source tables)_ | none |
+| 10 | `sp_snow_step_CRE_CARE_S10_SRC_MRG` | TRANSFORM | `WRK_CRE_CARE_S1_SRC_MRG` | _(none - base source tables)_ | none |
 | 20 | `sp_snow_step_CRE_CARE_S20_NAMED` | TRANSFORM | `WRK_CRE_CARE_S2_NAMED` | `WRK_CRE_CARE_S1_SRC_MRG` | none |
 | 30 | `sp_snow_step_CRE_CARE_S30_RANKED` | TRANSFORM | `WRK_CRE_CARE_S3_RANKED` | `WRK_CRE_CARE_S2_NAMED` | none |
 | 40 | `sp_snow_step_CRE_CARE_S40_FLAT` | TRANSFORM | `WRK_CRE_CARE_S4_FLAT` | `WRK_CRE_CARE_S3_RANKED` | `P_RLE_BO_CLASS_CD_MEMBER`, `P_DEFAULT_NONUS_STATE_CD` |
 | 50 | `sp_snow_step_CRE_CARE_S50_KEYED` | TRANSFORM | `WRK_CRE_CARE_S5_KEYED` | `WRK_CRE_CARE_S4_FLAT` | `P_PHYSICAL_ADDR_TYPE_CD`, `P_RLE_BO_CLASS_CD_MEMBER`, `P_DEFAULT_TX_STATE_CD`, `P_COUNTY_CD_NONTX`, `P_COUNTYCD_DEFAULTALL` |
 
-- Work-table mapping, prescribed steps S1–S5 (names preserved verbatim from the main):
+- Work-table mapping, prescribed steps S1-S5 (names preserved verbatim from the main):
 
 | Prescribed step | Work table | Contents |
 |---|---|---|

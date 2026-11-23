@@ -1,8 +1,8 @@
-# VAL — m_Tgt_C_S_ECI_Pty_Validation (bare-bones)
+# VAL - m_Tgt_C_S_ECI_Pty_Validation (bare-bones)
 
 Workflow: wf_ECI_Stage_Load. Driver: `sp_snow_main_m_Tgt_C_S_ECI_Pty_Validation`.
 
-Driver signature: `sp_snow_main_m_Tgt_C_S_ECI_Pty_Validation((none))` — returns VARCHAR (the summary string).
+Driver signature: `sp_snow_main_m_Tgt_C_S_ECI_Pty_Validation((none))` - returns VARCHAR (the summary string).
 
 Flow: step 5 drops the mapping's work tables; steps run unconditionally in order; publish branches run inside one transaction in order; the driver RETURNs `l_summary`. Work tables are left standing at the end of a run.
 
@@ -25,4 +25,4 @@ Flow: step 5 drops the mapping's work tables; steps run unconditionally in order
 
 ## Summary flow
 
-Each step appends one `fn_snow_helper36_common` line to `l_summary`; each publish branch appends one line the same way (branch counts are captured into `l_rows` and formatted immediately, inside the transaction — no separate per-branch variables). The driver RETURNs `l_summary`; the workflow runner concatenates the nine drivers' summaries under per-mapping headers.
+Each step appends one `fn_snow_helper36_common` line to `l_summary`; each publish branch appends one line the same way (branch counts are captured into `l_rows` and formatted immediately, inside the transaction - no separate per-branch variables). The driver RETURNs `l_summary`; the workflow runner concatenates the nine drivers' summaries under per-mapping headers.

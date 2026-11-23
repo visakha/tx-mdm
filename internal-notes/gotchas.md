@@ -59,3 +59,10 @@ verification against Vamsi's org is a separate, explicit step.
 - Never commit a password, a session id, a `.env`, or a screenshot that shows credentials.
 - The IDMC username and hostnames are fine to commit.
 - Run the secret scan in `run-and-test.md` before every push.
+
+## ASCII only (Vamsi, 2026-11-22)
+
+ASCII only in code, logs, terminal output and docs - no emoji, icons or special Unicode
+(Windows terminals garble them). Use `->`, `-`, `...`, `OK`/`FAIL`, and `+--`/`|` for tree
+diagrams. `backend/tests/test_ascii_only.py` fails the build if a tracked text file breaks
+this; `app/main.py` forces stdout/stderr to ASCII with backslash escapes at runtime.

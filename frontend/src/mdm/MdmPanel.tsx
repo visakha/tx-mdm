@@ -83,8 +83,8 @@ export function MdmPanel({
           <div className="run-box" data-testid="mdm-job-detail">
             <h2>{job.name}</h2>
             <p className="muted">
-              {job.kind} · {job.path}
-              {job.job_definition_id !== null && <> · id {job.job_definition_id}</>}
+              {job.kind} - {job.path}
+              {job.job_definition_id !== null && <> - id {job.job_definition_id}</>}
             </p>
             {job.note !== "" && <p className="warn-text">{job.note}</p>}
             <Button

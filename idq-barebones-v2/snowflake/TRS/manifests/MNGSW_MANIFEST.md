@@ -1,4 +1,4 @@
-# Manifest — m_Tgt_C_S_TRS_Pty_Mng_Attr_Sw (TRS, bare-bones)
+# Manifest - m_Tgt_C_S_TRS_Pty_Mng_Attr_Sw (TRS, bare-bones)
 
 Workflow: `wf_TRS_Stage_Load_1_Ongoing`. Driver file: `drivers/driver_sp_snow_main_m_Tgt_C_S_TRS_Pty_Mng_Attr_Sw.sql`.
 

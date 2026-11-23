@@ -6,7 +6,7 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 
-# Secrets — never commit
+# Secrets - never commit
 .env
 *.env
 !.env.example

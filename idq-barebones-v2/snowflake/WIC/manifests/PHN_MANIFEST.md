@@ -1,4 +1,4 @@
-# PHN Manifest — m_Tgt_C_S_WIC_Pty_Rle_Phn_And_EAddr, bare-bones step-driver variant (WIC ONLY)
+# PHN Manifest - m_Tgt_C_S_WIC_Pty_Rle_Phn_And_EAddr, bare-bones step-driver variant (WIC ONLY)
 Workflow: `wf_WIC_Stage_Load`. Base dir: `snowflake_all_barebones/WIC/`.
 Install schema is `WIC_ETL_WRK` in database `MDM_ETL_WIC`; all table names are unqualified.
 
@@ -16,10 +16,10 @@ Driver behaviour: step 5 cleanup (bare `DROP TABLE IF EXISTS`, no framework call
 
 | STEP_NO | Proc | Produces | Consumes |
 |---|---|---|---|
-| 10 | `sp_snow_step_WIC_PHN_S10_SRC` | `WRK_WIC_PHN_S10_SRC` — Active source rows only (deactivation-status filter) plus party-role, phone and e-mail keys, standardised phone, and the e-mail validation object (NULL when e-mail is null). Only step that reads V_WIC_ETL_SRC. | (base tables — no work-table input) |
-| 20 | `sp_snow_step_WIC_PHN_S20_CHECKED` | `WRK_WIC_PHN_S20_CHECKED` — Phone exception code from the area-code lookup (usage 001); standardised e-mail pulled out. | `WRK_WIC_PHN_S10_SRC` |
-| 30 | `sp_snow_step_WIC_PHN_S30_ROUTED` | `WRK_WIC_PHN_S30_ROUTED` — Phone and e-mail exception descriptions, codes and types resolved; good and bad routing groups for phones and e-mails. | `WRK_WIC_PHN_S20_CHECKED` |
-| 40 | `sp_snow_step_WIC_PHN_S40_READY` | `WRK_WIC_PHN_S40_READY` — Run constants (phone type Telephone, usage 001, preference Primary, e-mail type 001, status Active, valid Y) and the insert-only guards (uq_phn, uq_eaddr, uq_phone_exc, uq_email_exc). Target guards evaluated here, before publish, as in the original single query. | `WRK_WIC_PHN_S30_ROUTED` |
+| 10 | `sp_snow_step_WIC_PHN_S10_SRC` | `WRK_WIC_PHN_S10_SRC` - Active source rows only (deactivation-status filter) plus party-role, phone and e-mail keys, standardised phone, and the e-mail validation object (NULL when e-mail is null). Only step that reads V_WIC_ETL_SRC. | (base tables - no work-table input) |
+| 20 | `sp_snow_step_WIC_PHN_S20_CHECKED` | `WRK_WIC_PHN_S20_CHECKED` - Phone exception code from the area-code lookup (usage 001); standardised e-mail pulled out. | `WRK_WIC_PHN_S10_SRC` |
+| 30 | `sp_snow_step_WIC_PHN_S30_ROUTED` | `WRK_WIC_PHN_S30_ROUTED` - Phone and e-mail exception descriptions, codes and types resolved; good and bad routing groups for phones and e-mails. | `WRK_WIC_PHN_S20_CHECKED` |
+| 40 | `sp_snow_step_WIC_PHN_S40_READY` | `WRK_WIC_PHN_S40_READY` - Run constants (phone type Telephone, usage 001, preference Primary, e-mail type 001, status Active, valid Y) and the insert-only guards (uq_phn, uq_eaddr, uq_phone_exc, uq_email_exc). Target guards evaluated here, before publish, as in the original single query. | `WRK_WIC_PHN_S30_ROUTED` |
 
 Step proc signatures: the step's used original params (in original order) + `P_RUN_TS`. Where an original param carries a default, `P_RUN_TS` carries `DEFAULT NULL` (Snowflake forbids a required parameter after an optional one; drivers pass all parameters positionally, so behaviour is unchanged). Each step runs its CTAS verbatim and RETURNs its row count. Step files live in `steps/` under their v2.1 names.
 

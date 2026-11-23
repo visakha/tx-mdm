@@ -1,4 +1,4 @@
-# COMPILE REPORT — both bare-bones packages
+# COMPILE REPORT - both bare-bones packages
 
 Validated 2026-10-27 against the user's Snowflake account (key-pair auth,
 VIZY / ACCOUNTADMIN), compile-only: CREATE statements executed, no
@@ -41,7 +41,7 @@ a zero-argument CALL; CALLs are out of scope for a compile-only run), plus
 Procedure counts match install-file counts exactly per schema. 45 functions
 per schema = 37 common helpers + 8 lookup UDFs. Tables are the scratch-only
 stubs below. `SHOW` also lists Snowflake's own built-ins with a blank
-schema (30 procedures, 1152 functions) — those are not package objects.
+schema (30 procedures, 1152 functions) - those are not package objects.
 Note: the fully-qualified `INFORMATION_SCHEMA.ROUTINES` form failed with
 error 002003 in this session, so the inventory was taken with `SHOW`
 commands instead; that failure is about the query form, not the install.
@@ -51,8 +51,8 @@ commands instead; that failure is about the query form, not the install.
 Zero errors means the code in the original bare-bones zips compiled as-is.
 No file was modified for this validation. These `_COMPILED` zips therefore
 contain code identical to the original bare-bones zips, plus this report.
-(The one compile class that needed fixes last time — required-after-optional
-parameters — does not occur here: the bare-bones strips already carry
+(The one compile class that needed fixes last time - required-after-optional
+parameters - does not occur here: the bare-bones strips already carry
 `DEFAULT NULL` where the rule required it.)
 
 ## Static checks supporting runtime calls (unchanged code)
@@ -66,7 +66,7 @@ parameters — does not occur here: the bare-bones strips already carry
   were built (330 all-sources call sites, 0 bad; 5 deactivation runner
   calls hand-checked) and the code has not changed since.
 
-## Honest limits — what this run does NOT prove
+## Honest limits - what this run does NOT prove
 
 - `CREATE PROCEDURE` does not resolve object references or call arity
   inside procedure bodies at creation time. A wrong table name or a wrong
@@ -82,5 +82,5 @@ parameters — does not occur here: the bare-bones strips already carry
   shipped; real definitions are still needed before production install.
 - The deactivation runners' scalar-call capture form
   (`l_map := (CALL proc(...))`) compiled cleanly here in all 4 runners,
-  as it did for the v2.1 drivers — but its runtime behaviour is still
+  as it did for the v2.1 drivers - but its runtime behaviour is still
   unproven until a first CALL.

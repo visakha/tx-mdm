@@ -1,4 +1,4 @@
-# Review guide — Python (FastAPI) and TypeScript (React / UI SDK)
+# Review guide - Python (FastAPI) and TypeScript (React / UI SDK)
 
 This guide is for the owner, who reads Java fluently, and for the converge pass. The aim is to
 review one changed file in about five minutes.
@@ -7,6 +7,8 @@ review one changed file in about five minutes.
 
 1. **Can I read it top to bottom without stopping?** If a line stopped you, note which one. That
    line is the defect.
+   Any non-ASCII character (emoji, icon, fancy dash, arrow, box glyph) is also a defect:
+   ASCII only in code, logs, terminal output and docs (Windows terminals).
 2. **Does every function do one job, in about 40 lines or fewer?** Name the job in one sentence.
 3. **Are the types explicit?**
    - Python: parameters and return types are annotated, and data crossing a boundary is a
@@ -38,7 +40,7 @@ review one changed file in about five minutes.
 
 | You see | Read it as |
 |---|---|
-| `class X(BaseModel)` (Pydantic) | A Java record with validation; the `Field(description=…)` text ends up in the OpenAPI |
+| `class X(BaseModel)` (Pydantic) | A Java record with validation; the `Field(description=...)` text ends up in the OpenAPI |
 | `Depends(get_cdi_service)` | Constructor injection; `dependencies.py` is the `@Configuration` class |
 | `@lru_cache def get_x()` | A singleton `@Bean` |
 | `SecretStr` | A `char[]` that prints as `**********` |

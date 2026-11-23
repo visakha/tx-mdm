@@ -1,4 +1,4 @@
-# CRE_CARE Manifest — m_Tgt_C_S_CRE_CARE_Clients, bare-bones step-driver variant (CRE ONLY)
+# CRE_CARE Manifest - m_Tgt_C_S_CRE_CARE_Clients, bare-bones step-driver variant (CRE ONLY)
 
 Prefix: `CRE_CARE`. Base dir: `snowflake_all_barebones/CRE/`.
 
@@ -43,12 +43,12 @@ all 18 branch procs in order, each followed by its summary append, then
 
 | Step | Proc | Produces (work table) | Consumes | Signature |
 |---|---|---|---|---|
-| 5 | _(cleanup, in driver)_ | — (drops all 5 work tables) | — | — |
-| 10 | `sp_snow_step_CRE_CARE_S10_SRC_MRG` | `WRK_CRE_CARE_S1_SRC_MRG` — CARE snapshot + merge routing | _(none — base source tables)_ | `(P_RUN_TS TIMESTAMP_NTZ)` |
-| 20 | `sp_snow_step_CRE_CARE_S20_NAMED` | `WRK_CRE_CARE_S2_NAMED` — standardised names + member validity | `WRK_CRE_CARE_S1_SRC_MRG` | `(P_RUN_TS TIMESTAMP_NTZ)` |
-| 30 | `sp_snow_step_CRE_CARE_S30_RANKED` | `WRK_CRE_CARE_S3_RANKED` — rank + validation enrichment | `WRK_CRE_CARE_S2_NAMED` | `(P_RUN_TS TIMESTAMP_NTZ)` |
-| 40 | `sp_snow_step_CRE_CARE_S40_FLAT` | `WRK_CRE_CARE_S4_FLAT` — flattened load-ready rows | `WRK_CRE_CARE_S3_RANKED` | `(P_RLE_BO_CLASS_CD_MEMBER VARCHAR DEFAULT 'Member', P_DEFAULT_NONUS_STATE_CD VARCHAR DEFAULT '99', P_RUN_TS TIMESTAMP_NTZ DEFAULT NULL)` |
-| 50 | `sp_snow_step_CRE_CARE_S50_KEYED` | `WRK_CRE_CARE_S5_KEYED` — route flags + unique-key guards | `WRK_CRE_CARE_S4_FLAT` | `(P_PHYSICAL_ADDR_TYPE_CD VARCHAR DEFAULT '002', P_RLE_BO_CLASS_CD_MEMBER VARCHAR DEFAULT 'Member', P_DEFAULT_TX_STATE_CD VARCHAR DEFAULT '48', P_COUNTY_CD_NONTX VARCHAR DEFAULT '996', P_COUNTYCD_DEFAULTALL VARCHAR DEFAULT '998', P_RUN_TS TIMESTAMP_NTZ DEFAULT NULL)` |
+| 5 | _(cleanup, in driver)_ | - (drops all 5 work tables) | - | - |
+| 10 | `sp_snow_step_CRE_CARE_S10_SRC_MRG` | `WRK_CRE_CARE_S1_SRC_MRG` - CARE snapshot + merge routing | _(none - base source tables)_ | `(P_RUN_TS TIMESTAMP_NTZ)` |
+| 20 | `sp_snow_step_CRE_CARE_S20_NAMED` | `WRK_CRE_CARE_S2_NAMED` - standardised names + member validity | `WRK_CRE_CARE_S1_SRC_MRG` | `(P_RUN_TS TIMESTAMP_NTZ)` |
+| 30 | `sp_snow_step_CRE_CARE_S30_RANKED` | `WRK_CRE_CARE_S3_RANKED` - rank + validation enrichment | `WRK_CRE_CARE_S2_NAMED` | `(P_RUN_TS TIMESTAMP_NTZ)` |
+| 40 | `sp_snow_step_CRE_CARE_S40_FLAT` | `WRK_CRE_CARE_S4_FLAT` - flattened load-ready rows | `WRK_CRE_CARE_S3_RANKED` | `(P_RLE_BO_CLASS_CD_MEMBER VARCHAR DEFAULT 'Member', P_DEFAULT_NONUS_STATE_CD VARCHAR DEFAULT '99', P_RUN_TS TIMESTAMP_NTZ DEFAULT NULL)` |
+| 50 | `sp_snow_step_CRE_CARE_S50_KEYED` | `WRK_CRE_CARE_S5_KEYED` - route flags + unique-key guards | `WRK_CRE_CARE_S4_FLAT` | `(P_PHYSICAL_ADDR_TYPE_CD VARCHAR DEFAULT '002', P_RLE_BO_CLASS_CD_MEMBER VARCHAR DEFAULT 'Member', P_DEFAULT_TX_STATE_CD VARCHAR DEFAULT '48', P_COUNTY_CD_NONTX VARCHAR DEFAULT '996', P_COUNTYCD_DEFAULTALL VARCHAR DEFAULT '998', P_RUN_TS TIMESTAMP_NTZ DEFAULT NULL)` |
 
 Step files: `steps/sp_snow_step_CRE_CARE_S<nn>_<NAME>.sql` (5 files).
 Every step proc returns `NUMBER` (row count). Steps 10/20/30 do not use
@@ -115,7 +115,7 @@ runner with no arguments.
 ## Summary flow
 
 Driver RETURNs `l_summary`: one `fn_snow_helper36_common` line per step
-(steps 10–50) and per publish branch (steps 60–230), in execution order,
+(steps 10-50) and per publish branch (steps 60-230), in execution order,
 each line carrying that unit's row count. The runner concatenates its
 header line and the driver's summary and RETURNs the combined string.
 There is no job-control table and no checkpoint row in this variant; the

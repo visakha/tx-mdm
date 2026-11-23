@@ -1,5 +1,7 @@
 """FastAPI app: two routers (CDI, MDM) and a small error mapping. Run: uvicorn app.main:app"""
 
+import sys
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -8,6 +10,21 @@ from app.cdi.router import router as cdi_router
 from app.common.idmc_session import IdmcError, IdmcRateLimitedError
 from app.common.runs import JobAlreadyRunningError, RunNotFoundError
 from app.mdm.router import router as mdm_router
+
+
+def _force_ascii_console() -> None:
+    """Terminal output is ASCII only (Windows terminals garble anything else).
+
+    Any non-ASCII text that still reaches stdout/stderr at runtime (for example a job name
+    coming back from IDMC) is written as a backslash escape instead of raw Unicode.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="ascii", errors="backslashreplace")
+
+
+_force_ascii_console()
 
 
 def create_app(frontend_origin: str = "http://localhost:5173") -> FastAPI:

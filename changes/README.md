@@ -1,4 +1,4 @@
-# changes/ — one folder per change proposal
+# changes/ - one folder per change proposal
 
 ```
 changes/
@@ -22,4 +22,4 @@ goes in `design.md`.
 
 No change is open yet. The baseline (CDI, MDM, agent interface, proxy policy) was built before
 this flow existed. It is recorded directly in `../specs/` (state: Reconciled) and in
-`../methodology/decisions.md` D1–D11.
+`../methodology/decisions.md` D1-D11.

@@ -1,10 +1,10 @@
-# DEPENDENCIES — bare-bones work-table producer/consumer chains (all sources)
+# DEPENDENCIES - bare-bones work-table producer/consumer chains (all sources)
 
 No config table exists in this variant, so there are no config columns. Each mapping's chain is: step produces exactly one work table; the next step consumes it; publish branches consume the final ready table(s). Assembled from the per-source fragments (content unchanged).
 
 ---
 
-# DEPENDENCIES_TRS — TRS bare-bones work-table dependencies
+# DEPENDENCIES_TRS - TRS bare-bones work-table dependencies
 
 Bare-bones fragment for coordinator assembly. Every unit, its produced and
 consumed work tables (pipe-delimited). No run-config columns.
@@ -12,7 +12,7 @@ consumed work tables (pipe-delimited). No run-config columns.
 ## Rules
 
 - Work-table dependencies are INTRA-mapping only: verified by scanning
-  every step CTAS and publish INSERT — no step or branch reads a work
+  every step CTAS and publish INSERT - no step or branch reads a work
   table produced by a different mapping. Cross-mapping coupling happens
   only through final/staging tables and through runner order (below),
   never through WRK_TRS_* tables.
@@ -168,11 +168,11 @@ consumed work tables (pipe-delimited). No run-config columns.
 
 ---
 
-# DEPENDENCIES_ECI — work-table producer / consumer chains (bare-bones)
+# DEPENDENCIES_ECI - work-table producer / consumer chains (bare-bones)
 
 One chain per mapping. A step produces exactly one work table; the next step consumes it. Publish branches consume the final ready table. No gating or checkpoint columns are involved.
 
-## ADR — m_Tgt_C_S_ECI_Pty_Addr
+## ADR - m_Tgt_C_S_ECI_Pty_Addr
 
 - Step 10 `sp_snow_step_ECI_ADR_S10_SRC` produces `WRK_ECI_ADR_S10_SRC` from V_ECI_ETL_SRC_FAMILY_ADDRESS (also reads: V_ECI_ETL_SRC_FAMILY_ADDRESS).
 - Step 20 `sp_snow_step_ECI_ADR_S20_KEYED` produces `WRK_ECI_ADR_S20_KEYED` from WRK_ECI_ADR_S10_SRC (also reads: STG_ECI_PTY_INACTIVE_STS).
@@ -183,7 +183,7 @@ One chain per mapping. A step produces exactly one work table; the next step con
 - Publish step 70 `sp_snow_pub_ECI_ADR_C_S_ECI_PTY_RLE_ADDR` reads `WRK_ECI_ADR_S50_READY` and writes `C_S_ECI_PTY_RLE_ADDR`.
 - Publish step 80 `sp_snow_pub_ECI_ADR_EXC_STG_BAD_REC_MEMB` reads `WRK_ECI_ADR_S50_READY` and writes `EXC_STG_BAD_REC_MEMB`.
 
-## ALT — m_Tgt_C_S_ECI_Pty_Rle_Alt_Id
+## ALT - m_Tgt_C_S_ECI_Pty_Rle_Alt_Id
 
 - Step 10 `sp_snow_step_ECI_ALT_S10_SRC` produces `WRK_ECI_ALT_S10_SRC` from STG_ECI_D_CHILD, STG_ECI_D_FAMILY, STG_ECI_D_MEDICAID, STG_ECI_SN_CASE (also reads: STG_ECI_D_CHILD, STG_ECI_D_FAMILY, STG_ECI_D_MEDICAID, STG_ECI_SN_CASE).
 - Step 20 `sp_snow_step_ECI_ALT_S20_ACTIVE` produces `WRK_ECI_ALT_S20_ACTIVE` from WRK_ECI_ALT_S10_SRC (also reads: STG_ECI_PTY_INACTIVE_STS).
@@ -193,7 +193,7 @@ One chain per mapping. A step produces exactly one work table; the next step con
 - Publish step 60 `sp_snow_pub_ECI_ALT_EXC_STG_BAD_REC_MEMB_SSN` reads `WRK_ECI_ALT_S40_READY` and writes `EXC_STG_BAD_REC_MEMB`.
 - Publish step 70 `sp_snow_pub_ECI_ALT_EXC_STG_BAD_REC_MEMB_MEDICAID` reads `WRK_ECI_ALT_S40_READY` and writes `EXC_STG_BAD_REC_MEMB`.
 
-## PHN — m_Tgt_C_S_ECI_Pty_Rle_Phn_And_EAddr
+## PHN - m_Tgt_C_S_ECI_Pty_Rle_Phn_And_EAddr
 
 - Step 10 `sp_snow_step_ECI_PHN_S10_SRC` produces `WRK_ECI_PHN_S10_SRC` from V_ECI_ETL_SRC_FAMILY_PHONE (also reads: V_ECI_ETL_SRC_FAMILY_PHONE).
 - Step 20 `sp_snow_step_ECI_PHN_S20_ACTIVE` produces `WRK_ECI_PHN_S20_ACTIVE` from WRK_ECI_PHN_S10_SRC (also reads: STG_ECI_PTY_INACTIVE_STS).
@@ -205,7 +205,7 @@ One chain per mapping. A step produces exactly one work table; the next step con
 - Publish step 80 `sp_snow_pub_ECI_PHN_C_S_ECI_PTY_RLE_EADDR` reads `WRK_ECI_PHN_S50_READY` and writes `C_S_ECI_PTY_RLE_EADDR`.
 - Publish step 90 `sp_snow_pub_ECI_PHN_EXC_STG_BAD_REC_MEMB_EMAIL` reads `WRK_ECI_PHN_S50_READY` and writes `EXC_STG_BAD_REC_MEMB`.
 
-## PTY — m_Tgt_C_S_ECI_Pty
+## PTY - m_Tgt_C_S_ECI_Pty
 
 - Step 10 `sp_snow_step_ECI_PTY_S10_SRC` produces `WRK_ECI_PTY_S10_SRC` from STG_ECI_D_CHILD, STG_ECI_D_FAMILY (also reads: STG_ECI_D_CHILD, STG_ECI_D_FAMILY).
 - Step 20 `sp_snow_step_ECI_PTY_S20_ACTIVE` produces `WRK_ECI_PTY_S20_ACTIVE` from WRK_ECI_PTY_S10_SRC (also reads: STG_ECI_PTY_INACTIVE_STS).
@@ -220,7 +220,7 @@ One chain per mapping. A step produces exactly one work table; the next step con
 - Publish step 110 `sp_snow_pub_ECI_PTY_EXC_STG_BAD_REC_MEMB_RACE` reads `WRK_ECI_PTY_S50_READY` and writes `EXC_STG_BAD_REC_MEMB`.
 - Publish step 120 `sp_snow_pub_ECI_PTY_EXC_STG_BAD_REC_MEMB_LANGUAGE` reads `WRK_ECI_PTY_S50_READY` and writes `EXC_STG_BAD_REC_MEMB`.
 
-## REL — m_Tgt_C_S_ECI_Pty_Rle_Rel
+## REL - m_Tgt_C_S_ECI_Pty_Rle_Rel
 
 - Step 10 `sp_snow_step_ECI_REL_S10_SRC` produces `WRK_ECI_REL_S10_SRC` from STG_ECI_D_FAMILY (also reads: STG_ECI_D_FAMILY).
 - Step 20 `sp_snow_step_ECI_REL_S20_KEYED` produces `WRK_ECI_REL_S20_KEYED` from WRK_ECI_REL_S10_SRC (also reads: STG_ECI_PTY_INACTIVE_STS).
@@ -229,25 +229,25 @@ One chain per mapping. A step produces exactly one work table; the next step con
 - Publish step 50 `sp_snow_pub_ECI_REL_C_S_ECI_PTY_RLE_REL` reads `WRK_ECI_REL_S40_READY` and writes `C_S_ECI_PTY_RLE_REL`.
 - Publish step 60 `sp_snow_pub_ECI_REL_EXC_STG_BAD_REC_MEMB` reads `WRK_ECI_REL_S40_READY` and writes `EXC_STG_BAD_REC_MEMB`.
 
-## RFA — m_Tgt_Stg_ECI_Pty_Reactivation_D_Family_Addr
+## RFA - m_Tgt_Stg_ECI_Pty_Reactivation_D_Family_Addr
 
 - Step 10 `sp_snow_step_ECI_RFA_S10_LATEST` produces `WRK_ECI_RFA_S10_LATEST` from STG_ECI_H_FAMILY_ADDRESS, V_ECI_ETL_LU_REACTIVATED_ID (also reads: STG_ECI_H_FAMILY_ADDRESS, V_ECI_ETL_LU_REACTIVATED_ID).
 - Step 20 `sp_snow_step_ECI_RFA_S20_KEEPNEW` produces `WRK_ECI_RFA_S20_KEEPNEW` from WRK_ECI_RFA_S10_LATEST (also reads: STG_ECI_D_FAMILY_ADDRESS).
 - Publish step 30 `sp_snow_pub_ECI_RFA_STG_ECI_D_FAMILY_ADDRESS` reads `WRK_ECI_RFA_S20_KEEPNEW` and writes `STG_ECI_D_FAMILY_ADDRESS`.
 
-## RFM — m_Tgt_Stg_ECI_Pty_Reactivation_D_Medicaid
+## RFM - m_Tgt_Stg_ECI_Pty_Reactivation_D_Medicaid
 
 - Step 10 `sp_snow_step_ECI_RFM_S10_LATEST` produces `WRK_ECI_RFM_S10_LATEST` from STG_ECI_D_MEDICAID, STG_ECI_H_MEDICAID, STG_ECI_SN_CASE, V_ECI_ETL_LU_REACTIVATED_ID (also reads: STG_ECI_D_MEDICAID, STG_ECI_H_MEDICAID, STG_ECI_SN_CASE, V_ECI_ETL_LU_REACTIVATED_ID).
 - Step 20 `sp_snow_step_ECI_RFM_S20_KEEPNEW` produces `WRK_ECI_RFM_S20_KEEPNEW` from WRK_ECI_RFM_S10_LATEST.
 - Publish step 30 `sp_snow_pub_ECI_RFM_STG_ECI_D_MEDICAID` reads `WRK_ECI_RFM_S20_KEEPNEW` and writes `STG_ECI_D_MEDICAID`.
 
-## RFP — m_Tgt_Stg_ECI_Pty_Reactivation_D_Family_Phn
+## RFP - m_Tgt_Stg_ECI_Pty_Reactivation_D_Family_Phn
 
 - Step 10 `sp_snow_step_ECI_RFP_S10_LATEST` produces `WRK_ECI_RFP_S10_LATEST` from STG_ECI_H_FAMILY_PHONE, V_ECI_ETL_LU_REACTIVATED_ID (also reads: STG_ECI_H_FAMILY_PHONE, V_ECI_ETL_LU_REACTIVATED_ID).
 - Step 20 `sp_snow_step_ECI_RFP_S20_KEEPNEW` produces `WRK_ECI_RFP_S20_KEEPNEW` from WRK_ECI_RFP_S10_LATEST (also reads: STG_ECI_D_FAMILY_PHONE).
 - Publish step 30 `sp_snow_pub_ECI_RFP_STG_ECI_D_FAMILY_PHONE` reads `WRK_ECI_RFP_S20_KEEPNEW` and writes `STG_ECI_D_FAMILY_PHONE`.
 
-## VAL — m_Tgt_C_S_ECI_Pty_Validation
+## VAL - m_Tgt_C_S_ECI_Pty_Validation
 
 - Step 10 `sp_snow_step_ECI_VAL_S10_SRC` produces `WRK_ECI_VAL_S10_SRC` from STG_ECI_D_CHILD, STG_ECI_D_FAMILY (also reads: STG_ECI_D_CHILD, STG_ECI_D_FAMILY).
 - Step 20 `sp_snow_step_ECI_VAL_S20_ENRICHED` produces `WRK_ECI_VAL_S20_ENRICHED` from WRK_ECI_VAL_S10_SRC (also reads: C_B_PTY_XREF, STG_ECI_PTY_INACTIVE_STS, V_ECI_ETL_LU_DUP_CASES, V_ECI_ETL_LU_FAMILY_VALIDATION).
@@ -265,7 +265,7 @@ One chain per mapping. A step produces exactly one work table; the next step con
 
 ---
 
-# WIC Dependencies — wf_WIC_Stage_Load (bare-bones variant)
+# WIC Dependencies - wf_WIC_Stage_Load (bare-bones variant)
 No work table is shared between mappings; each mapping's step 5 drops only its own tables.
 Every step consumes exactly the previous step's work table (step 10 consumes no work table; it reads base tables); every publish branch consumes the final step's work table.
 
@@ -484,7 +484,7 @@ Chain in words: step 5 cleanup (drops `WRK_FSS_REL_S1_SRC`, `WRK_FSS_REL_S2_CODE
 
 ---
 
-# DEPENDENCIES_CRE — m_Tgt_C_S_CRE_CARE_Clients, bare-bones step-driver variant (CRE ONLY)
+# DEPENDENCIES_CRE - m_Tgt_C_S_CRE_CARE_Clients, bare-bones step-driver variant (CRE ONLY)
 
 Workflow: `wf_CRE_Stage_Load_Ongoing`. Mapping: `m_Tgt_C_S_CRE_CARE_Clients`.
 Fragment for coordinator assembly (bare-bones variant: no config table, no
@@ -497,7 +497,7 @@ named in each unit's own header).
 
 | Step | Unit (procedure) | Kind | Produced | Consumed |
 |---|---|---|---|---|
-| 10 | `sp_snow_step_CRE_CARE_S10_SRC_MRG` | TRANSFORM | `WRK_CRE_CARE_S1_SRC_MRG` | _(none — base source tables)_ |
+| 10 | `sp_snow_step_CRE_CARE_S10_SRC_MRG` | TRANSFORM | `WRK_CRE_CARE_S1_SRC_MRG` | _(none - base source tables)_ |
 | 20 | `sp_snow_step_CRE_CARE_S20_NAMED` | TRANSFORM | `WRK_CRE_CARE_S2_NAMED` | `WRK_CRE_CARE_S1_SRC_MRG` |
 | 30 | `sp_snow_step_CRE_CARE_S30_RANKED` | TRANSFORM | `WRK_CRE_CARE_S3_RANKED` | `WRK_CRE_CARE_S2_NAMED` |
 | 40 | `sp_snow_step_CRE_CARE_S40_FLAT` | TRANSFORM | `WRK_CRE_CARE_S4_FLAT` | `WRK_CRE_CARE_S3_RANKED` |
@@ -529,7 +529,7 @@ named in each unit's own header).
   the flattened table; step 50 consumes that and produces the keyed table. Each
   transform step depends on exactly the previous step, and on nothing else in
   work-table terms (reference lookups and helper functions are not work tables).
-- **Publish fan-out:** all eighteen publish branches depend on step 50 only — each
+- **Publish fan-out:** all eighteen publish branches depend on step 50 only - each
   reads `WRK_CRE_CARE_S5_KEYED` and nothing else. No branch depends on another
   branch; branch order matters only for the original INSERT ALL order and for
   summary order, not for data (each branch reads the same keyed table
@@ -537,9 +537,9 @@ named in each unit's own header).
   each read the same final select).
 - **Step 5 cleanup:** step 5 (dropping all five work tables) runs before step 10
   on every run; there is no step-level resume.
-- **Full chain, end to end:** step 5 cleanup → 10 → 20 → 30 → 40 → 50
-  → (60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210,
-  220, 230 in one transaction) → driver RETURNs the summary string.
+- **Full chain, end to end:** step 5 cleanup -> 10 -> 20 -> 30 -> 40 -> 50
+  -> (60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210,
+  220, 230 in one transaction) -> driver RETURNs the summary string.
 - **Cross-mapping:** none. This workflow has a single mapping; no other mapping
   consumes any `WRK_CRE_*` table produced here.
 

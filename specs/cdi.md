@@ -1,6 +1,6 @@
-# Spec — CDI (Data Integration)
+# Spec - CDI (Data Integration)
 
-**Version:** 1.0.0 (2026-11-22) · **State:** Reconciled. Status: CODE. Nothing has been
+**Version:** 1.0.0 (2026-11-22) - **State:** Reconciled. Status: CODE. Nothing has been
 checked LIVE yet.
 
 ## Why
@@ -32,8 +32,8 @@ and to watch them through to a result, without the IDMC console.
 **FR-C04 Monitor.** `CODE`
 - Given a run, when `GET /api/cdi/runs/{run_key}` is called:
   - The backend first checks `activityMonitor`, matching on runId and taskId.
-  - Once the run has left the monitor, it reads `activityLog?runId&taskId`. State 1 → SUCCESS,
-    2 → WARNING, 3 → FAILED; `isStopped` → STOPPED.
+  - Once the run has left the monitor, it reads `activityLog?runId&taskId`. State 1 -> SUCCESS,
+    2 -> WARNING, 3 -> FAILED; `isStopped` -> STOPPED.
   - For an advanced taskflow, it reads `/active-bpel/services/tf/status/{runId}`.
   - Counts come from the success/failed source and target rows.
   - `idmc_started_at` comes from `startTimeUtc`.

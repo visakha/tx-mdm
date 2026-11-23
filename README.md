@@ -1,4 +1,4 @@
-# TX MDM — IDMC Job Runner
+# TX MDM - IDMC Job Runner
 
 A small app for running and watching Informatica IDMC jobs without the browser console:
 
@@ -10,12 +10,12 @@ A small app for running and watching Informatica IDMC jobs without the browser c
 
 ```
 frontend/  React + Vite + strict TypeScript, Vercel UI SDK (@ui-sdk/react) + agent bridge
-   │  only ever calls /api/... on its own origin (Vite proxies it)
-   ▼
-backend/   Python FastAPI — owns EVERY Informatica call, holds the credentials
-   ├── app/cdi/   CDI: own session, own host, own task list, own runs
-   ├── app/mdm/   MDM (Business 360): own session, own host, own job list, own runs
-   └── app/common/ login helper, run registry, the shared RunView shape
+   |  only ever calls /api/... on its own origin (Vite proxies it)
+   v
+backend/   Python FastAPI - owns EVERY Informatica call, holds the credentials
+   +-- app/cdi/   CDI: own session, own host, own task list, own runs
+   +-- app/mdm/   MDM (Business 360): own session, own host, own job list, own runs
+   `-- app/common/ login helper, run registry, the shared RunView shape
 ```
 
 CDI and MDM are separate concerns: separate modules, routers, sessions and lists. They share
@@ -27,7 +27,7 @@ only the app shell (tabs) and the shape of a run result.
 |---|---|
 | `backend/`, `frontend/` | The app |
 | `internal-docs/` | Reference material: B360 Postman collection, B360 REST API reference PDF (Oct 2026), transcribed `idmc_collection.http` (password masked), CDI and MDM API research notes, API map |
-| `internal-notes/` | Working notes for the agent maintaining this repo: layout, gotchas, verified vs unverified API facts, run/test commands, next steps, barebones-v2 ↔ CDI |
+| `internal-notes/` | Working notes for the agent maintaining this repo: layout, gotchas, verified vs unverified API facts, run/test commands, next steps, barebones-v2 <-> CDI |
 | `methodology/` | Spec-Driven Development: constitution, six-phase lifecycle, operating procedures (incl. hill climbing), decision log, Python/TS review guide |
 | `specs/` | Current-state specs: CDI, MDM, shared behaviour, agent interface |
 | `changes/` | Change proposals (proposal / specs / design / tasks) and templates |
@@ -135,14 +135,14 @@ button press. **Stable selectors:** every key control has a `data-testid` and `a
 
 **OpenAPI:** `http://127.0.0.1:8000/openapi.json` (and `/docs`). Every operation has an
 `operationId` (`cdi_list_tasks`, `cdi_start_run`, `cdi_get_run`, `mdm_list_jobs`,
-`mdm_start_run`, `mdm_get_run`, …), a summary, a description and typed response models — an
+`mdm_start_run`, `mdm_get_run`, ...), a summary, a description and typed response models - an
 agent can call the backend directly.
 
 ## Which Informatica calls are used
 
 | Step | CDI | MDM (Business 360) |
 |---|---|---|
-| Login | `POST {login}/saas/public/core/v3/login` → `userInfo.sessionId`, `products[0].baseApiUrl` | same call, separate session |
+| Login | `POST {login}/saas/public/core/v3/login` -> `userInfo.sessionId`, `products[0].baseApiUrl` | same call, separate session |
 | List | `GET {baseApiUrl}/public/core/v3/objects?q=type=='MTT'` (and WORKFLOW, TASKFLOW), paged 200 | `GET {baseApiUrl}/public/core/v3/objects?q=type=='MDM_JOB_DEFINITION'` |
 | Run | `POST {baseApiUrl}/api/v2/job {taskFederatedId, taskType}`; advanced taskflow: `POST {pod}/active-bpel/rt/{apiName}` | `POST {mdm}/job/public/api/v1/jobInstance/{Ingress\|Egress\|MatchMerge} {jobDefinitionId}` |
 | Monitor | `GET /api/v2/activity/activityMonitor`, then `GET /api/v2/activity/activityLog?runId&taskId` (state 1/2/3); taskflow: `GET {pod}/active-bpel/services/tf/status/{runId}` | `GET {mdm}/job/public/api/v1/jobInstance/{id}?details=true` (`_meta.state`, `jobLevelMetrics`) |
@@ -160,7 +160,7 @@ clean; frontend typecheck, unit tests, oxlint and production build clean.
    `jobDefinitionId` and no job type. `app/mdm/resolver.py` fills them by matching the
    definition name against recent job instances from the B360 job search. A job that has never
    run cannot be resolved this way and shows as "not runnable". The resolver is a pluggable
-   class — swap it once the real source of the id is confirmed (e.g. export package).
+   class - swap it once the real source of the id is confirmed (e.g. export package).
 3. The **egress jobType** is undocumented; egress is recognised by the word "egress" in the
    jobType the org returns.
 4. Advanced taskflows: whether `INFA-SESSION-ID` works on the `/active-bpel/rt/` run call, the

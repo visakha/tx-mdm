@@ -1,6 +1,6 @@
-# Spec — MDM (Business 360)
+# Spec - MDM (Business 360)
 
-**Version:** 1.0.0 (2026-11-22) · **State:** Reconciled. Status: CODE. The id resolution is
+**Version:** 1.0.0 (2026-11-22) - **State:** Reconciled. Status: CODE. The id resolution is
 UNVERIFIED.
 
 ## Why

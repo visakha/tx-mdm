@@ -1,4 +1,4 @@
-# internal-notes — start here (for the agent working on this repo)
+# internal-notes - start here (for the agent working on this repo)
 
 These notes are for whichever agent works on tx-mdm next: Muse today, maybe a different agent
 tomorrow. They hold what you need so you don't have to rediscover it. They cover only
@@ -6,13 +6,13 @@ this project.
 
 Read in this order:
 
-1. this file — what the project is and how it is laid out
-2. [`gotchas.md`](gotchas.md) — things that have already cost time
-3. [`api-facts.md`](api-facts.md) — which Informatica facts are verified and which are not
-4. [`run-and-test.md`](run-and-test.md) — the exact commands
-5. [`next-steps.md`](next-steps.md) — what is open, in order
-6. [`barebones-v2-and-cdi.md`](barebones-v2-and-cdi.md) — how the imported Snowflake package relates to the CDI side
-7. [`../methodology/`](../methodology/) — how work is done here (constitution, lifecycle, procedures, decisions)
+1. this file - what the project is and how it is laid out
+2. [`gotchas.md`](gotchas.md) - things that have already cost time
+3. [`api-facts.md`](api-facts.md) - which Informatica facts are verified and which are not
+4. [`run-and-test.md`](run-and-test.md) - the exact commands
+5. [`next-steps.md`](next-steps.md) - what is open, in order
+6. [`barebones-v2-and-cdi.md`](barebones-v2-and-cdi.md) - how the imported Snowflake package relates to the CDI side
+7. [`../methodology/`](../methodology/) - how work is done here (constitution, lifecycle, procedures, decisions)
 
 ## What tx-mdm is
 

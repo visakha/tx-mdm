@@ -1,11 +1,11 @@
-# Informatica API facts — verified vs. not
+# Informatica API facts - verified vs. not
 
 Labels:
 
-- **DOC** — stated in an official Informatica document. The research notes in
+- **DOC** - stated in an official Informatica document. The research notes in
   `internal-docs/` give page references.
-- **CODE** — exercised by this repo's tests, but only against mocks or `fake_idmc`.
-- **LIVE** — seen working against Vamsi's real org.
+- **CODE** - exercised by this repo's tests, but only against mocks or `fake_idmc`.
+- **LIVE** - seen working against Vamsi's real org.
 
 **As of 2026-11-22, nothing is LIVE.** No code in this repo has called the real org.
 

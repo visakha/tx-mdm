@@ -35,7 +35,7 @@ Run one phase per session, and commit at the end of each phase.
 ## When a spec is not enough: specs frame, loops climb
 
 If the path is knowable up front, write the spec. If it only shows itself through execution,
-the spec frames a **hill climb** (see `operating-procedures.md` §6). Examples: getting the MDM
+the spec frames a **hill climb** (see `operating-procedures.md` section 6). Examples: getting the MDM
 resolver to resolve every job definition against real job-search data, or finding the polling
 interval that stays well inside rate limits.
 

@@ -12,7 +12,7 @@ $$
 DECLARE
     l_rows       NUMBER DEFAULT 0;
 BEGIN
-    -- ---- Step 30: PUBLISH — INSERT verbatim from current main ---------
+    -- ---- Step 30: PUBLISH - INSERT verbatim from current main ---------
     -- The ONLY step that writes to a final target. No TRUNCATE, no
     -- DELETE: insert-only, as in the original Snowflake code.
     INSERT INTO STG_ECI_D_FAMILY_PHONE

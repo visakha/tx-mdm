@@ -1,4 +1,4 @@
-# PTY Manifest — m_Tgt_C_S_WIC_Pty, bare-bones step-driver variant (WIC ONLY)
+# PTY Manifest - m_Tgt_C_S_WIC_Pty, bare-bones step-driver variant (WIC ONLY)
 Workflow: `wf_WIC_Stage_Load`. Base dir: `snowflake_all_barebones/WIC/`.
 Install schema is `WIC_ETL_WRK` in database `MDM_ETL_WIC`; all table names are unqualified.
 
@@ -18,10 +18,10 @@ Driver behaviour: step 5 cleanup (bare `DROP TABLE IF EXISTS`, no framework call
 
 | STEP_NO | Proc | Produces | Consumes |
 |---|---|---|---|
-| 10 | `sp_snow_step_WIC_PTY_S10_ACTIVE` | `WRK_WIC_PTY_S10_ACTIVE` — Active source parties only (parties with a deactivation status removed). Only step that reads V_WIC_ETL_SRC. | (base tables — no work-table input) |
-| 20 | `sp_snow_step_WIC_PTY_S20_DQ` | `WRK_WIC_PTY_S20_DQ` — Name standardisation, gender, birth date, ethnicity, race indicators, language. | `WRK_WIC_PTY_S10_ACTIVE` |
-| 30 | `sp_snow_step_WIC_PTY_S30_DQ2` | `WRK_WIC_PTY_S30_DQ2` — Standardised values pulled out; every exception description and type resolved from the exception lookup; birth-date value used downstream is NULL when the birth date raised an exception. | `WRK_WIC_PTY_S20_DQ` |
-| 40 | `sp_snow_step_WIC_PTY_S40_ROUTED` | `WRK_WIC_PTY_S40_ROUTED` — Party and role keys, exception routing groups, run constants, birth weight in grams, and the insert-only guards (uq_pty, uq_rle, uq_gender, uq_birth, uq_ethnicity, uq_race, uq_language). Guards evaluated here, before publish, as in the original single query. | `WRK_WIC_PTY_S30_DQ2` |
+| 10 | `sp_snow_step_WIC_PTY_S10_ACTIVE` | `WRK_WIC_PTY_S10_ACTIVE` - Active source parties only (parties with a deactivation status removed). Only step that reads V_WIC_ETL_SRC. | (base tables - no work-table input) |
+| 20 | `sp_snow_step_WIC_PTY_S20_DQ` | `WRK_WIC_PTY_S20_DQ` - Name standardisation, gender, birth date, ethnicity, race indicators, language. | `WRK_WIC_PTY_S10_ACTIVE` |
+| 30 | `sp_snow_step_WIC_PTY_S30_DQ2` | `WRK_WIC_PTY_S30_DQ2` - Standardised values pulled out; every exception description and type resolved from the exception lookup; birth-date value used downstream is NULL when the birth date raised an exception. | `WRK_WIC_PTY_S20_DQ` |
+| 40 | `sp_snow_step_WIC_PTY_S40_ROUTED` | `WRK_WIC_PTY_S40_ROUTED` - Party and role keys, exception routing groups, run constants, birth weight in grams, and the insert-only guards (uq_pty, uq_rle, uq_gender, uq_birth, uq_ethnicity, uq_race, uq_language). Guards evaluated here, before publish, as in the original single query. | `WRK_WIC_PTY_S30_DQ2` |
 
 Step proc signatures: the step's used original params (in original order) + `P_RUN_TS`. Where an original param carries a default, `P_RUN_TS` carries `DEFAULT NULL` (Snowflake forbids a required parameter after an optional one; drivers pass all parameters positionally, so behaviour is unchanged). Each step runs its CTAS verbatim and RETURNs its row count. Step files live in `steps/` under their v2.1 names.
 

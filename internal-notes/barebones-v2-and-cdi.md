@@ -11,11 +11,11 @@ SQL files.
 The CDI jobs that tx-mdm lists and runs move the same MDM-load data: the six sources ECI, FSS,
 TTF, WIC, TRS and CRE, from staging into the C_S_* tables. The barebones-v2 package is the
 Snowflake rewrite of that load. The CDI design, as shown in `idq-barebones-v2/deck/` ("The Init
-SQL — three sources, one pattern"), has every ETL pull from three SQLs:
+SQL - three sources, one pattern"), has every ETL pull from three SQLs:
 
-- the **init SQL** — the S10 `publish_dest/` twins
-- an **activation** SQL — `publish_reactivate/`
-- a **deactivation** SQL — `publish_deactivate/`
+- the **init SQL** - the S10 `publish_dest/` twins
+- an **activation** SQL - `publish_reactivate/`
+- a **deactivation** SQL - `publish_deactivate/`
 
 So when a CDI run's counts look wrong, these files are where to read what the job is meant to do.
 
@@ -46,7 +46,7 @@ Some details:
   CDI task list comes from the org at runtime. Any mapping from task to table would come from
   Vamsi or from the task metadata, not from this package.
 
-## Open items in the package — parked
+## Open items in the package - parked
 
 The idq-cli work has open items that Vamsi parked on 2026-11-22. **Do not raise or try to
 resolve them from this repo.** Wait until he brings them up. They live with the idq-cli work,

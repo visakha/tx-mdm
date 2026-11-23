@@ -1,4 +1,4 @@
-# ALT Manifest — m_Tgt_C_S_WIC_Pty_Rle_Alt_Id, bare-bones step-driver variant (WIC ONLY)
+# ALT Manifest - m_Tgt_C_S_WIC_Pty_Rle_Alt_Id, bare-bones step-driver variant (WIC ONLY)
 Workflow: `wf_WIC_Stage_Load`. Base dir: `snowflake_all_barebones/WIC/`.
 Install schema is `WIC_ETL_WRK` in database `MDM_ETL_WIC`; all table names are unqualified.
 
@@ -16,8 +16,8 @@ Driver behaviour: step 5 cleanup (bare `DROP TABLE IF EXISTS`, no framework call
 
 | STEP_NO | Proc | Produces | Consumes |
 |---|---|---|---|
-| 10 | `sp_snow_step_WIC_ALT_S10_KEYS` | `WRK_WIC_ALT_S10_KEYS` — Party-role key, id type (020 or 021), alternate-id key. Only step that reads V_WIC_ETL_SRC. | (base tables — no work-table input) |
-| 20 | `sp_snow_step_WIC_ALT_S20_READY` | `WRK_WIC_ALT_S20_READY` — Deactivation filter applied, keys already in the target skipped, one row per alternate-id key (latest DATEKEY wins). Guard evaluated here, before publish, as in the original single query. | `WRK_WIC_ALT_S10_KEYS` |
+| 10 | `sp_snow_step_WIC_ALT_S10_KEYS` | `WRK_WIC_ALT_S10_KEYS` - Party-role key, id type (020 or 021), alternate-id key. Only step that reads V_WIC_ETL_SRC. | (base tables - no work-table input) |
+| 20 | `sp_snow_step_WIC_ALT_S20_READY` | `WRK_WIC_ALT_S20_READY` - Deactivation filter applied, keys already in the target skipped, one row per alternate-id key (latest DATEKEY wins). Guard evaluated here, before publish, as in the original single query. | `WRK_WIC_ALT_S10_KEYS` |
 
 Step proc signatures: the step's used original params (in original order) + `P_RUN_TS`. Where an original param carries a default, `P_RUN_TS` carries `DEFAULT NULL` (Snowflake forbids a required parameter after an optional one; drivers pass all parameters positionally, so behaviour is unchanged). Each step runs its CTAS verbatim and RETURNs its row count. Step files live in `steps/` under their v2.1 names.
 

@@ -1,4 +1,4 @@
-# STRIPPED_NOTES — what was removed from v2.1, and what stayed
+# STRIPPED_NOTES - what was removed from v2.1, and what stayed
 
 Bare-bones variant of `Snowflake_All_Sources_Modular_Step_Driver_v2.1`.
 The strip was mechanical: delete the control plane, keep the structure
@@ -8,7 +8,7 @@ and the business SQL. Nothing below changes a CTAS or an INSERT.
 
 1. **Config table gone.** No `COMMON.ETL_RUN_CONFIG_TBL`, no GATHER
    block, no Y/N flags, no driver-row gate, no seed files. A driver
-   no longer asks anything at runtime — it runs every step and every
+   no longer asks anything at runtime - it runs every step and every
    branch, in order, every time.
 2. **Checkpointing gone.** No `sp_etl_checkpoint`,
    `sp_etl_job_begin`, `sp_etl_job_finish`, `sp_etl_job_fail` calls,
@@ -17,7 +17,7 @@ and the business SQL. Nothing below changes a CTAS or an INSERT.
 3. **Run-id and input tables gone.** No `P_JOB_RUN_ID`,
    `P_INPUT_TABLES`, `l_job_run_id`, `l_flag_*`, `l_in_*`,
    `l_pub_*` in any code line. (Headers may mention the removals in
-   comments; code lines are clean — verified by grep.)
+   comments; code lines are clean - verified by grep.)
 4. **Existence checks gone.** No INFORMATION_SCHEMA input-table checks,
    no EXECUTE IMMEDIATE probe blocks in steps or publish procs. A
    missing work table now fails natively at the CTAS/INSERT instead
@@ -33,7 +33,7 @@ and the business SQL. Nothing below changes a CTAS or an INSERT.
 Before (v2.1): original params + `P_JOB_RUN_ID`; job-begin; GATHER
 from the config table; driver-row gate; step-5 cleanup; conditional
 step calls with SKIPPED arms; one publish transaction; branch
-checkpoints after COMMIT; job-end; exception → checkpoint + job-fail.
+checkpoints after COMMIT; job-end; exception -> checkpoint + job-fail.
 
 After (bare-bones): original params only. No job-begin, no GATHER, no
 gate. Step-5 bare `DROP TABLE IF EXISTS` cleanup, unchanged. Step
@@ -44,9 +44,9 @@ l_rows := (CALL sp_snow_step_<PREFIX>_S<nn>_<NAME>(<original args>, :l_run_ts));
 l_summary := l_summary || fn_snow_helper36_common(:c_mapping, 'step <nn> <NAME>', :l_rows) || CHR(10);
 ```
 
-Publish: `BEGIN` → branch calls in order (each followed immediately
-by its summary append, reusing `l_rows` — string concatenation only)
-→ `COMMIT`. Exception: `ROLLBACK` + `RAISE` only. Ends with
+Publish: `BEGIN` -> branch calls in order (each followed immediately
+by its summary append, reusing `l_rows` - string concatenation only)
+-> `COMMIT`. Exception: `ROLLBACK` + `RAISE` only. Ends with
 `RETURN l_summary`.
 
 ### Step (`sp_snow_step_*`)
@@ -88,7 +88,7 @@ After: no parameters. Calls each driver with zero arguments,
 concatenates each returned string with a per-mapping header line and
 newlines, RETURNs the combined string. Run scripts (`run_*.sql`) CALL
 the runner with no arguments; otherwise unchanged. Runner errors
-propagate — runners own no transaction; each driver rolls back its
+propagate - runners own no transaction; each driver rolls back its
 own publish transaction on failure.
 
 ### Common helpers (`00_common/`)
@@ -104,7 +104,7 @@ Steps and branches still RETURN their row counts, drivers format them
 into `l_summary`, runners concatenate. NOTHING is written to any
 table. If the caller does not capture the returned string, the counts
 are gone. There is no audit trail, no resume, no per-step status to
-query afterwards — that is the point of this variant, and its limit.
+query afterwards - that is the point of this variant, and its limit.
 Work tables are still left standing after a run (step 5 of the next
 run drops them), so a failed run's intermediate tables can still be
 inspected by hand.
@@ -112,12 +112,12 @@ inspected by hand.
 ## Special cases
 
 - **TRS party-deactivation step 50** (`DELETE_VALID_STAGE_NOT_PERFORMED`)
-  had no business SQL — its only action was a checkpoint. It is kept
+  had no business SQL - its only action was a checkpoint. It is kept
   as a proc that just `RETURN`s 0, still called after the publish
   transaction, so the step count (66) and the summary line survive.
 - **No step SQL anywhere referenced `P_JOB_RUN_ID`.** In every source,
   the only `P_JOB_RUN_ID` occurrences in step files were the signature
-  and the checkpoint call — both removed. No call site anywhere passed
+  and the checkpoint call - both removed. No call site anywhere passed
   arguments beyond (originals, job, run-ts, consumed-string).
 - **Branch summary placement (uniform across all six sources).**
   v2.1 appended branch summaries after `COMMIT` from `l_pub_*`
@@ -142,7 +142,7 @@ snowsql -a DOOPELI-LL99227 -u VIZY --authenticator SNOWFLAKE_JWT --private-key-p
 - The private key file must be a copy on the Windows machine (the
   compile machine's copy is not reachable from Windows); the key is
   unencrypted so no passphrase is needed.
-- `-d` / `-s` / `-w` are the install database / schema / warehouse —
+- `-d` / `-s` / `-w` are the install database / schema / warehouse -
   adjust to the actual install (the example uses the package's
   documented TTF topology).
 - The runner takes no arguments and RETURNs the combined summary
@@ -156,8 +156,8 @@ snowsql -a DOOPELI-LL99227 -u VIZY --authenticator SNOWFLAKE_JWT --private-key-p
 
 ## Install rule
 
-Install EVERYTHING for one source — its drivers, steps, publish
-procs, AND both helper files — into ONE schema, because drivers call
+Install EVERYTHING for one source - its drivers, steps, publish
+procs, AND both helper files - into ONE schema, because drivers call
 helpers unqualified. The RDM reference data for the lookups is
 separate; the seven reference objects still need real definitions
 before a production install (see README).

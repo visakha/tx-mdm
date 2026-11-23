@@ -1,4 +1,4 @@
-# Design — change NNN
+# Design - change NNN
 
 **Owner hat for this phase:** architect (Design). Design may not change the spec's What.
 

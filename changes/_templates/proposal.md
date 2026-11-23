@@ -1,6 +1,6 @@
-# NNN — <title>
+# NNN - <title>
 
-**Status:** draft | approved | archived · **Owner hat for this phase:** product (Discover)
+**Status:** draft | approved | archived - **Owner hat for this phase:** product (Discover)
 
 ## Why
 <!-- Mandatory. The purpose; every requirement in specs/ must trace back to this. -->

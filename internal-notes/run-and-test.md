@@ -1,4 +1,4 @@
-# Run and test — exact commands
+# Run and test - exact commands
 
 ## Backend
 
@@ -21,19 +21,19 @@ npm run typecheck && npm test && npm run lint && npm run build
 ## Run the whole thing offline (fake IDMC)
 
 ```bash
-# terminal 1 — fake IDMC
+# terminal 1 - fake IDMC
 cd backend && .venv/bin/uvicorn dev.fake_idmc:app --port 8900
-# terminal 2 — backend pointed at the fake
+# terminal 2 - backend pointed at the fake
 cd backend && IDMC_USERNAME=demo IDMC_PASSWORD=demo \
   IDMC_LOGIN_URL=http://127.0.0.1:8900 IDMC_MDM_URL=http://127.0.0.1:8900 \
   IDMC_PLATFORM_URL=http://127.0.0.1:8900/saas \
   .venv/bin/uvicorn app.main:app --port 8000
-# terminal 3 — UI
+# terminal 3 - UI
 cd frontend && npm run dev     # open http://localhost:5173 (localhost, not 127.0.0.1)
 ```
 
 You do not need to unset proxy env vars. The backend ignores them unless `HTTP_TRUST_ENV=true`
-(see gotchas §1).
+(see gotchas section 1).
 
 ## The agent-facing surfaces
 

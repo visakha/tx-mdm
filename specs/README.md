@@ -1,7 +1,7 @@
-# specs/ — current state
+# specs/ - current state
 
 This folder describes what tx-mdm does **today**. It changes only when a change proposal
-under `../changes/` is archived. In each file, every requirement has an id (`FR-…`), at least
+under `../changes/` is archived. In each file, every requirement has an id (`FR-...`), at least
 one scenario, and a status: `CODE` (implemented and tested offline) or `LIVE` (also seen
 against the real org).
 

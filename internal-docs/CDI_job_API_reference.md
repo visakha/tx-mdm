@@ -84,7 +84,7 @@ Legend: **[VERIFIED]** means stated in an official doc I read. **[INFERRED]** is
 - Suggested picker calls:
   - Mapping tasks: `q=type=='MTT'`
   - Linear taskflows: `q=type=='WORKFLOW'`
-  - Advanced taskflows: `q=type=='TASKFLOW'`. These run differently, see §3b.
+  - Advanced taskflows: `q=type=='TASKFLOW'`. These run differently, see section 3b.
   - Tree: `q=type=='PROJECT'`, then `q=type=='FOLDER'`. Or list by `location=='<Project>'` and group by `path`.
 
 ### 2b. v3 lookup (resolve one path or ID) **[VERIFIED S1 p.171-174]**

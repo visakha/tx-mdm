@@ -24,13 +24,13 @@ Accept: application/json
 - Response: `{ count, objects: [ { id, path, type, description, updatedBy, updateTime, tags, sourceControl{...}, customAttributes{...} } ] }`.
 - The response leaves out assets the user can't read. A KB shows FRS permission overrides apply to MDM_JOB_DEFINITION too.
 - Sources:
-  - Official PDF, IDMC REST API Reference July 2026, Objects > Finding an asset (pp.235–239): https://docs.informatica.com/content/dam/source/GUID-B/GUID-BA8ED0B4-AB32-46B1-A7B8-358FAB844D6B/67/en/IICS_July2026_(REST-API)Reference_en.pdf
+  - Official PDF, IDMC REST API Reference July 2026, Objects > Finding an asset (pp.235-239): https://docs.informatica.com/content/dam/source/GUID-B/GUID-BA8ED0B4-AB32-46B1-A7B8-358FAB844D6B/67/en/IICS_July2026_(REST-API)Reference_en.pdf
   - The same page in HTML (docs-test mirror): https://docs-test.informatica.com/cloud-common-services/administrator/current-version/rest-api-reference/platform-rest-api-version-3-resources/objects/finding-an-asset.html
   - KB, the FRS error naming MDM_JOB_DEFINITION as an FRS asset type: https://knowledge.informatica.com/s/article/ERROR-Match-Job-Definition-failure-In-SaaS?language=en_US
 - Header note: KB 000196351 calls v3 objects with `IDS-SESSION-ID: <icSessionId>`, so either header style is accepted in practice. The docs use `INFA-SESSION-ID`. https://knowledge.informatica.com/s/article/000196351
 
 ### 1b. `/public/core/v3/objects/{id}/references`: DOCUMENTED, no help here
-It returns `appContextId`, a service-specific ID, but the doc says that only applies to Data Integration and Data Ingestion and Replication, not MDM. Same PDF, pp.240–241.
+It returns `appContextId`, a service-specific ID, but the doc says that only applies to Data Integration and Data Ingestion and Replication, not MDM. Same PDF, pp.240-241.
 
 ### 1c. B360 metadata service `/metadata/api/v2/objects/{type}`: DOCUMENTED types only, no job type
 - Documented: `relationship/?name=` (local PDF line 5635ff), `businessEntity/<guid>` (KB https://knowledge.informatica.com/s/article/How-can-I-get-a-list-of-all-the-search-and-facetable-attributes?language=en_US). The Postman collection has `uiApplication/c360.c360` and `tenantModel/datamodel`.
@@ -70,6 +70,6 @@ Related (KB 000219814, DOCUMENTED but a different route): the CAI process endpoi
    c. Export one MDM_JOB_DEFINITION and read the package JSON.
    d. Last resort: try the FRS `id` as `jobDefinitionId`. **Skip this one.** It would start a real job, so it isn't read-only and needs Vamsi's OK.
 3. **Enrich and fallback:** B360 job search (`POST /job/public/api/v1/search`, `search:"*"`, page through `pageSize`/`pageOffset`) gives the internal ID plus `jobType` for anything that has run. Join it to the list by name to fill gaps and show the last run status.
-4. Cache the resolved name → internal ID → kind map. Refresh it on demand.
+4. Cache the resolved name -> internal ID -> kind map. Refresh it on demand.
 
 **Live probe needed (Vamsi's approval):** steps 2a and 2b are read-only GETs against his org with the saved IDMC login. They settle the open questions in about two calls. Nothing in this research made those calls.

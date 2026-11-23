@@ -3,7 +3,7 @@
 How any agent (Muse or another) works on tx-mdm. The owner, Vamsi, reasons about agent work
 from the agent's **report**, so the report has to be enough on its own.
 
-## 1. The task brief — every task carries all of these
+## 1. The task brief - every task carries all of these
 
 A task brief that is missing any of these fields is malformed. Stop and ask.
 
@@ -16,29 +16,29 @@ A task brief that is missing any of these fields is malformed. Stop and ask.
 | `contracts_touched` | none, or the named contracts: API routes/schemas, RunView, routes, agent actions |
 | `inputs` / `outputs` | Exact paths the task may read and change |
 | `done_test` | Exact commands with the expected result |
-| `stop_conditions` | The §5 conditions that apply (at least S1, S3, S4) |
-| `example_first` | What the ONE example is (§3) |
+| `stop_conditions` | The section 5 conditions that apply (at least S1, S3, S4) |
+| `example_first` | What the ONE example is (section 3) |
 
-## 2. The report — the only thing Vamsi has to read
+## 2. The report - the only thing Vamsi has to read
 
 The report is filed in the change's `tasks.md` (or `internal-notes/` for an investigation) and
 returned as the agent's reply. It has these sections, in this order. Write "None" rather than
 dropping a section.
 
-1. **Task** — id, title, one line on what was asked.
-2. **Result** — DONE / STOPPED / PARTIAL.
-3. **What changed** — files with `+added/-removed` line counts, one sentence each.
-4. **Checks run** — every command, verbatim, with its pass/fail counts. A check that was not
+1. **Task** - id, title, one line on what was asked.
+2. **Result** - DONE / STOPPED / PARTIAL.
+3. **What changed** - files with `+added/-removed` line counts, one sentence each.
+4. **Checks run** - every command, verbatim, with its pass/fail counts. A check that was not
    run is written "NOT RUN" with the reason.
-5. **What I did NOT do** — what was not touched, follow-ups not started, live calls not made.
-6. **Open questions** — numbered, each answerable in one reply, each with a proposed answer.
-7. **How to verify in 5 minutes** — copy-paste commands with expected output.
-8. **Stop conditions triggered** — None, or the S-number and what was written instead.
-9. **Convergence** — the verdict, or "Not run" and why.
-10. **Intent-loss attribution** — for each gap: its loss point (`sdd-lifecycle.md`) and the
+5. **What I did NOT do** - what was not touched, follow-ups not started, live calls not made.
+6. **Open questions** - numbered, each answerable in one reply, each with a proposed answer.
+7. **How to verify in 5 minutes** - copy-paste commands with expected output.
+8. **Stop conditions triggered** - None, or the S-number and what was written instead.
+9. **Convergence** - the verdict, or "Not run" and why.
+10. **Intent-loss attribution** - for each gap: its loss point (`sdd-lifecycle.md`) and the
     workflow fix.
 
-## 3. One example first, then the set — HARD RULE
+## 3. One example first, then the set - HARD RULE
 
 When a task produces many similar things (endpoints, panels, tests, specs), do this:
 
@@ -56,7 +56,7 @@ A correction to the example applies to the whole set.
   work.
 - A handoff note says: what is done, what is next, which files changed, and which checks pass.
 
-## 5. Stop conditions — stop and report instead of pushing on
+## 5. Stop conditions - stop and report instead of pushing on
 
 | # | Condition | Write instead of proceeding |
 |---|---|---|
@@ -71,16 +71,16 @@ A correction to the example applies to the whole set.
 | S9 | Two instructions conflict | Both, quoted, and which one was followed for any work already done |
 | S10 | A secret or credential would end up in a file, log or commit | Stop. Remove it. Report it without the value. |
 
-## 6. Hill climbing — for the parts a spec cannot predict
+## 6. Hill climbing - for the parts a spec cannot predict
 
 A climb needs four things in the brief. Without all four it is malformed:
 
-1. **The objective** — a measurable gate. Examples: "resolver maps 100% of the org's
+1. **The objective** - a measurable gate. Examples: "resolver maps 100% of the org's
    `MDM_JOB_DEFINITION`s with 0 wrong mappings, checked against a list Vamsi confirmed", or
    "0 HTTP 429s across a 30-minute poll of 5 runs".
-2. **The knobs**, with bounds (e.g. name-normalisation rule A/B/C; poll interval 3–15 s, in 2 s
+2. **The knobs**, with bounds (e.g. name-normalisation rule A/B/C; poll interval 3-15 s, in 2 s
    steps).
-3. **The baseline** — the last measured numbers, and the command that produced them.
+3. **The baseline** - the last measured numbers, and the command that produced them.
 4. **The change proposal** that frames the climb.
 
 The loop:
@@ -90,7 +90,7 @@ The loop:
 3. Measure.
 4. **Keep** the change only if the objective improved and nothing else regressed. Otherwise
    **revert exactly**.
-5. Log the attempt: number, the change, the before → after numbers, kept or reverted, one line
+5. Log the attempt: number, the change, the before -> after numbers, kept or reverted, one line
    on why.
 6. Repeat from the new baseline.
 
@@ -107,9 +107,9 @@ On a plateau, propose a change of *shape*, not of size. Never start a new climb 
 
 Climbs that touch the real org also fall under S7, and each live call needs authorisation.
 
-## 7. Verification ladder — what "done" means
+## 7. Verification ladder - what "done" means
 
-Do the levels in order. Write a level that does not apply as "N/A — reason".
+Do the levels in order. Write a level that does not apply as "N/A - reason".
 
 | Level | Check |
 |---|---|
@@ -117,7 +117,7 @@ Do the levels in order. Write a level that does not apply as "N/A — reason".
 | L1 Format/lint | `ruff format --check . && ruff check .`; `npm run lint` |
 | L2 Unit/route tests | `pytest -q`; `npm test` |
 | L3 Build | `npm run build`; backend imports and `create_app().openapi()` builds |
-| L4 Offline end-to-end | backend + `dev/fake_idmc.py` + UI: list → run → results, when the change touches that flow |
+| L4 Offline end-to-end | backend + `dev/fake_idmc.py` + UI: list -> run -> results, when the change touches that flow |
 | L5 Live | against the real org, only with authorisation (S7). Record the result in `internal-notes/api-facts.md` |
 | L6 Owner's 5-minute check | Vamsi runs the report's "How to verify" commands |
 
@@ -126,7 +126,7 @@ Do the levels in order. Write a level that does not apply as "N/A — reason".
 - **Silently "improving" a contract.** That is S1: propose it, don't do it.
 - **Reporting tests that were never run.** Every claim carries its command.
 - **Calling a mocked fact verified.** Use the DOC / CODE / LIVE labels.
-- **Building the whole set before the example.** See §3.
+- **Building the whole set before the example.** See section 3.
 - **Retrying a failed job "to be helpful".** This violates Principle IV.
 - **Copying content from other private projects into this public repo.** This violates
   Principle X.
