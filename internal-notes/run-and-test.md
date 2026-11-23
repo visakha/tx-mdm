@@ -75,3 +75,17 @@ call `txmdm.about()`.
   salesforce) and `POST /business-entity/public/api/v1/entity/{guid}`; created rows show in its search.
   Test hooks: a sourcePKey containing `FAIL400` -> 400, containing `RATE429` -> 429.
 - Tests: `backend/tests/test_b360_add_records.py`.
+
+## Windows starter scripts (2026-11-23)
+
+Vamsi asked for a PowerShell starter so a new session activates the venv and
+does any needed install. `start-backend.ps1` / `start-frontend.ps1` at the repo
+root. Backend: optional -Pull, creates .venv if missing, always uses
+.venv\Scripts\python.exe, pip install when pyproject.toml hash changed or a
+required package fails to import, creates .env from the example if missing,
+then `python -m uvicorn app.main:app --host 0.0.0.0 --port 8000`. Frontend:
+npm install when package-lock.json hash changed or node_modules missing.
+Root cause they fix: the global uvicorn.exe in AppData\Roaming\Python\Python313
+ran instead of the venv, so faker (new in 0.9.8) was missing.
+Any new pickup card should point at these scripts. Not runnable here (no pwsh
+on the VM) - first real run is on his laptop.

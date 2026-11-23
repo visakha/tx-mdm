@@ -41,6 +41,23 @@ only the app shell (tabs) and the shape of a run result.
 
 Prerequisites: Python 3.12+, Node 20+ (tested on 24).
 
+### Windows / PowerShell: starter scripts (use these)
+
+From the repo root, one PowerShell window each:
+
+```powershell
+.\start-backend.ps1 -Pull     # pull, create/activate backend\.venv, pip install only if needed, start :8000
+.\start-frontend.ps1          # npm install only if needed, start :5173
+```
+
+`start-backend.ps1` always runs the venv's own `python.exe`, never the global
+Python in AppData (running the global `uvicorn.exe` is what caused
+"No module named faker" after 0.9.8). Add `-Install` to force a reinstall.
+If PowerShell refuses to run scripts:
+`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
+
+### Linux / macOS
+
 ```bash
 # backend
 cd backend
