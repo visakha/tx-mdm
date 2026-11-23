@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { BusinessEntity, EntityRecord, FieldDataType } from "./api-types";
 import { FIELDDATATYPE_VALUES } from "./api-types";
-import { clampCount, cleanValues, isFieldShown, isGroupFieldShown, isGroupShown, isMetaShown, missingRequired, parseBusinessIds, parseInput, winnersToSend } from "./b360Api";
+import type { FormField, FormGroup } from "./api-types";
+import { addSaveBlockers, clampCount, cleanValues, pendingChanges, isFieldShown, isGroupFieldShown, isGroupShown, isMetaShown, missingRequired, parseBusinessIds, parseInput, winnersToSend } from "./b360Api";
 import { cellText, focusNavItems, focusNavValue, groupByCategory, groupRows, recordColumns, SHOW_ALL_VALUE } from "./b360Api";
 
 const entity: BusinessEntity = {
@@ -112,5 +113,41 @@ describe("Merge helpers (0.9.12)", () => {
   it("sends only picked winners and never clns_ followers", () => {
     const picks = { first_name: "141", last_name: "150", clns_first_name: "141", do_not_contact_ind: "" };
     expect(winnersToSend(picks, new Set(["clns_first_name"]))).toEqual({ first_name: "141", last_name: "150" });
+  });
+});
+
+describe("0.9.13.1 Edit records (S): pending changes computed locally", () => {
+  const fields = [
+    { name: "first_name", label: "First name", required: true, input: "TEXT" },
+    { name: "last_name", label: "Last name", required: false, input: "TEXT" },
+  ] as unknown as FormField[];
+  const groupsDef = [
+    { name: "x_phone", label: "Phone", cardinality: "MANY", fields: [{ name: "ph_num", label: "ph_num", required: false, input: "INTEGER" }] },
+  ] as unknown as FormGroup[];
+  const loaded = {
+    values: { first_name: "Charles", last_name: "Montoya" },
+    groups: [{ group: "x_phone", rows: [{ row_id: "r1", values: { ph_num: 5125550100 } }] }],
+  };
+  it("no edit -> no changes (Save stays disabled)", () => {
+    expect(pendingChanges(fields, groupsDef, loaded, { ...loaded.values }, { x_phone: loaded.groups[0]?.rows ?? [] })).toEqual([]);
+  });
+  it("one root edit -> one CHANGED; empty string counts as null", () => {
+    const c = pendingChanges(fields, groupsDef, loaded, { first_name: "Charles", last_name: "Harrison" }, { x_phone: loaded.groups[0]?.rows ?? [] });
+    expect(c).toEqual([{ kind: "CHANGED", group: null, row: null, field: "last_name", old: "Montoya", new: "Harrison" }]);
+    expect(pendingChanges(fields, [], { values: { last_name: null }, groups: [] }, { last_name: "" }, {})).toEqual([]);
+  });
+  it("group rows: changed cell, added row, removed row", () => {
+    const changed = pendingChanges(fields, groupsDef, loaded, { ...loaded.values }, { x_phone: [{ row_id: "r1", values: { ph_num: 5125550199 } }] });
+    expect(changed[0]).toMatchObject({ kind: "CHANGED", group: "x_phone", row: 1, field: "ph_num" });
+    const added = pendingChanges(fields, groupsDef, loaded, { ...loaded.values }, {
+      x_phone: [...(loaded.groups[0]?.rows ?? []), { row_id: null, values: { ph_num: 5125550111 } }],
+    });
+    expect(added).toEqual([{ kind: "ROW_ADDED", group: "x_phone", row: 2, field: "ph_num", old: null, new: 5125550111 }]);
+    const removed = pendingChanges(fields, groupsDef, loaded, { ...loaded.values }, { x_phone: [] });
+    expect(removed).toEqual([{ kind: "ROW_REMOVED", group: "x_phone", row: null, field: null, old: "r1", new: null }]);
+  });
+  it("Add records Type it: why Save is disabled, in words", () => {
+    expect(addSaveBlockers("", fields, {})).toEqual(["pick a source system", "first_name is required"]);
+    expect(addSaveBlockers("zlv_ttf", fields, { first_name: "Ann" })).toEqual([]);
   });
 });

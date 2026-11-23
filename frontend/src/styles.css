@@ -298,4 +298,16 @@ html[data-theme="dark"] { --system: #f06fcf; }
 .visibility-warn { color: var(--warn); }
 /* 0.9.12.4 Copy IDMC curl: inline, no pop-up; same neutral code look as .log */
 .idmc-curl { margin: 6px 0; }
-.curl-script { font-family: ui-monospace, monospace; font-size: 12px; background: #f7f8fa; padding: 8px; border-radius: 6px; white-space: pre; overflow: auto; max-height: 22rem; }
+/* 0.9.13.1 (Vamsi 02:56 CST): one aligned form grid for Add records (S) Type it and Edit records (S).
+   Label column fixed width, inputs same width / height / left edge, even vertical rhythm. */
+.form-grid { display: grid; grid-template-columns: 16rem minmax(0, 24rem); column-gap: 12px; row-gap: 6px; align-items: center; margin: 6px 0; }
+.form-line { display: contents; }
+.form-label { text-align: left; overflow-wrap: anywhere; }
+.form-input { display: flex; align-items: center; min-height: 30px; }
+.form-grid .form-input input:not([type="checkbox"]), .form-grid .form-input button:not([role="checkbox"]), .group-grid .form-input input:not([type="checkbox"]), .group-grid .form-input button:not([role="checkbox"]) { width: 100%; box-sizing: border-box; height: 30px; min-width: 0; }
+.form-readonly { min-height: 30px; }
+.group-grid td.form-input { display: table-cell; vertical-align: middle; min-width: 8rem; }
+.group-grid-n { width: 2rem; text-align: right; }
+.nowrap { white-space: nowrap; }
+.copy-note { margin: 4px 0 0; }
+.pending-hint { margin: 4px 0; }

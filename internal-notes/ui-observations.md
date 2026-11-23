@@ -455,8 +455,8 @@ for the agent-permission asks too.
   history source fields" (this source / master now / won yes-no / master value came from).
 - **Copy IDMC curl**: button "Copy IDMC curl (B360 <entity>)" under the entity toolbar (also on
   Taskflows: "Copy IDMC curl (CDI taskflows)" / "(Business 360 taskflows)", and B360 jobs). Disabled
-  until the screen has made an IDMC call. Click: copies the PowerShell script and shows both scripts
-  inline (PowerShell, then bash, each with its own Copy button; "Hide" closes). No pop-up.
+  until the screen has made an IDMC call. SUPERSEDED by 0.9.13.1 (see below): nothing is shown
+  inline any more.
 
 ### 0.9.12.3 (Vamsi 02:45 CST): Records (M) | Records (S) | Metadata [Master | Source] | Add records (S) | Edit records (S) | Merge (M)
 
@@ -501,9 +501,9 @@ for the agent-permission asks too.
   Save / Send go at once, result inline.
 - **Edit records (S)**: Source system + sourcePKey + Open (or "Edit this source record"). Typed form
   prefilled (root fields + group rows). "Show changes" = dry run: table Operation / Path / Old / New / Path
-  shape (documented or UNVERIFIED) inline. Save is enabled only after Show changes and sends exactly those
-  changes as ONE PATCH; result note inline ("IDMC says approval is required" when approvalRequired). Any edit
-  clears the diff. No master-record edit anywhere.
+  shape (documented or UNVERIFIED) inline. SUPERSEDED by 0.9.13.1 (see below): Save enables on the first
+  real change; "Show changes" became "Preview PATCH". Sends ONE PATCH; result note inline ("IDMC says
+  approval is required" when approvalRequired). No master-record edit anywhere.
 
 ### Agent check (fake IDMC only)
 
@@ -593,4 +593,36 @@ the chip-row Listboxes instead.
 - "Hidden by b360_entities.toml: ..." line renders each FieldPath as group.field / group / field.
 - Merge box still accepts ids separated by spaces, commas, semicolons, tabs or new lines, quotes
   stripped (now a character loop, shared/text.ts).
+
+## v0.9.13.1 (2026-11-23 ~03:20 CST): form alignment, Save enabling, row copy, curl to clipboard
+- **Add records (S) Type it and Edit records (S)** (Vamsi 02:56 "not aligned properly"): ONE form grid
+  (`FieldGrid`, role group, aria "Add form fields" / "Edit root fields", testid `b360-add-field-grid` /
+  `b360-edit-field-grid`). Label column 16rem, left-aligned (label, "*" when required, the field name
+  in small code); inputs, dropdowns 24rem wide, 30px high, same left edge; checkboxes sit in the
+  input column. sourcePKey is a line of the same grid. Edit shows the record's system (_meta) values
+  read-only in the same grid, magenta labels.
+- **Field groups** (x_phone): a mini table, aria "<scope> <group> rows" (e.g. "Edit Phone rows"):
+  columns # | each field (cntry_cd | ph_num | ph_typ | no_mrkt_calls) | Row (_id or "new" + Remove).
+  One table row per phone row. Inputs keep their aria-labels ("Edit Phone row 1 ph_num").
+- **Edit records (S) Save** (Vamsi 02:59 "the Save button is still disabled"): the pending changes are
+  computed in the browser on every keystroke (typed `PendingChange`: CHANGED / ROW_ADDED /
+  ROW_REMOVED, group, row, field, old, new) and listed under the form automatically (table aria "Edit
+  pending changes", testid `b360-edit-pending`). Save enables as soon as there is one change. With no
+  change: inline line "No changes yet." (`b360-edit-no-changes`). After Save the record is re-read
+  from IDMC, so the list starts empty again. "Preview PATCH" (aria "Edit preview PATCH", was "Edit
+  show changes") is optional: the backend dry run, showing the exact PATCH ops and path shape.
+- **Add records Type it Save**: when disabled, an inline line says why (`b360-add-save-why`), e.g.
+  "Save is disabled: pick a source system; first_name is required."
+- **Row copy** (Vamsi 03:01): click a row in Records (M) or Records (S) (it highlights), then Ctrl+C /
+  Cmd+C copies JUST that row: a tab-separated header line + value line (pastes into Excel); field
+  group rows go into one cell each as compact JSON; ASCII only. A real text selection in the table
+  keeps the browser's normal copy. Hint / result line above the table (`b360-records-copy-note`,
+  `b360-sources-copy-note`): "Row copied to the clipboard." No pop-up, no toast.
+- **Copy IDMC curl** (Vamsi 03:11 "You really don't have to show me on the screen"): the button copies
+  the PowerShell script straight to the clipboard; a small "bash" button next to it copies the bash
+  variant. Nothing is rendered. A small muted line beneath: "Text copied to the clipboard." (plus "It
+  contains WRITE calls" when so) or "Could not copy to the clipboard: <reason>"
+  (`idmc-curl-status-<slug>`). Clipboard: navigator.clipboard, fallback hidden textarea +
+  execCommand("copy").
+- Cypress screenshots of both forms: NOT taken in this patch (see report).
 

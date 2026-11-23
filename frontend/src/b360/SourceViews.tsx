@@ -6,8 +6,8 @@
 //     Record per member (p. 80). Or look one up by sourceSystem + sourcePKey (Read Source Record).
 //     There is NO "list all source records" view: the reference says source records aren't
 //     searchable (p. 82), so the app does not fake one.
-//   Edit records (S): Read Source Record -> typed form -> "Show changes" (dry run, the old -> new
-//     diff shows inline on the page) -> Save = ONE Update Source Record Field PATCH (pp. 88-90).
+//   Edit records (S): Read Source Record -> typed form -> pending changes listed inline as you type
+//     (0.9.13.1) -> Save = ONE Update Source Record Field PATCH (pp. 88-90); Preview PATCH = dry run.
 //     No pop-up (owner decision 2026-11-23 01:53 CST). No master-record edit anywhere.
 // System (_meta) values are magenta with origin SYSTEM; configured fields stay normal colour.
 
@@ -16,6 +16,7 @@ import { Button } from "@ui-sdk/react/button";
 import { Checkbox, CheckboxIndicator } from "@ui-sdk/react/checkbox";
 import { Input } from "@ui-sdk/react/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@ui-sdk/react/select";
+import { useRowCopy, type CopyRow } from "../shared/rowCopy";
 import { errorText } from "../shared/api";
 import type { BusinessEntity, EntityField, FieldVisibility, FormSchema, NewGroupRow, NewRecord, SourceRecord } from "./api-types";
 import {
@@ -27,13 +28,15 @@ import {
   isGroupFieldShown,
   isGroupShown,
   isMetaShown,
+  pendingChanges,
   systemValue,
   systemValueText,
   type CellValue,
+  type PendingChange,
   type SourceRecordPage,
   type UpdateSourceResponse,
 } from "./b360Api";
-import { FieldInput, GroupRowsEditor } from "./GroupRowsEditor";
+import { FieldGrid, GroupRowsEditor } from "./GroupRowsEditor";
 
 export interface SourceKeyPick {
   sourceSystem: string;
@@ -322,6 +325,24 @@ export function SourceRecordsView({
   const current = records.find((r) => `${r.source_system}/${r.source_pkey}` === picked) ?? null;
   const totalPages = list?.total_pages ?? 1;
 
+  // 0.9.13.1 (Vamsi 03:01 CST): Ctrl+C / Cmd+C copies just the highlighted row (TSV).
+  const sourceRow = useCallback((): CopyRow | null => {
+    if (current === null) return null;
+    const groups = current.groups.filter((g) => isGroupShown(vis, g.group));
+    return {
+      headers: ["Source system", "sourcePKey", "Master business id", ...cols.map((f) => f.label), ...sysCols.map((c) => c.name), ...groups.map((g) => g.group)],
+      cells: [
+        current.source_system,
+        current.source_pkey,
+        current.business_id,
+        ...cols.map((f) => current.values[f.name] ?? null),
+        ...sysCols.map((c) => systemValue(current.system_values, c.name)),
+        ...groups.map((g) => g.rows.map((r) => r.values)),
+      ],
+    };
+  }, [current, cols, sysCols, vis]);
+  const rowCopy = useRowCopy(sourceRow);
+
   return (
     <section className="b360-sources" data-testid="b360-sources">
       <h3>
@@ -357,7 +378,18 @@ export function SourceRecordsView({
       {records.length === 0 ? (
         !busy && systems.length > 0 && <p className="muted">No source records from these systems on this master page.</p>
       ) : (
-        <div className="records-scroll" data-testid="b360-sources-scroll">
+        <>
+        <p className="muted small copy-note" data-testid="b360-sources-copy-note" aria-live="polite">
+          {rowCopy.note !== "" ? rowCopy.note : "Click a row, then Ctrl+C (Cmd+C) copies just that row."}
+        </p>
+        <div
+          className="records-scroll"
+          data-testid="b360-sources-scroll"
+          tabIndex={0}
+          aria-label="Source records table (Ctrl+C copies the highlighted row)"
+          onKeyDown={rowCopy.onKeyDown}
+          onCopy={rowCopy.onCopy}
+        >
           <table className="monitor" data-testid="b360-sources-table" aria-label="Source records">
             <thead>
               <tr>
@@ -413,6 +445,7 @@ export function SourceRecordsView({
             </tbody>
           </table>
         </div>
+        </>
       )}
       {current !== null && <SourceDetail entity={entity} record={current} onEdit={onEdit} vis={vis} />}
     </section>
@@ -454,11 +487,11 @@ export function EditSourceView({ entity, initial }: { entity: string; initial: S
   }, [entity]);
 
   const load = useCallback(
-    (pick: SourceKeyPick): void => {
+    (pick: SourceKeyPick, keepSaved = false): void => {
       setBusy(true);
       setError("");
       setDiff(null);
-      setSaved(null);
+      if (!keepSaved) setSaved(null);
       b360Api
         .sourceRecord(entity, pick.sourceSystem, pick.sourcePKey)
         .then((r) => {
@@ -506,7 +539,8 @@ export function EditSourceView({ entity, initial }: { entity: string; initial: S
           setSaved(null);
         } else {
           setSaved(r);
-          setDiff(r);
+          // Re-read so "loaded" is what IDMC now holds; the pending list starts empty again.
+          load({ sourceSystem: loaded.source_system, sourcePKey: loaded.source_pkey }, true);
         }
       })
       .catch((err: unknown) => setError(errorText(err)))
@@ -515,8 +549,12 @@ export function EditSourceView({ entity, initial }: { entity: string; initial: S
 
   const edited = (): void => {
     setDiff(null);
-    setSaved(null);
   };
+
+  const changes: PendingChange[] =
+    loaded === null || schema === null
+      ? []
+      : pendingChanges(schema.fields, schema.groups ?? [], { values: loaded.values, groups: loaded.groups }, values, groups);
 
   return (
     <div className="b360-edit" data-testid="b360-edit">
@@ -535,30 +573,18 @@ export function EditSourceView({ entity, initial }: { entity: string; initial: S
           <h3>
             {loaded.source_system}/{loaded.source_pkey} <span className="muted small">(master {loaded.business_id || "-"})</span>
           </h3>
-          <table className="monitor kv" aria-label="Edit root fields">
-            <tbody>
-              {schema.fields.map((f) => (
-                <tr key={f.name}>
-                  <th>
-                    {f.label}
-                    {f.required ? " *" : ""} <code className="muted small">{f.name}</code>
-                  </th>
-                  <td>
-                    <FieldInput
-                      field={f}
-                      value={values[f.name] ?? null}
-                      testId={`b360-edit-field-${f.name}`}
-                      label={`Edit ${f.label}`}
-                      onChange={(v) => {
-                        setValues((old) => ({ ...old, [f.name]: v }));
-                        edited();
-                      }}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <FieldGrid
+            fields={schema.fields}
+            values={values}
+            testIdPrefix="b360-edit-field-"
+            labelPrefix="Edit"
+            ariaLabel="Edit root fields"
+            onChange={(name, v) => {
+              setValues((old) => ({ ...old, [name]: v }));
+              edited();
+            }}
+            readOnly={(loaded.system_values ?? []).map((v) => ({ name: v.name, text: systemValueText(v.name, v.value) }))}
+          />
           {(schema.groups ?? []).map((g) => (
             <GroupRowsEditor
               key={g.name}
@@ -576,16 +602,21 @@ export function EditSourceView({ entity, initial }: { entity: string; initial: S
             <p className="muted small">{schema.picklist_note}</p>
           )}
           <div className="toolbar">
-            <Button aria-label="Edit show changes" data-testid="b360-edit-preview" onClick={() => run(true)} disabled={busy}>
-              Show changes
+            <Button
+              aria-label="Edit preview PATCH"
+              data-testid="b360-edit-preview"
+              onClick={() => run(true)}
+              disabled={busy || changes.length === 0}
+              title="Dry run on the backend: shows the exact PATCH operations and their documented path shape. Sends nothing."
+            >
+              Preview PATCH
             </Button>
             <Button
               aria-label="Edit Save"
               data-testid="b360-edit-save"
               data-agent-confirm={`Updates source record ${loaded.source_system}/${loaded.source_pkey} of ${entity} on the live B360 org`}
               onClick={() => run(false)}
-              disabled={busy || diff === null || diff.ops.length === 0 || saved !== null}
-              title={diff === null ? "Press Show changes first: Save sends exactly the changes shown." : undefined}
+              disabled={busy || changes.length === 0}
             >
               {busy ? "Saving..." : "Save"}
             </Button>
@@ -602,10 +633,55 @@ export function EditSourceView({ entity, initial }: { entity: string; initial: S
               Reset
             </Button>
           </div>
-          {diff !== null && (
+          {changes.length === 0 ? (
+            <p className="muted small pending-hint" data-testid="b360-edit-no-changes">
+              {saved !== null ? "Saved. No changes yet since the save." : "No changes yet."}
+            </p>
+          ) : (
+            <section className="b360-group" data-testid="b360-edit-pending">
+              <h4>
+                Pending changes <span className="count">{changes.length}</span>
+              </h4>
+              <div className="table-wrap">
+                <table className="monitor" aria-label="Edit pending changes">
+                  <thead>
+                    <tr>
+                      <th>Change</th>
+                      <th>Group</th>
+                      <th>Row</th>
+                      <th>Field</th>
+                      <th>Old</th>
+                      <th>New</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {changes.map((c, i) => (
+                      <tr key={`${c.group ?? ""}-${String(c.row)}-${c.field ?? ""}-${String(i)}`} data-testid={`b360-edit-change-${String(i)}`}>
+                        <td>{c.kind}</td>
+                        <td>{c.group ?? "-"}</td>
+                        <td>{c.row ?? "-"}</td>
+                        <td>
+                          <code>{c.field ?? "(whole row)"}</code>
+                        </td>
+                        <td>{opText(c.old)}</td>
+                        <td>{opText(c.new)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+          {saved !== null && (
+            <p className="muted small" data-testid="b360-edit-saved">
+              {saved.note}
+              {saved.approval_required === true ? " IDMC says approval is required." : ""}
+            </p>
+          )}
+          {diff !== null && saved === null && (
             <section className="b360-group" data-testid="b360-edit-diff">
               <h4>
-                Changes (old {"->"} new) <span className="count">{diff.ops.length}</span>
+                PATCH preview (backend dry run) <span className="count">{diff.ops.length}</span>
               </h4>
               {diff.ops.length === 0 ? (
                 <p className="muted">Nothing changed.</p>
@@ -638,9 +714,7 @@ export function EditSourceView({ entity, initial }: { entity: string; initial: S
                 </div>
               )}
               <p className="muted small" data-testid="b360-edit-note">
-                {saved !== null
-                  ? `${saved.note}${saved.approval_required === true ? " IDMC says approval is required." : ""}`
-                  : diff.note}
+                {diff.note}
               </p>
             </section>
           )}

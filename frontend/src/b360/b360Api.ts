@@ -18,6 +18,8 @@ import type {
   CreateResponse,
   FieldDataType,
   FormField,
+  FormGroup,
+  NewGroupRow,
   FormInput,
   FormSchema,
   GeneratedRows,
@@ -336,4 +338,72 @@ export function isMetaShown(vis: Vis, path: readonly string[] | null | undefined
   if (vis?.meta_hidden === true) return false;
   const top = path?.[0];
   return top === undefined || !(vis?.hidden_meta_keys ?? []).includes(top);
+}
+
+// ---- 0.9.13.1 (Vamsi 02:59 CST): Edit records (S) Save enables on the first real change ----
+
+export type ChangeKind = "CHANGED" | "ROW_ADDED" | "ROW_REMOVED";
+
+/** One pending change, typed: root field (group null) or a field-group row cell / row. */
+export interface PendingChange {
+  kind: ChangeKind;
+  group: string | null;
+  /** 1-based row number in the form (null for root fields). */
+  row: number | null;
+  /** Field name; null for a whole removed row. */
+  field: string | null;
+  old: CellValue;
+  new: CellValue;
+}
+
+function norm(v: CellValue | undefined): CellValue {
+  return v === undefined || v === "" ? null : v;
+}
+
+/** Loaded vs current, computed locally on every edit (no server round trip). */
+export function pendingChanges(
+  fields: readonly FormField[],
+  groupsDef: readonly FormGroup[],
+  loaded: { values: Record<string, CellValue>; groups: readonly NewGroupRows[] },
+  values: Record<string, CellValue>,
+  groups: Record<string, readonly NewGroupRow[]>,
+): PendingChange[] {
+  const out: PendingChange[] = [];
+  for (const f of fields) {
+    const before = norm(loaded.values[f.name]);
+    const after = norm(values[f.name]);
+    if (before !== after) out.push({ kind: "CHANGED", group: null, row: null, field: f.name, old: before, new: after });
+  }
+  for (const g of groupsDef) {
+    const oldRows = loaded.groups.find((x) => x.group === g.name)?.rows ?? [];
+    const nowRows = groups[g.name] ?? [];
+    nowRows.forEach((r, i) => {
+      const was = r.row_id === null || r.row_id === undefined ? undefined : oldRows.find((o) => o.row_id === r.row_id);
+      for (const f of g.fields) {
+        const before = was === undefined ? null : norm(was.values[f.name]);
+        const after = norm(r.values[f.name]);
+        if (was === undefined && after === null) continue;
+        if (before !== after) {
+          out.push({ kind: was === undefined ? "ROW_ADDED" : "CHANGED", group: g.name, row: i + 1, field: f.name, old: before, new: after });
+        }
+      }
+    });
+    for (const o of oldRows) {
+      if (!nowRows.some((r) => r.row_id !== null && r.row_id !== undefined && r.row_id === o.row_id)) {
+        out.push({ kind: "ROW_REMOVED", group: g.name, row: null, field: null, old: o.row_id ?? null, new: null });
+      }
+    }
+  }
+  return out;
+}
+
+/** Why Add records Type-it Save is disabled, in words (empty = it is enabled). */
+export function addSaveBlockers(source: string, fields: readonly FormField[], values: Record<string, CellValue>): string[] {
+  const out: string[] = [];
+  if (source === "") out.push("pick a source system");
+  for (const f of fields) {
+    const v = values[f.name];
+    if (f.required && (v === null || v === undefined || v === "")) out.push(`${f.name} is required`);
+  }
+  return out;
 }

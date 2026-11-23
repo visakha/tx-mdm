@@ -1,38 +1,33 @@
 // 0.9.12.4 (Vamsi 02:48-02:50 CST): "the true curl that I should be able to run so that it will
-// hit the IDMC APIs and not the APIs that we are writing here." One button per screen: shows
-// (inline, no pop-up) and copies a runnable script - PowerShell first (his laptop), bash below.
-// Step 1 logs in with $env:IDMC_PASSWORD; the rest are the exact IDMC calls the backend made for
-// the newest tx-mdm call of this screen. Never contains the session id or the password.
+// hit the IDMC APIs and not the APIs that we are writing here." Step 1 logs in with
+// $env:IDMC_PASSWORD; the rest are the exact IDMC calls the backend made for the newest tx-mdm call
+// of this screen. Never contains the session id or the password.
+// 0.9.13.1 (Vamsi 03:11 CST): "copy to the clipboard and just put a small message beneath the
+// button ... You really don't have to show me on the screen." The script is NOT rendered: the
+// button copies the PowerShell script (his laptop); "bash" copies the bash variant.
 import { useState, useSyncExternalStore } from "react";
 import { Button } from "@ui-sdk/react/button";
 import type { IdmcEcho } from "../b360/api-types";
 import { errorText, getJson, latestEcho, subscribeEchoes } from "./api";
+import { copyMessage, copyText } from "./clipboard";
 
-async function copy(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    return false;
-  }
-}
+type Flavour = "powershell" | "bash";
 
 /** prefix: tx-mdm path the screen calls; view: words for the aria-label; slug: testid part. */
 export function CopyIdmcCurl({ prefix, view, slug }: { prefix: string; view: string; slug: string }): React.JSX.Element {
   const ref = useSyncExternalStore(subscribeEchoes, () => latestEcho(prefix));
-  const [echo, setEcho] = useState<IdmcEcho | null>(null);
   const [status, setStatus] = useState<string>("");
 
-  const open = (): void => {
+  const copyScript = (flavour: Flavour): void => {
     if (ref === null) return;
     setStatus("");
     getJson<IdmcEcho>(`/api/idmc/echo/${encodeURIComponent(ref.echoId)}`)
       .then(async (e) => {
-        setEcho(e);
-        const ok = await copy(e.powershell);
-        setStatus(ok ? "PowerShell script copied." : "Copy blocked by the browser: select the text below.");
+        const result = await copyText(flavour === "powershell" ? e.powershell : e.bash);
+        const writes = e.writes ? " It contains WRITE calls: running it changes IDMC." : "";
+        setStatus(`${copyMessage(result)}${result.ok ? writes : ""}`);
       })
-      .catch((err: unknown) => setStatus(errorText(err)));
+      .catch((err: unknown) => setStatus(`Could not copy to the clipboard: ${errorText(err)}`));
   };
 
   return (
@@ -41,44 +36,25 @@ export function CopyIdmcCurl({ prefix, view, slug }: { prefix: string; view: str
         aria-label={`Copy IDMC curl (${view})`}
         data-testid={`idmc-curl-button-${slug}`}
         disabled={ref === null}
-        onClick={open}
+        onClick={() => copyScript("powershell")}
+        title="Copies a PowerShell script: set $env:IDMC_PASSWORD first"
       >
         Copy IDMC curl
+      </Button>{" "}
+      <Button
+        aria-label={`Copy IDMC curl bash (${view})`}
+        data-testid={`idmc-curl-bash-${slug}`}
+        disabled={ref === null}
+        onClick={() => copyScript("bash")}
+        title="Copies the bash variant: export IDMC_PASSWORD first"
+      >
+        bash
       </Button>
       {ref === null && <span className="muted small"> (no IDMC call on this screen yet)</span>}
-      {echo !== null && (
-        <span className="small">
-          {" "}
+      {status !== "" && (
+        <p className="muted small copy-note" data-testid={`idmc-curl-status-${slug}`}>
           {status}
-          {" "}
-          <Button aria-label={`Hide IDMC curl (${view})`} data-testid={`idmc-curl-hide-${slug}`} onClick={() => setEcho(null)}>
-            Hide
-          </Button>
-        </span>
-      )}
-      {echo !== null && (
-        <div className="idmc-curl-body" data-testid={`idmc-curl-body-${slug}`}>
-          <p className="muted small">
-            For {echo.api_method} {echo.api_path} - {echo.calls.length} IDMC call(s)
-            {(echo.calls_left_out ?? 0) > 0 ? `, ${echo.calls_left_out ?? 0} more left out` : ""}.
-            {echo.writes ? " Contains WRITE calls: running them changes IDMC. Copying runs nothing." : " Read-only calls."}
-          </p>
-          <p className="muted small">{echo.readme}</p>
-          <h4>
-            PowerShell (Windows){" "}
-            <Button aria-label={`Copy PowerShell IDMC script (${view})`} onClick={() => void copy(echo.powershell).then((ok) => setStatus(ok ? "PowerShell script copied." : "Copy blocked: select the text."))}>
-              Copy
-            </Button>
-          </h4>
-          <pre className="curl-script" data-testid={`idmc-curl-ps-${slug}`}>{echo.powershell}</pre>
-          <h4>
-            bash{" "}
-            <Button aria-label={`Copy bash IDMC script (${view})`} onClick={() => void copy(echo.bash).then((ok) => setStatus(ok ? "bash script copied." : "Copy blocked: select the text."))}>
-              Copy
-            </Button>
-          </h4>
-          <pre className="curl-script" data-testid={`idmc-curl-sh-${slug}`}>{echo.bash}</pre>
-        </div>
+        </p>
       )}
     </div>
   );

@@ -19,14 +19,14 @@ import { errorText } from "../shared/api";
 import type { CreateResult, NewGroupRow } from "./api-types";
 import { Input } from "@ui-sdk/react/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@ui-sdk/react/select";
-import { FieldInput, GroupRowsEditor } from "./GroupRowsEditor";
+import { FieldGrid, FieldInput, FormLine, GroupRowsEditor } from "./GroupRowsEditor";
 import {
   b360Api,
   cleanGroups,
   cleanValues,
   clampCount,
   MAX_ADD,
-  missingRequired,
+  addSaveBlockers,
   type CellValue,
   type CreateResponse,
   type FormSchema,
@@ -136,7 +136,7 @@ export function AddRecordsView({ entity, onSaved }: { entity: string; onSaved: (
     );
   }
 
-  const missing = missingRequired(schema.fields, form);
+  const blockers = addSaveBlockers(source, schema.fields, form);
 
   return (
     <div className="b360-add" data-testid="b360-add">
@@ -190,35 +190,19 @@ export function AddRecordsView({ entity, onSaved }: { entity: string; onSaved: (
           <h3>
             New {schema.label} <span className="muted small">(form from Pydantic model {schema.model_name})</span>
           </h3>
-          <table className="monitor kv">
-            <tbody>
-              {schema.fields.map((f) => (
-                <tr key={f.name}>
-                  <th>
-                    {f.label}
-                    {f.required ? " *" : ""} <code className="muted small">{f.name}</code>
-                  </th>
-                  <td>
-                    <FieldInput
-                      field={f}
-                      value={form[f.name] ?? null}
-                      testId={`b360-add-field-${f.name}`}
-                      label={`Add form ${f.label}`}
-                      onChange={(v) => setForm((old) => ({ ...old, [f.name]: v }))}
-                    />
-                  </td>
-                </tr>
-              ))}
-              <tr>
-                <th>
-                  sourcePKey <span className="muted small">(empty: TXMDM-yyyymmddHHMMSS-1)</span>
-                </th>
-                <td>
-                  <Input type="text" aria-label="Add form sourcePKey" data-testid="b360-add-pkey" value={pkey} onValueChange={(v: string) => setPkey(v)} />
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <FieldGrid
+            fields={schema.fields}
+            values={form}
+            testIdPrefix="b360-add-field-"
+            labelPrefix="Add form"
+            ariaLabel="Add form fields"
+            onChange={(name, v) => setForm((old) => ({ ...old, [name]: v }))}
+            extra={
+              <FormLine label="sourcePKey" name="(empty: TXMDM-yyyymmddHHMMSS-1)">
+                <Input type="text" aria-label="Add form sourcePKey" data-testid="b360-add-pkey" value={pkey} onValueChange={(v: string) => setPkey(v)} />
+              </FormLine>
+            }
+          />
           {(schema.groups ?? []).map((g) => (
             <GroupRowsEditor
               key={g.name}
@@ -230,13 +214,17 @@ export function AddRecordsView({ entity, onSaved }: { entity: string; onSaved: (
             />
           ))}
           {schema.picklist_note !== "" && <p className="muted small" data-testid="b360-add-picklist-note">{schema.picklist_note}</p>}
-          {missing.length > 0 && <p className="muted small">Required: {missing.join(", ")}</p>}
+          {blockers.length > 0 && (
+            <p className="muted small pending-hint" data-testid="b360-add-save-why">
+              Save is disabled: {blockers.join("; ")}.
+            </p>
+          )}
           <div className="toolbar">
             <Button
               aria-label="Add form Save"
               data-testid="b360-add-save"
               data-agent-confirm={`Creates one ${entity} source record (and its master) on the live B360 org`}
-              disabled={busy || missing.length > 0 || source === ""}
+              disabled={busy || blockers.length > 0}
               onClick={() =>
                 send(
                   [

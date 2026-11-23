@@ -20,6 +20,7 @@
 // No polling; Refresh reloads. A 429 is shown and nothing is retried.
 
 import { useCallback, useEffect, useState } from "react";
+import { useRowCopy, type CopyRow } from "../shared/rowCopy";
 import { Button } from "@ui-sdk/react/button";
 import { Input } from "@ui-sdk/react/input";
 import { ApiError, errorText } from "../shared/api";
@@ -463,6 +464,25 @@ export function B360DataPanel({
 
   const record = page?.records.find((r) => r.business_id === selected.record) ?? null;
 
+  // 0.9.13.1 (Vamsi 03:01 CST): Ctrl+C / Cmd+C copies just the highlighted row (TSV).
+  const masterRow = useCallback((): CopyRow | null => {
+    if (page === null || record === null) return null;
+    const cols = recordColumns(page.entity).filter((f) => isFieldShown(page.visibility, f.name));
+    const sys = (page.system_columns ?? []).filter((c) => isMetaShown(page.visibility, c.meta_path));
+    const groups = record.groups.filter((g) => isGroupShown(page.visibility, g.group));
+    return {
+      headers: ["Business id", "Last updated", ...cols.map((f) => f.label), ...sys.map((c) => c.name), ...groups.map((g) => g.group)],
+      cells: [
+        record.business_id,
+        record.last_updated ?? null,
+        ...cols.map((f) => record.values[f.name] ?? null),
+        ...sys.map((c) => systemValue(record.system_values, c.name)),
+        ...groups.map((g) => g.rows),
+      ],
+    };
+  }, [page, record]);
+  const rowCopy = useRowCopy(masterRow);
+
   if (entityName === null) {
     return (
       <div className="b360-data" data-testid="b360-data">
@@ -654,7 +674,17 @@ export function B360DataPanel({
               <p className="muted">No records.</p>
             ) : (
               <>
-              <div className="records-scroll" data-testid="b360-records-scroll">
+              <p className="muted small copy-note" data-testid="b360-records-copy-note" aria-live="polite">
+                {rowCopy.note !== "" ? rowCopy.note : "Click a row, then Ctrl+C (Cmd+C) copies just that row."}
+              </p>
+              <div
+                className="records-scroll"
+                data-testid="b360-records-scroll"
+                tabIndex={0}
+                aria-label="Master records table (Ctrl+C copies the highlighted row)"
+                onKeyDown={rowCopy.onKeyDown}
+                onCopy={rowCopy.onCopy}
+              >
                 <table className="monitor" data-testid="b360-records-table" aria-label="Master records">
                   <thead>
                     <tr>
