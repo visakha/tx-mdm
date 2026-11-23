@@ -78,3 +78,10 @@ this; `app/main.py` forces stdout/stderr to ASCII with backslash escapes at runt
 - Starting tf_MDM_ZLV_TTF_Guest_Basic over the API on 2026-11-22 returned IDMC 403 "User
   VVamsi-idmcdev not authorized to access service ..." - the taskflow needs the user in its
   Start step Allowed Users and must be re-published.
+
+## Taskflow Allowed Users is case-sensitive (verified live 2026-11-22)
+- tf_MDM_ZLV_TTF_Guest_Basic returned 403 "not authorized to access service" until
+  Allowed Users held the user EXACTLY as IDMC reports it in the error: `VVamsi-idmcdev`
+  (not `VVamsi-IDMCDev`, not all lowercase). After unpublish / fix / publish, the
+  /active-bpel/rt/{api_name} call was accepted (runId 1309380263289049088) and went RUNNING.
+- The service URL API name matched the task name, so the api_name default was correct.
