@@ -70,8 +70,9 @@ describe("Agent drives B360 Data via window.agent (fake IDMC)", () => {
     // 2. Page Records (M).
     cy.window().then(async (win) => {
       const s = snap(win, "Records (M) page 1");
-      const picker = s.find((c) => c.label === "Open master record");
-      if (!picker) report.notFound.push("Open master record (listbox)");
+      // 0.9.12.1: no picker box above the table; each row has an "Open master record <id>" button.
+      const opener = s.find((c) => typeof c.label === "string" && c.label.startsWith("Open master record "));
+      if (!opener) report.notFound.push("Open master record <id> (row button)");
       await act(win, "Next page", pressAction(s, "Next page"));
     });
     cy.get('[data-testid="b360-page-info"]').should("contain", "Page 2");
@@ -89,7 +90,7 @@ describe("Agent drives B360 Data via window.agent (fake IDMC)", () => {
       snap(win, "Records (M) filtered");
       await act(win, "Section tabs", "setValue", ["metadata"]);
     });
-    waitLabel("Root field list");
+    cy.get('[data-testid="b360-meta-fields"]', { timeout: 15000 }).should("exist");
 
     // 5. Add records (S): generate 2 test rows.
     cy.window().then(async (win) => {

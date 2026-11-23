@@ -534,3 +534,18 @@ the chip-row Listboxes instead.
 ### Title bar
 - "API docs (typed)" link (`api-docs-typed-link`, aria-label "OpenAPI docs typed per business
   entity") next to "API docs": opens `/docs-typed` (Swagger on `/openapi-typed.json`).
+
+## v0.9.12.1 (2026-11-23 ~02:45 CST): no boxes above tables (owner: "redundant information")
+- Records (M): REMOVED the horizontal "Open master record" Listbox (`b360-record-picker`,
+  items `b360-pick-<id>`). Click the row; the Business id cell is now an SDK Button
+  (`b360-open-<id>`, aria-label "Open master record <id>") for the agent. Selected row keeps the
+  existing neutral `selected` style.
+- Records (S): REMOVED the "Open source record" Listbox (`b360-source-picker`). The sourcePKey cell
+  is a Button (`b360-open-source-<system>/<pkey>`, aria-label "Open source record <system>/<pkey>").
+- Metadata (M) / Metadata (S): REMOVED the horizontal field-list Listbox above each field table
+  ("Root field list", "<group> field list", "System fields field list", `<testid>-list`). The tables
+  stay and now carry aria-label "<title> fields" (e.g. "Root fields").
+- Kept (not duplicates): Business ID lookup and name filters on Records (M), the source-system +
+  sourcePKey lookup on Records (S) - they are inputs, not copies of the table.
+- Agent Cypress (`agent_b360_fake.cy.js`) updated: looks for a label starting "Open master record ",
+  waits on `b360-meta-fields` instead of "Root field list". Not re-run on this VM.

@@ -14,7 +14,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@ui-sdk/react/button";
 import { Input } from "@ui-sdk/react/input";
-import { Listbox, ListboxItem } from "@ui-sdk/react/listbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@ui-sdk/react/select";
 import { errorText } from "../shared/api";
 import type { BusinessEntity, EntityField, FieldVisibility, FormSchema, NewGroupRow, NewRecord, SourceRecord } from "./api-types";
@@ -296,25 +295,6 @@ export function SourceRecordsView({
         !busy && <p className="muted">No source records.</p>
       ) : (
         <>
-        <Listbox
-          aria-label="Open source record"
-          data-testid="b360-source-picker"
-          className="record-picker"
-          orientation="horizontal"
-          value={picked}
-          onValueChange={(value) => {
-            if (typeof value === "string") setPicked(value);
-          }}
-        >
-          {records.map((r) => {
-            const k = `${r.source_system}/${r.source_pkey}`;
-            return (
-              <ListboxItem key={k} value={k}>
-                {k}
-              </ListboxItem>
-            );
-          })}
-        </Listbox>
         <div className="records-scroll" data-testid="b360-sources-scroll">
           <table className="monitor" data-testid="b360-sources-table" aria-label="Source records">
             <thead>
@@ -344,7 +324,14 @@ export function SourceRecordsView({
                   >
                     <td>{r.source_system}</td>
                     <td>
-                      <code>{r.source_pkey}</code>
+                      <Button
+                        className="row-open"
+                        aria-label={`Open source record ${k}`}
+                        data-testid={`b360-open-source-${k}`}
+                        onClick={() => setPicked(k)}
+                      >
+                        <code>{r.source_pkey}</code>
+                      </Button>
                     </td>
                     {cols.map((f) => (
                       <td key={f.name}>{cellText(r.values[f.name], f.data_type)}</td>

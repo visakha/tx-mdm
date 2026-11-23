@@ -19,7 +19,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@ui-sdk/react/button";
 import { Input } from "@ui-sdk/react/input";
-import { Listbox, ListboxItem } from "@ui-sdk/react/listbox";
 import { ApiError, errorText } from "../shared/api";
 import type { Route } from "../shared/routes";
 import { selectRibbonTab, useRibbonTab } from "../shell/sections";
@@ -156,14 +155,7 @@ function SystemTag(): React.JSX.Element {
 function FieldTable({ fields, testId, title }: { fields: BusinessEntity["fields"]; testId: string; title: string }): React.JSX.Element {
   return (
     <div className="table-wrap">
-      <Listbox aria-label={`${title} field list`} data-testid={`${testId}-list`} className="field-list" orientation="horizontal">
-        {fields.map((f) => (
-          <ListboxItem key={f.name} value={f.name} className={f.origin === "SYSTEM" ? "system-col" : undefined}>
-            {`${f.name} (${f.data_type}${f.origin === "SYSTEM" ? ", system" : ""}${f.mandatory ? ", mandatory" : ""})`}
-          </ListboxItem>
-        ))}
-      </Listbox>
-      <table className="monitor" data-testid={testId}>
+      <table className="monitor" data-testid={testId} aria-label={`${title} fields`}>
         <thead>
           <tr>
             <th>Field</th>
@@ -561,22 +553,6 @@ export function B360DataPanel({
               <p className="muted">No records.</p>
             ) : (
               <>
-              <Listbox
-                aria-label="Open master record"
-                data-testid="b360-record-picker"
-                className="record-picker"
-                orientation="horizontal"
-                value={selected.record}
-                onValueChange={(value) => {
-                  if (typeof value === "string") setSelected((s) => ({ ...s, record: value }));
-                }}
-              >
-                {page.records.map((r) => (
-                  <ListboxItem key={r.business_id} value={r.business_id} data-testid={`b360-pick-${r.business_id}`}>
-                    {r.business_id}
-                  </ListboxItem>
-                ))}
-              </Listbox>
               <div className="records-scroll" data-testid="b360-records-scroll">
                 <table className="monitor" data-testid="b360-records-table" aria-label="Master records">
                   <thead>
@@ -614,7 +590,18 @@ export function B360DataPanel({
                         aria-selected={r.business_id === selected.record}
                         onClick={() => setSelected((s) => ({ ...s, record: r.business_id }))}
                       >
-                        <td><code>{r.business_id}</code></td>
+                        <td>
+                          {/* 0.9.12.1: the row is the picker (no box above the table); this labelled
+                              button is the agent's handle. */}
+                          <Button
+                            className="row-open"
+                            aria-label={`Open master record ${r.business_id}`}
+                            data-testid={`b360-open-${r.business_id}`}
+                            onClick={() => setSelected((s) => ({ ...s, record: r.business_id }))}
+                          >
+                            <code>{r.business_id}</code>
+                          </Button>
+                        </td>
                         <td data-testid={`b360-updated-${r.business_id}`} title={r.updated_by ? `by ${r.updated_by}` : undefined}>
                           {lastUpdatedText(r.last_updated)}
                         </td>

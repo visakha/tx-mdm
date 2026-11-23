@@ -292,8 +292,7 @@ html[data-theme="dark"] { --system: #f06fcf; }
 /* 0.9.10 (01:48 CST): system (_meta) columns in the data, same magenta as the Metadata tab. */
 .system-col { color: var(--system); }
 /* 0.9.10: agent-facing pickers (SDK Listbox) shown as a compact chip row. */
-.record-picker, .field-list { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; padding: 0; list-style: none; }
-.record-picker [role="option"], .field-list [role="option"] { font-size: 0.8em; padding: 1px 6px; border: 1px solid var(--line); border-radius: 3px; cursor: pointer; }
-.record-picker [aria-selected="true"] { border-color: var(--one); }
+/* 0.9.12.1: row pickers removed; the row button looks like plain text in the row. */
+.row-open { background: none; border: 0; padding: 0; color: inherit; cursor: pointer; font: inherit; }
 .api-docs-link { margin-right: 8px; font-size: 0.85em; color: inherit; }
 .visibility-warn { color: var(--warn); }
