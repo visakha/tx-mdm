@@ -8,7 +8,7 @@ import { Input } from "@ui-sdk/react/input";
 import { Listbox, ListboxItem } from "@ui-sdk/react/listbox";
 import { RunResult } from "../shared/RunResult";
 import type { RunView } from "../shared/run";
-import type { Route } from "../shared/routes";
+import type { MdmKindFilter, Route } from "../shared/routes";
 import { usePicker, useStarter } from "../shared/usePicker";
 import { useRunPolling } from "../shared/useRunPolling";
 import { mdmApi, type MdmJob } from "./mdmApi";
@@ -19,9 +19,12 @@ const textOf = (j: MdmJob): string => `${j.path} ${j.kind}`;
 export function MdmPanel({
   route,
   go,
+  kind = null,
 }: {
   route: Route;
   go: (route: Route) => void;
+  /** Left pane "Ingress jobs" / "Egress jobs": show only that kind. */
+  kind?: MdmKindFilter | null;
 }): React.JSX.Element {
   const selectedId = route.screen === "job" ? route.jobId : null;
   const runKey = route.screen === "run" ? route.runKey : null;
@@ -39,7 +42,7 @@ export function MdmPanel({
     <div className="panel" data-testid="mdm-panel">
       <section className="picker" aria-label="MDM jobs">
         <div className="picker-head">
-          <h2>Business 360 jobs</h2>
+          <h2>{kind === null ? "Business 360 jobs" : `${kind} jobs`}</h2>
           <Button aria-label="Refresh MDM jobs" data-testid="mdm-refresh" onClick={picker.reload}>
             Refresh
           </Button>
@@ -65,7 +68,7 @@ export function MdmPanel({
             if (value !== null) go({ screen: "job", service: "mdm", jobId: value });
           }}
         >
-          {picker.visible.map((j) => (
+          {picker.visible.filter((j) => kind === null || j.kind === kind).map((j) => (
             <ListboxItem key={j.asset_id} value={j.asset_id} data-testid={`mdm-job-${j.asset_id}`}>
               <span className="item-name">{j.name}</span>
               <span className={`item-tag ${j.runnable ? "" : "dim"}`}>{j.kind}</span>
@@ -75,7 +78,9 @@ export function MdmPanel({
       </section>
 
       <section className="detail" aria-label="MDM detail">
-        {route.screen === "jobs" && <p className="muted">Pick a job definition to run.</p>}
+        {(route.screen === "jobs" || route.screen === "kind") && (
+          <p className="muted">Pick a job definition to run.</p>
+        )}
         {route.screen === "job" && job === undefined && !picker.loading && (
           <p className="warn-text">No MDM job definition with id {route.jobId}.</p>
         )}

@@ -113,13 +113,32 @@ recorded and **never retried**; an HTTP 429 from Informatica is a hard stop, sho
 a 401 triggers one fresh login and one resend of that request (the call never ran, so it is
 not a job retry). The password never goes to the browser and is never echoed in errors.
 
-## Taskflows by name (Taskflows tab)
+## Layout (OneNote style)
 
-UI: tab **Taskflows (CDI)** (`/taskflows`). Pick a taskflow, check the input fields
+Left pane: a search box and two notebooks - **Data Integration (CDI)**: Tasks, Taskflows,
+Monitor, Runs; **Business 360 (MDM)**: All jobs, Ingress jobs, Egress jobs, Runs. Top ribbon:
+contextual tabs for the selected section (Taskflows: Run / Track run id / Summary / Session log;
+Monitor: Everything / Running now / History / Started here; Runs: Runs / Result; job sections:
+Jobs / Run). URLs are unchanged (plus `/cdi/runs`, `/mdm/runs`, `/mdm/ingress`, `/mdm/egress`).
+Screen-by-screen notes: `internal-notes/ui-observations.md`.
+
+### UI end-to-end (Cypress, against the fake IDMC)
+
+Start the fake stack (see "Try it without an IDMC org") and `npm run dev`, then in `frontend`:
+
+```
+npx cypress@16 run --browser electron
+```
+
+(Cypress is not in package.json on purpose; npx downloads it once.)
+
+## Taskflows by name (Taskflows section)
+
+UI: left pane **Taskflows** (`/taskflows`). Pick a taskflow, check the input fields
 (`jobInstanceId` = `ABC123` is prefilled - edit it), press **Run** (asks to confirm). The run id
 appears in the URL (`/taskflows/runs/<runId>`) and the view polls every 10 s until final:
 started at, ticking "running for", status, then per child task rows ok/error, source/target
-rows, errors, totals and a **Session log** button per child. Paste any run id and press
+rows, errors, totals and a **Session log** button per child. Ribbon tab **Track run id**: paste any run id and press
 **Track** to follow a run started elsewhere.
 
 PowerShell (backend on port 8000):
@@ -185,6 +204,7 @@ the Allowed Users hint; already running from this backend -> 409. Starts are nev
 | `runJob(service, jobId, apiName?)` | Start one run **after a person confirms**, then open its results; never retries |
 | `openRun(service, runKey)` | Open a results screen |
 | `getRun(service, runKey)` | Read a run's status, counts, errors, log |
+| `layout()` / `openNavSection(sectionId)` / `selectRibbonTab(tabId)` | OneNote layout: read sections + ribbon tabs, select a section or a ribbon tab |
 | `openMonitor()` / `getMonitor(onlyMyTasks?, rowLimit?)` | Show / read the CDI Monitor (running + history) |
 | `runTaskflowByName(name, parameters = {jobInstanceId: "ABC123"}, apiName?)` | Start a taskflow by name after a person confirms; opens `/taskflows/runs/<runId>` |
 | `trackTaskflowRun(runId)` / `getTaskflowRun(runId)` | Show / read a taskflow run by IDMC run id |

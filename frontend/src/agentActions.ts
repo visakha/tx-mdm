@@ -18,6 +18,14 @@ import { mdmApi, type MdmJob } from "./mdm/mdmApi";
 import { getJson } from "./shared/api";
 import type { RunView } from "./shared/run";
 import {
+  RIBBON,
+  SECTIONS,
+  sectionOf,
+  selectRibbonTab,
+  ribbonTab,
+  type SectionId,
+} from "./shell/sections";
+import {
   currentRoute,
   formatRoute,
   MONITOR_ROUTE,
@@ -37,6 +45,9 @@ export const ACTIONS: readonly ActionInfo[] = [
   { name: "describe", args: "()", description: "List these actions.", sideEffect: false },
   { name: "currentRoute", args: "()", description: "Current screen as a Route + its URL path.", sideEffect: false },
   { name: "openSection", args: "(service: 'mdm' | 'cdi')", description: "Show the job list of a section.", sideEffect: false },
+  { name: "layout", args: "()", description: "OneNote layout: left-pane sections, the selected section, its ribbon tabs and the selected tab.", sideEffect: false },
+  { name: "openNavSection", args: "(sectionId)", description: "Select a left-pane section (cdi-tasks, cdi-taskflows, cdi-monitor, cdi-runs, mdm-all, mdm-ingress, mdm-egress, mdm-runs).", sideEffect: false },
+  { name: "selectRibbonTab", args: "(tabId)", description: "Select a ribbon tab of the current section (see layout()).", sideEffect: false },
   { name: "listMdmJobs", args: "()", description: "MDM job definitions from the metadata API (with runnable flag).", sideEffect: false },
   { name: "listCdiTasks", args: "()", description: "CDI tasks from the metadata API.", sideEffect: false },
   { name: "selectJob", args: "(service, jobId)", description: "Open one job's detail screen (/<service>/jobs/:jobId).", sideEffect: false },
@@ -88,8 +99,32 @@ async function runTaskflowByName(
   return started;
 }
 
+function currentSection(): SectionId {
+  return sectionOf(currentRoute(), null);
+}
+
 export const txmdm = {
   describe: (): readonly ActionInfo[] => ACTIONS,
+  layout: (): {
+    sections: { id: SectionId; notebook: string; label: string }[];
+    section: SectionId;
+    tabs: readonly { id: string; label: string }[];
+    tab: string;
+  } => {
+    const section = currentSection();
+    return {
+      sections: SECTIONS.map((s) => ({ id: s.id, notebook: s.notebook, label: s.label })),
+      section,
+      tabs: RIBBON[section],
+      tab: ribbonTab(section),
+    };
+  },
+  openNavSection: (sectionId: SectionId): void => {
+    const found = SECTIONS.find((s) => s.id === sectionId);
+    if (found === undefined) throw new Error(`No section ${sectionId}`);
+    navigate(found.route);
+  },
+  selectRibbonTab: (tabId: string): void => selectRibbonTab(currentSection(), tabId),
   currentRoute: (): { route: Route; path: string } => {
     const route = currentRoute();
     return { route, path: formatRoute(route) };

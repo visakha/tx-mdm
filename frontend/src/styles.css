@@ -61,7 +61,7 @@ main { flex: 1; padding: 16px 20px; }
 .monitor th, .monitor td { border-bottom: 1px solid var(--line); padding: 4px 8px; text-align: left; vertical-align: top; }
 .monitor td.num { text-align: right; white-space: nowrap; }
 .monitor tr.child td { background: #fafbfc; }
-.errors-cell { color: var(--bad); }
+.errors-cell { color: var(--bad); max-width: 280px; overflow-wrap: anywhere; }
 .app-runs { padding-left: 18px; margin: 0; display: flex; flex-direction: column; gap: 4px; }
 
 /* Taskflows tab */
@@ -71,3 +71,67 @@ main { flex: 1; padding: 16px 20px; }
   border: 1px solid var(--line); border-radius: 6px; padding: 8px;
   max-height: 420px; overflow: auto; white-space: pre-wrap;
 }
+
+/* ---- OneNote-style shell (light theme) ---------------------------------------------- */
+:root {
+  --one: #7719aa;          /* OneNote purple */
+  --one-soft: #f3e9f8;
+  --c-purple: #7719aa; --c-blue: #2b6fc2; --c-green: #3c8a3c; --c-orange: #c8641a;
+  --c-teal: #11808a; --c-red: #b83b4b; --c-gold: #a9841a; --c-gray: #6d7380;
+}
+.onenote {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  grid-template-rows: auto auto 1fr;
+  grid-template-areas: "title title" "nav ribbon" "nav page";
+}
+.titlebar {
+  grid-area: title; display: flex; align-items: baseline; gap: 16px;
+  padding: 8px 16px; background: var(--one); color: #fff;
+}
+.titlebar h1 { font-size: 16px; margin: 0; font-weight: 600; }
+.titlebar .crumb { font-size: 13px; opacity: 0.9; }
+.navpane {
+  grid-area: nav; background: #faf8fc; border-right: 1px solid var(--line);
+  padding: 10px; display: flex; flex-direction: column; gap: 12px; overflow: auto;
+}
+.notebook h2 {
+  font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: #556;
+  margin: 4px 0 6px;
+}
+.nav-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 4px; cursor: pointer; }
+.nav-item[data-selected], .nav-item[aria-selected="true"] { background: var(--one-soft); font-weight: 600; }
+.nav-item .swatch { width: 4px; height: 18px; border-radius: 2px; background: var(--c-gray); }
+.c-purple .swatch { background: var(--c-purple); } .c-blue .swatch { background: var(--c-blue); }
+.c-green .swatch { background: var(--c-green); } .c-orange .swatch { background: var(--c-orange); }
+.c-teal .swatch { background: var(--c-teal); } .c-red .swatch { background: var(--c-red); }
+.c-gold .swatch { background: var(--c-gold); }
+.ribbon {
+  grid-area: ribbon; background: #fff; border-bottom: 1px solid var(--line);
+  padding: 4px 16px 6px;
+}
+.ribbon-hint { margin: 4px 0 0; font-size: 12px; color: #667; }
+.page { grid-area: page; padding: 16px; overflow: auto; }
+
+/* ribbon tab -> which parts of a page show */
+[data-section="cdi-tasks"][data-view="run"] .picker,
+[data-section^="mdm-"][data-view="run"] .picker,
+[data-section$="-runs"][data-view="result"] .picker,
+[data-section="cdi-taskflows"][data-view="summary"] .picker,
+[data-section="cdi-taskflows"][data-view="log"] .picker { display: none; }
+[data-section="cdi-tasks"][data-view="run"] .panel,
+[data-section^="mdm-"][data-view="run"] .panel,
+[data-section$="-runs"][data-view="result"] .panel,
+[data-section="cdi-taskflows"][data-view="summary"] .panel,
+[data-section="cdi-taskflows"][data-view="log"] .panel { grid-template-columns: 1fr; }
+[data-section="cdi-taskflows"][data-view="run"] .tf-track-box,
+[data-section="cdi-taskflows"][data-view="track"] .tf-run-box,
+[data-section="cdi-taskflows"][data-view="summary"] [data-testid="tf-log-viewer"] { display: none; }
+.tf-run-box, .tf-track-box { display: flex; flex-direction: column; gap: 8px; }
+[data-section="cdi-monitor"][data-view="running"] section[aria-label="Recent history"],
+[data-section="cdi-monitor"][data-view="running"] section[aria-label="Started from this app"],
+[data-section="cdi-monitor"][data-view="history"] section[aria-label="Running now"],
+[data-section="cdi-monitor"][data-view="history"] section[aria-label="Started from this app"],
+[data-section="cdi-monitor"][data-view="app"] section[aria-label="Running now"],
+[data-section="cdi-monitor"][data-view="app"] section[aria-label="Recent history"] { display: none; }

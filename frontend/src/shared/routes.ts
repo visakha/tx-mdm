@@ -7,6 +7,8 @@
 //   /cdi/jobs               CDI task list
 //   /cdi/jobs/:taskId       one CDI task (with its Run button)
 //   /cdi/runs/:runKey       results screen for one CDI run
+//   /cdi/runs, /mdm/runs    runs started from this backend (left pane "Runs")
+//   /mdm/ingress, /mdm/egress  MDM job list filtered to one kind (left pane)
 //   /monitor                CDI Monitor tab (running jobs + recent history)
 //   /taskflows              Taskflows tab: run a taskflow by name, or paste a run id
 //   /taskflows/runs/:runId  track one taskflow run by its IDMC run id
@@ -15,10 +17,14 @@ import { useCallback, useEffect, useState } from "react";
 
 export type Service = "mdm" | "cdi";
 
+export type MdmKindFilter = "Ingress" | "Egress";
+
 export type Route =
   | { screen: "jobs"; service: Service }
   | { screen: "job"; service: Service; jobId: string }
   | { screen: "run"; service: Service; runKey: string }
+  | { screen: "runs"; service: Service }
+  | { screen: "kind"; service: "mdm"; kind: MdmKindFilter }
   // The Monitor tab watches CDI jobs, so it carries service "cdi".
   | { screen: "monitor"; service: "cdi" }
   // Taskflows tab: runId is the IDMC run id (null = nothing tracked yet).
@@ -38,7 +44,14 @@ export function parseRoute(pathname: string): Route {
   if (service === "taskflows" && kind === "runs" && id !== undefined) {
     return { screen: "taskflows", service: "cdi", runId: id };
   }
+  if (service === "mdm" && kind === "ingress" && id === undefined) {
+    return { screen: "kind", service: "mdm", kind: "Ingress" };
+  }
+  if (service === "mdm" && kind === "egress" && id === undefined) {
+    return { screen: "kind", service: "mdm", kind: "Egress" };
+  }
   if (service !== "mdm" && service !== "cdi") return DEFAULT_ROUTE;
+  if (kind === "runs" && id === undefined) return { screen: "runs", service };
   if (kind === "jobs" && id === undefined) return { screen: "jobs", service };
   if (kind === "jobs" && id !== undefined) return { screen: "job", service, jobId: id };
   if (kind === "runs" && id !== undefined) return { screen: "run", service, runKey: id };
@@ -53,6 +66,10 @@ export function formatRoute(route: Route): string {
       return `/${route.service}/jobs/${encodeURIComponent(route.jobId)}`;
     case "run":
       return `/${route.service}/runs/${encodeURIComponent(route.runKey)}`;
+    case "runs":
+      return `/${route.service}/runs`;
+    case "kind":
+      return `/mdm/${route.kind.toLowerCase()}`;
     case "monitor":
       return "/monitor";
     case "taskflows":

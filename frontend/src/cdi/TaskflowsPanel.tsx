@@ -151,6 +151,7 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
   return (
     <div className="panel" data-testid="taskflows-panel">
       <section className="picker" aria-label="Run taskflow by name">
+        <div className="tf-run-box">
         <h2>Run taskflow by name</h2>
         {listError !== null && (
           <p className="warn-text" data-testid="tf-list-error">
@@ -211,6 +212,8 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
           </p>
         )}
 
+        </div>
+        <div className="tf-track-box">
         <h2>Track a run id</h2>
         <Input
           aria-label="IDMC run id"
@@ -229,6 +232,7 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
         >
           Track
         </Button>
+        </div>
       </section>
 
       <section className="detail" aria-label="Taskflow run">
