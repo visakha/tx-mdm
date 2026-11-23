@@ -327,3 +327,12 @@ Reference: internal-docs/B360_October2026_Business360_REST-API_Reference_en.pdf.
 - There is no per-source-system metadata call. Per-source differences are per record: content meta
   (`_showContentMeta=true`, p. 19) gives trust.fieldData[] with fieldRef, lastUpdatedDate,
   manualOverride, sourcePrimaryKey, sourceSystem, trustRule, trustScore.
+
+## Content meta and merge history (0.9.12.4)
+- `_showContentMeta=true` works on Read Master Record by Business ID / by SourcePKey and Read Source
+  Record (p. 19). `_contentMeta.trust.fieldData[]`: fieldRef ("/" = all fields), lastUpdatedDate,
+  manualOverride, sourcePrimaryKey, sourceSystem, trustRule, trustScore (pp. 56-58 example). The
+  Create Master Record example (p. 54) shows `sourceLastUpdateDate` instead; both are read.
+- No read-merge-history API is documented. entity-history .../anonymize (p. 78) is a WRITE
+  (anonymize) and is never called.
+- UNVERIFIED on his org: whether fieldData carries per-field entries for zlv_guest or only "/".

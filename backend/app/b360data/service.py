@@ -5,19 +5,22 @@ IDMC JSON is parsed into typed models in app.b360data.wire, right where it arriv
 
 import math
 import time
-from datetime import datetime
+from datetime import UTC, datetime
+from typing import Any
 from urllib.parse import quote
 
 import httpx
+from pydantic import JsonValue
 
 from app.b360data import endpoints as ep
-from app.b360data import forms, testdata, wire
+from app.b360data import forms, history, testdata, wire
 from app.b360data import scope as entity_scope
 from app.b360data.models import (
     AppliedFilter,
     BusinessEntity,
     BusinessEntityList,
     BusinessEntitySummary,
+    Contributor,
     CreateOutcome,
     CreateRequest,
     CreateResponse,
@@ -35,6 +38,8 @@ from app.b360data.models import (
     LengthOrigin,
     LookupMode,
     LookupStatus,
+    MasterFieldWinner,
+    MasterMergeHistory,
     MergeFieldRow,
     MergeOverride,
     MergePreview,
@@ -50,7 +55,9 @@ from app.b360data.models import (
     PicklistSource,
     RecordPage,
     SortOrder,
+    SourceFieldWin,
     SourceKey,
+    SourceMergeHistory,
     SourceMetadata,
     SourceRecord,
     SourceRecordList,
@@ -826,6 +833,128 @@ class B360DataService:
         """clns_<field> when the entity has it (the cleansed twin follows its field's winner)."""
         twin = f"clns_{field}"
         return twin if any(f.name == twin for f in entity.fields) else None
+
+    # ---- 0.9.12.4 Merge history (M) / (S): documented reads only ---------------------------
+
+    def _get_raw(self, url: str, params: dict[str, Any] | None = None) -> JsonValue | None:
+        """GET one IDMC record. 400/404 -> None; 429 passed through, never retried."""
+        try:
+            reply: object = self._http.request("GET", url, ep.MDM_HEADERS, params=params)
+        except IdmcRateLimitedError:
+            raise
+        except IdmcError as exc:
+            if exc.status_code in (400, 404):
+                return None
+            raise
+        return wire.as_json(reply)
+
+    def master_history(self, guid: str, business_id: str) -> MasterMergeHistory:
+        """Read Master Record with _showContentMeta=true (pp. 19, 56-58) + members (p. 70) + each
+        member's source record (p. 80, cap MAX_SOURCES_READ) for its dates."""
+        self._require_focus(guid)
+        entity = self.metadata(guid)
+        url = self._mdm_url + ep.READ_RECORD.format(
+            guid=quote(guid, safe="."), business_id=quote(business_id, safe="")
+        )
+        raw = self._get_raw(url, {"_showContentMeta": "true"})
+        if not isinstance(raw, dict) or not raw:
+            raise LookupError(f"no master record {business_id} in {guid}")
+        record = wire.record_from_search(raw, entity)
+        trust = history.trust_entries(raw)
+        fields = [
+            MasterFieldWinner(
+                field=f.name,
+                value=record.values.get(f.name),
+                winner=history.winner_for(f.name, trust),
+            )
+            for f in entity.fields
+        ]
+        members_raw = self._get_raw(
+            self._mdm_url
+            + ep.ENTITY_MEMBER.format(
+                guid=quote(guid, safe="."), business_id=quote(business_id, safe="")
+            )
+        )
+        contributors: list[Contributor] = []
+        for n, member in enumerate(wire.source_members(members_raw or {})):
+            if n >= ep.MAX_SOURCES_READ:
+                contributors.append(
+                    Contributor(
+                        source_system=member.source_system,
+                        source_pkey=member.source_pkey,
+                        read_ok=False,
+                    )
+                )
+                continue
+            xref = self._get_raw(self._xref_url(guid, member.source_system, member.source_pkey))
+            meta = xref.get("_meta") if isinstance(xref, dict) else None
+            m: dict[str, JsonValue] = meta if isinstance(meta, dict) else {}
+            contributors.append(
+                Contributor(
+                    source_system=member.source_system,
+                    source_pkey=member.source_pkey,
+                    created=history.when(m.get("creationDate")),
+                    last_updated=history.when(m.get("lastUpdateDate")),
+                    source_last_updated=history.when(m.get("sourceLastUpdatedDate")),
+                    updated_by=str(m["updatedBy"]) if isinstance(m.get("updatedBy"), str) else None,
+                    read_ok=isinstance(xref, dict),
+                )
+            )
+        far = datetime.max.replace(tzinfo=UTC)
+        contributors.sort(key=lambda c: c.created or c.last_updated or far)
+        return MasterMergeHistory(
+            entity=guid,
+            business_id=business_id,
+            fields=fields,
+            trust=trust,
+            contributors=contributors,
+            app_events=history.events_for(guid, business_id),
+            note=history.NO_LOG_NOTE,
+        )
+
+    def source_history(self, guid: str, source_system: str, source_pkey: str) -> SourceMergeHistory:
+        """Read Source Record with _showContentMeta=true (pp. 19, 80) + its master with
+        _showContentMeta=true: its trust, its master, and whether each value won there."""
+        self._require_focus(guid)
+        entity = self.metadata(guid)
+        raw = self._get_raw(
+            self._xref_url(guid, source_system, source_pkey), {"_showContentMeta": "true"}
+        )
+        if not isinstance(raw, dict) or not raw:
+            raise SourceRecordNotFoundError(f"no source record {source_system}/{source_pkey}")
+        source = wire.source_record(raw, entity, source_system, source_pkey)
+        master_url = self._mdm_url + ep.READ_RECORD.format(
+            guid=quote(guid, safe="."), business_id=quote(source.business_id, safe="")
+        )
+        master_raw = self._get_raw(master_url, {"_showContentMeta": "true"})
+        master = (
+            wire.record_from_search(master_raw, entity)
+            if isinstance(master_raw, dict) and master_raw
+            else None
+        )
+        master_trust = history.trust_entries(master_raw) if master is not None else []
+        fields = [
+            SourceFieldWin(
+                field=f.name,
+                source_value=source.values.get(f.name),
+                master_value=master.values.get(f.name) if master is not None else None,
+                won=master is not None and source.values.get(f.name) == master.values.get(f.name),
+                master_winner=history.winner_for(f.name, master_trust),
+            )
+            for f in entity.fields
+        ]
+        return SourceMergeHistory(
+            entity=guid,
+            source_system=source_system,
+            source_pkey=source_pkey,
+            business_id=source.business_id,
+            trust=history.trust_entries(raw),
+            fields=fields,
+            app_events=history.events_for(guid, source.business_id),
+            note=history.NO_LOG_NOTE
+            + " 'won' compares this source value with the master value now (picklists compare "
+            "their Code with the master's display value and may show as not won).",
+        )
 
     def merge_preview(self, guid: str, request: MergePreviewRequest) -> MergePreview:
         """Read each record (Read Master Record, one at a time). Read-only."""

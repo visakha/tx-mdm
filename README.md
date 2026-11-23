@@ -281,6 +281,19 @@ button press. **Stable selectors:** every key control has a `data-testid` and `a
 `mdm_start_run`, `mdm_get_run`, ...), a summary, a description and typed response models - an
 agent can call the backend directly.
 
+## Copy IDMC curl (0.9.12.4)
+
+Every IDMC-backed screen has a "Copy IDMC curl" button. It shows (inline) and copies a script that
+runs against IDMC itself, not this app: step 1 logs in, the next steps are the exact IDMC calls the
+backend made for that screen. Set the password first, in the same window:
+
+```powershell
+$env:IDMC_PASSWORD = "<your password>"
+```
+
+bash: `export IDMC_PASSWORD='<your password>'`. The script never contains your session id or
+password. Write calls (Merge, Add, Edit) are marked "WRITES to IDMC": copying runs nothing.
+
 ## Which Informatica calls are used
 
 | Step | CDI | MDM (Business 360) |

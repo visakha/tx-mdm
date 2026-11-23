@@ -2,6 +2,7 @@
 // watch it. URL-driven: /mdm/jobs, /mdm/jobs/:assetId, /mdm/runs/:runKey.
 // Jobs whose internal id is not resolved yet are listed but cannot be run.
 
+import { CopyIdmcCurl } from "../shared/CopyIdmcCurl";
 import { useCallback } from "react";
 import { Button } from "@ui-sdk/react/button";
 import { Input } from "@ui-sdk/react/input";
@@ -41,6 +42,7 @@ export function MdmPanel({
 
   return (
     <div className="panel" data-testid="mdm-panel">
+      <CopyIdmcCurl prefix="/api/mdm" view="Business 360 jobs" slug="mdm-jobs" />
       <section className="picker" aria-label="MDM jobs">
         <div className="picker-head">
           <h2>{kind === null ? "Business 360 jobs" : `${kind} jobs`}</h2>

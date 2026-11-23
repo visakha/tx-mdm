@@ -296,3 +296,6 @@ html[data-theme="dark"] { --system: #f06fcf; }
 .row-open { background: none; border: 0; padding: 0; color: inherit; cursor: pointer; font: inherit; }
 .api-docs-link { margin-right: 8px; font-size: 0.85em; color: inherit; }
 .visibility-warn { color: var(--warn); }
+/* 0.9.12.4 Copy IDMC curl: inline, no pop-up; same neutral code look as .log */
+.idmc-curl { margin: 6px 0; }
+.curl-script { font-family: ui-monospace, monospace; font-size: 12px; background: #f7f8fa; padding: 8px; border-radius: 6px; white-space: pre; overflow: auto; max-height: 22rem; }

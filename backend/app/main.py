@@ -2,11 +2,12 @@
 
 import logging
 import sys
+from collections.abc import Awaitable, Callable
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from pydantic import JsonValue
 
 from app.b360data import scope as b360_scope
@@ -14,6 +15,7 @@ from app.b360data import typed_openapi
 from app.b360data.router import router as b360_router
 from app.b360data.service import B360DataService
 from app.cdi.router import router as cdi_router
+from app.common import idmc_echo
 from app.common.idmc_session import IdmcError, IdmcRateLimitedError
 from app.common.runs import JobAlreadyRunningError, RunNotFoundError
 from app.dependencies import get_b360_data_service
@@ -66,7 +68,37 @@ def create_app(frontend_origin: str = "http://localhost:5173") -> FastAPI:
         allow_origins=[frontend_origin],
         allow_methods=["GET", "POST"],
         allow_headers=["Content-Type"],
+        expose_headers=["X-Idmc-Echo-Id"],
     )
+
+    @app.middleware("http")
+    async def idmc_echo_mw(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        recorded = idmc_echo.begin()
+        response = await call_next(request)
+        echo_id = idmc_echo.finish(recorded, request.method, request.url.path)
+        if echo_id is not None:
+            response.headers["X-Idmc-Echo-Id"] = echo_id
+        return response
+
+    @app.get(
+        "/api/idmc/echo/{echo_id}",
+        tags=["meta"],
+        operation_id="idmc_echo",
+        response_model=idmc_echo.IdmcEcho,
+        summary="Copy IDMC curl: the exact IDMC calls one tx-mdm call made, as runnable scripts",
+        description="echo_id = the X-Idmc-Echo-Id header of a tx-mdm response. Returns the IDMC "
+        "calls (method, full URL, session header NAMES, JSON body) plus PowerShell (curl.exe) and "
+        "bash scripts that log in with $env:IDMC_PASSWORD and repeat them against IDMC. Never "
+        "contains the session id or password. Last 200 kept in memory; lost on restart.",
+    )
+    def idmc_echo_read(echo_id: str) -> idmc_echo.IdmcEcho:
+        echo = idmc_echo.get(echo_id)
+        if echo is None:
+            raise HTTPException(status_code=404, detail="echo not kept (expired or restarted)")
+        return echo
+
     app.include_router(cdi_router)
     app.include_router(mdm_router)
     app.include_router(b360_router)

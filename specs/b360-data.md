@@ -168,6 +168,30 @@ Lengths (0.9.12.2, Vamsi 02:40-02:41 CST)
   metadata call is documented. What differs per source is per record (content meta,
   `_showContentMeta=true`, p. 19: trust score, trust rule, manualOverride per field). Old tab ids
   `source-metadata` / `metadata-source` / `metadata-master` redirect to Metadata + sub-tab. `CODE`
+- **D32** Merge history (M) / (S) (Vamsi 02:48-02:49 CST), ribbon tabs after Merge (M). IDMC
+  documents NO read-merge-history API (only entity-history .../anonymize, p. 78, never called). So:
+  (M) `GET /api/b360/entities/{name}/records/{id}/merge-history` (`MasterMergeHistory`) = Read Master
+  Record with `_showContentMeta=true` (p. 19, pp. 56-58): per field the trust entry (own fieldRef,
+  else the record-wide "/" entry): source system / pkey, trustRule, trustScore, manualOverride,
+  lastUpdatedDate; plus members (p. 70) and each source record (p. 80, cap 20) for created / updated
+  dates, oldest first. (S) `GET .../sources/{system}/{pkey}/merge-history` (`SourceMergeHistory`) =
+  Read Source Record with `_showContentMeta=true` + its master with content meta: own trust, its
+  master, and per field whether its value equals the master value now ("won"). Merges / unmerges
+  pressed in THIS app are logged in backend memory (last 500, lost on restart) and listed as
+  "merged from this app at <time>". The page says plainly this is who contributes what now, not an
+  event history. Read-only; 429 passed through. `CODE`
+- **D33** Copy IDMC curl (Vamsi 02:48-02:50 CST: "the true curl ... hit the IDMC APIs and not the
+  APIs that we are writing here"). `IdmcHttp._send` records each IDMC call of one backend request
+  (method, full URL with query, session header NAMES, JSON body; never the session id value, and the
+  login POST is not recorded at all). A middleware returns `X-Idmc-Echo-Id`; `GET
+  /api/idmc/echo/{id}` (`IdmcEcho`, last 200 in memory) returns the calls plus runnable scripts:
+  PowerShell (Invoke-RestMethod login with `$env:IDMC_PASSWORD`, then curl.exe with the body in
+  body.json because Windows PowerShell 5 strips quotes from JSON arguments) and bash (python3 builds
+  the login JSON from `$IDMC_PASSWORD`, curl, heredoc bodies). Username = the backend's configured
+  IDMC_USERNAME. Header per call: IDS-SESSION-ID (MDM), INFA-SESSION-ID (CDI v3), icSessionId (v2).
+  Buttons: B360 Data (one per entity, newest call of any tab), Taskflows (CDI / B360), B360 jobs.
+  Write screens show the curl of the write the backend actually sent (after the button); dry runs
+  send nothing, so there is nothing to echo. `CODE`
 
 ## Out of scope
 

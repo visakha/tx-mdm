@@ -10,6 +10,8 @@ from typing import Any
 import httpx
 from pydantic import SecretStr
 
+from app.common import idmc_echo
+
 V3_LOGIN_PATH = "/saas/public/core/v3/login"
 
 
@@ -44,6 +46,14 @@ class IdmcSession:
         self._password = password
         self._current: LoginResult | None = None
         self._lock = threading.Lock()
+
+    @property
+    def username(self) -> str:
+        return self._username
+
+    @property
+    def login_url(self) -> str:
+        return self._login_url
 
     def current(self) -> LoginResult:
         with self._lock:
@@ -124,6 +134,17 @@ class IdmcHttp:
         accept: str = "application/json",
     ) -> httpx.Response:
         session_id = self.session.current().session_id
+        # Copy IDMC curl: header NAMES only, never the session id value.
+        full_url = str(httpx.URL(url, params=params)) if params else url
+        idmc_echo.record(
+            method,
+            full_url,
+            session_headers,
+            accept,
+            json,
+            self.session.login_url,
+            self.session.username,
+        )
         headers = {"Accept": accept, "Content-Type": "application/json"}
         headers.update({name: session_id for name in session_headers})
         return self._http.request(method, url, headers=headers, json=json, params=params)

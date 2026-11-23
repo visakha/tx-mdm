@@ -711,3 +711,89 @@ class SourceMetadata(BaseModel):
         "call is documented), so it is shown once."
     )
     note: str
+
+
+# ---- 0.9.12.4 Merge history (M) / (S) -----------------------------------------------------------
+
+
+class TrustEntry(BaseModel):
+    """One _contentMeta.trust.fieldData entry (Read content meta, p. 19; example pp. 56-58).
+    fieldRef "/" = every field of the record shares this trust."""
+
+    field_ref: str
+    source_system: str | None = None
+    source_pkey: str | None = Field(default=None, description="sourcePrimaryKey")
+    trust_rule: str | None = Field(default=None, description="Survivorship config that picked it.")
+    trust_score: float | None = None
+    manual_override: bool | None = None
+    last_updated: datetime | None = Field(default=None, description="lastUpdatedDate")
+
+
+class AppEventKind(StrEnum):
+    MERGE = "MERGE"
+    UNMERGE = "UNMERGE"
+
+
+class AppMergeEvent(BaseModel):
+    """A merge / unmerge pressed in THIS app (backend memory only, lost on restart)."""
+
+    at: datetime
+    kind: AppEventKind
+    entity: str
+    business_ids: list[str] = Field(description="Masters merged, or the master unmerged from.")
+    surviving_business_id: str | None = None
+    sources: list[SourceKey] = Field(
+        default_factory=list, description="Unmerge: sources taken out."
+    )
+    approval_required: bool | None = None
+
+
+class Contributor(BaseModel):
+    """A source record that contributes to the master now (p. 70 + p. 80)."""
+
+    source_system: str
+    source_pkey: str
+    created: datetime | None = Field(default=None, description="_meta.creationDate if returned.")
+    last_updated: datetime | None = None
+    source_last_updated: datetime | None = None
+    updated_by: str | None = None
+    read_ok: bool = True
+
+
+class MasterFieldWinner(BaseModel):
+    field: str
+    value: FieldValue
+    winner: TrustEntry | None = Field(
+        description="Trust entry for this field (or the record-wide '/' entry), None if absent."
+    )
+
+
+class MasterMergeHistory(BaseModel):
+    entity: str
+    business_id: str
+    fields: list[MasterFieldWinner]
+    trust: list[TrustEntry] = Field(description="All trust entries exactly as returned.")
+    contributors: list[Contributor] = Field(description="Oldest first (created, else updated).")
+    app_events: list[AppMergeEvent]
+    note: str
+
+
+class SourceFieldWin(BaseModel):
+    field: str
+    source_value: FieldValue
+    master_value: FieldValue
+    won: bool = Field(description="Source value equals the master value now.")
+    master_winner: TrustEntry | None = Field(
+        description="Who the master's trust says the value came from."
+    )
+
+
+class SourceMergeHistory(BaseModel):
+    entity: str
+    source_system: str
+    source_pkey: str
+    business_id: str = Field(description="The master it belongs to now.")
+    trust: list[TrustEntry] = Field(description="The source record's own trust entries.")
+    fields: list[SourceFieldWin]
+    app_events: list[AppMergeEvent]
+    note: str

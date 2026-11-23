@@ -1,9 +1,9 @@
 """App version and the top three things in it. GET /api/about returns exactly this."""
 
-VERSION = "0.9.12.3"
+VERSION = "0.9.12.4"
 
 HIGHLIGHTS: tuple[str, str, str] = (
-    "Merge (M): merge 2-10 master records, winner per field (clns_ follows); Undo = Unmerge.",
-    "Reference 360 picklists + lengths: ph_typ real Codes; cntry_cd 3, ph_num 10 digits.",
-    "Records (S) / Metadata Source: tick source systems; one Metadata tab (Master | Source).",
+    "Merge (M) with per-field winners; Merge history (M) / (S): who contributes what now.",
+    "Reference 360 picklists + lengths; Records (S) / Metadata Source by ticked source systems.",
+    "Copy IDMC curl: runnable PowerShell / bash against IDMC itself (password from env var).",
 )

@@ -28,6 +28,8 @@ import { Tabs, TabsList, TabsTab } from "@ui-sdk/react/tabs";
 import { selectRibbonTab, selectSubTab, subTabs, useRibbonTab, useSubTab } from "../shell/sections";
 import { AddRecordsView } from "./AddRecordsView";
 import { MergeView } from "./MergeView";
+import { MasterHistoryView, SourceHistoryView } from "./MergeHistoryView";
+import { CopyIdmcCurl } from "../shared/CopyIdmcCurl";
 import { EditSourceView, SourceRecordsView, SourceSystemPicker, type SourceKeyPick } from "./SourceViews";
 import type { BusinessEntity, BusinessEntitySummary, FieldGroup, SourceMetadata, SourceSystemList } from "./api-types";
 import {
@@ -469,6 +471,9 @@ export function B360DataPanel({
           {loading && <span className="muted">Loading...</span>}
         </div>
         {error !== "" && <p className="warn-text" data-testid="b360-error">{error}</p>}
+      {entityName !== null && (
+        <CopyIdmcCurl prefix={`/api/b360/entities/${encodeURIComponent(entityName)}`} view={`B360 ${entityName}`} slug="b360" />
+      )}
         <p className="muted small" data-testid="b360-scope">
           {total === null ? "" : `${String(total)} business entities in the metadata. `}
           The left pane lists only the ones in backend/b360_entities.toml (edit it, then restart the backend).
@@ -558,11 +563,14 @@ export function B360DataPanel({
         <MergeView entity={page.entity.name} initialIds={selected.record ?? ""} onMerged={() => loadRecords(page.entity.name, { page: 1, sort: "NEWEST_FIRST" })} />
       )}
 
+      {page !== null && tab === "history-m" && <MasterHistoryView entity={page.entity.name} initial={selected.record} />}
+      {page !== null && tab === "history-s" && <SourceHistoryView entity={page.entity.name} />}
+
       {page !== null && tab === "add" && (
         <AddRecordsView entity={page.entity.name} onSaved={() => loadRecords(page.entity.name, { page: 1, sort: "NEWEST_FIRST" })} />
       )}
 
-      {page !== null && (tab === "records" || !["metadata", "add", "sources", "edit", "merge"].includes(tab)) && (
+      {page !== null && (tab === "records" || !["metadata", "add", "sources", "edit", "merge", "history-m", "history-s"].includes(tab)) && (
         <div className="b360-records master-detail" data-testid="b360-records" data-entity={page.entity.name}>
           <section className="b360-master" data-testid="b360-master">
             <h3>

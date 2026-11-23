@@ -22,6 +22,7 @@ import { catalog } from "../shared/catalog";
 import { RunProgress } from "../shared/RunProgress";
 import { statusTone } from "../shared/run";
 import { onPickTaskflow } from "../shell/search";
+import { CopyIdmcCurl } from "../shared/CopyIdmcCurl";
 import { ribbonTab, selectRibbonTab, useRibbonTab, type SectionId } from "../shell/sections";
 import { formatRoute, type Route, type Service } from "../shared/routes";
 import type { CdiTask } from "./cdiApi";
@@ -404,6 +405,7 @@ export function TaskflowsPanel({ route, go, active, domain }: Props): React.JSX.
 
   return (
     <div className="panel tf-panel" data-testid={isMdm ? "mdm-taskflows-panel" : "taskflows-panel"} data-domain={domain} data-tab={tab}>
+      <CopyIdmcCurl prefix="/api/cdi" view={isMdm ? "Business 360 taskflows" : "CDI taskflows"} slug={isMdm ? "mdm-taskflows" : "cdi-taskflows"} />
       {tab === "run" && (
         <section className="picker" aria-label="Run taskflow by name">
           <div className="tf-run-box" data-testid="tf-run-box">

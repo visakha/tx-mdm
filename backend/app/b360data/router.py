@@ -9,6 +9,7 @@ from typing import Annotated
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query
 
 from app.b360data import endpoints as ep
+from app.b360data import history
 from app.b360data.forms import RecordInvalidError
 from app.b360data.models import (
     BusinessEntity,
@@ -19,12 +20,14 @@ from app.b360data.models import (
     FormSchema,
     GeneratedRows,
     GenerateRequest,
+    MasterMergeHistory,
     MergePreview,
     MergePreviewRequest,
     MergeRequest,
     MergeResponse,
     RecordPage,
     SortOrder,
+    SourceMergeHistory,
     SourceMetadata,
     SourceRecord,
     SourceRecordList,
@@ -362,9 +365,18 @@ def merge(
     name: EntityName, service: Service, request: Annotated[MergeRequest, Body()]
 ) -> MergeResponse:
     try:
-        return service.merge(name, request)
+        result = service.merge(name, request)
     except (B360InputError, SourceNotAllowedError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return _merge_logged(name, result)
+
+
+def _merge_logged(name: str, result: MergeResponse) -> MergeResponse:
+    if result.surviving_business_id is not None:
+        history.add_merge(
+            name, result.business_ids, result.surviving_business_id, result.approval_required
+        )
+    return result
 
 
 @router.post(
@@ -384,6 +396,46 @@ def unmerge(
     request: Annotated[UnmergeRequest, Body()],
 ) -> UnmergeResponse:
     try:
-        return service.unmerge(name, business_id, request)
+        result = service.unmerge(name, business_id, request)
     except B360InputError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    history.add_unmerge(name, business_id, result.sources, result.approval_required)
+    return result
+
+
+@router.get(
+    "/entities/{name}/records/{business_id}/merge-history",
+    response_model=MasterMergeHistory,
+    operation_id="b360_master_merge_history",
+    summary="Merge history (M): who contributes what to this master now",
+    description="Read-only. GET entity/{name}/{businessId}?_showContentMeta=true (content meta "
+    "p. 19, Read Master Record pp. 56-58): per field the trust entry (source system / pkey, "
+    "trustRule, trustScore, manualOverride); entity-member (p. 70) + entity-xref (p. 80) per "
+    "member for dates, oldest first. IDMC has NO read-merge-history API; merges / unmerges "
+    "pressed in this app are added from backend memory (lost on restart). 429 passed through.",
+)
+def master_merge_history(
+    name: EntityName, business_id: BusinessId, service: Service
+) -> MasterMergeHistory:
+    return service.master_history(name, business_id)
+
+
+@router.get(
+    "/entities/{name}/sources/{source_system}/{source_pkey}/merge-history",
+    response_model=SourceMergeHistory,
+    operation_id="b360_source_merge_history",
+    summary="Merge history (S): a source record's trust, its master, and which values won",
+    description="Read-only. GET entity-xref/{name}/{system}/{pkey}?_showContentMeta=true (pp. "
+    "19, 80) + the master with _showContentMeta=true. 'won' = source value equals the master "
+    "value now. No merge-event log exists in the IDMC API. 404 if the source record is unknown.",
+)
+def source_merge_history(
+    name: EntityName,
+    source_system: SourceSystem,
+    source_pkey: SourcePKey,
+    service: Service,
+) -> SourceMergeHistory:
+    try:
+        return service.source_history(name, source_system, source_pkey)
+    except SourceRecordNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc

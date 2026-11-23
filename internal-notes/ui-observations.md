@@ -442,6 +442,22 @@ for the agent-permission asks too.
 - Guard: `frontend/src/noPopups.test.ts` fails on any window.confirm / alert / prompt call in
   frontend/src (no exceptions). Cypress taskflows_fake.cy.js fails if a confirm ever fires.
 
+### 0.9.12.4 (Vamsi 02:48-02:50 CST): Merge history (M) / (S) tabs + Copy IDMC curl
+
+- Ribbon ends: ... | Merge (M) | Merge history (M) | Merge history (S).
+- **Merge history (M)**: Business ID input ("Merge history master business ID", pre-filled with the
+  row picked on Records (M)) + Load. Muted note (no merge-event log in the IDMC API; this app's own
+  merges listed from backend memory, lost on restart). Table "Merge history master fields": field,
+  value, source system, pkey, trust rule, trust score, manual override, last updated, trust entry
+  (own / record-wide (/)). Table "Merge history contributors" oldest first. List "Pressed in this app".
+- **Merge history (S)**: inputs "Merge history source system" (default zlv_ttf) + "Merge history
+  sourcePKey" + Load. Belongs to master <id>; table "Merge history source trust"; table "Merge
+  history source fields" (this source / master now / won yes-no / master value came from).
+- **Copy IDMC curl**: button "Copy IDMC curl (B360 <entity>)" under the entity toolbar (also on
+  Taskflows: "Copy IDMC curl (CDI taskflows)" / "(Business 360 taskflows)", and B360 jobs). Disabled
+  until the screen has made an IDMC call. Click: copies the PowerShell script and shows both scripts
+  inline (PowerShell, then bash, each with its own Copy button; "Hide" closes). No pop-up.
+
 ### 0.9.12.3 (Vamsi 02:45 CST): Records (M) | Records (S) | Metadata [Master | Source] | Add records (S) | Edit records (S) | Merge (M)
 
 - **Records (S)** no longer shows the master list. Top: checkbox row "Source systems" (UI SDK

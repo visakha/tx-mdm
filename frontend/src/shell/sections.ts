@@ -141,6 +141,9 @@ export const RIBBON: Record<SectionId, readonly RibbonTab[]> = {
     { id: "edit", label: "Edit records (S)" },
     // 0.9.12: merge master records, per-field winners applied on the survivor.
     { id: "merge", label: "Merge (M)" },
+    // 0.9.12.4: who contributes what now (content meta) + merges pressed in this app.
+    { id: "history-m", label: "Merge history (M)" },
+    { id: "history-s", label: "Merge history (S)" },
   ],
 };
 

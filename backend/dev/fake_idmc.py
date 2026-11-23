@@ -20,9 +20,9 @@ objects/businessEntity/<guid> gives fields + field groups; search returns 12 rec
 import json
 import time
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import Body, FastAPI, Response
+from fastapi import Body, FastAPI, Query, Response
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 app = FastAPI(title="fake IDMC")
@@ -717,14 +717,31 @@ def be_search(body: dict[str, Any] = Body(default_factory=dict)) -> dict[str, An
 
 
 @app.get("/business-entity/public/api/v1/entity/{guid}/{business_id}", response_model=None)
-def read_master_record(guid: str, business_id: str) -> dict[str, Any] | JSONResponse:
-    """Read Master Record by Business ID (pp. 56-58): unprefixed field keys + _meta."""
+def read_master_record(
+    guid: str,
+    business_id: str,
+    show_content_meta: Annotated[bool, Query(alias="_showContentMeta")] = False,
+) -> dict[str, Any] | JSONResponse:
+    """Read Master Record by Business ID (pp. 56-58): unprefixed field keys + _meta.
+    _showContentMeta=true adds _contentMeta.trust.fieldData (p. 19, example shape pp. 56-58)."""
     for record in _all_records(guid):
         if record.get("_meta", {}).get("businessId") == business_id:
-            return {
+            out: dict[str, Any] = {
                 **{k.split(".", 1)[1]: v for k, v in record.items() if "." in k},
                 "_meta": record["_meta"],
             }
+            if show_content_meta:
+                n = business_id[-2:]
+                when = record["_meta"].get("lastUpdateDate")
+                out["_contentMeta"] = {
+                    "trust": {
+                        "fieldData": [
+                            _trust("/", "zlv_ttf", f"TTF-{n}", 0.9, when),
+                            _trust("last_name", "zlv_eci", f"ECI-{n}", 0.7, when),
+                        ]
+                    }
+                }
+            return out
     return JSONResponse(status_code=404, content={"message": f"no record {business_id}"})
 
 
@@ -799,6 +816,7 @@ def _xref_seed(guid: str) -> dict[tuple[str, str, str], dict[str, Any]]:
                     "xrefType": "DATA",
                     "lastUpdateDate": meta.get("lastUpdateDate"),
                     "sourceLastUpdatedDate": meta.get("lastUpdateDate"),
+                    "creationDate": meta.get("creationDate", meta.get("lastUpdateDate")),
                     "updatedBy": "fake.loader",
                     "states": {"base": "ACTIVE", "consolidation": "CONSOLIDATED"},
                 },
@@ -826,14 +844,38 @@ def entity_members(guid: str, business_id: str) -> dict[str, Any] | JSONResponse
     return {"content": members}
 
 
+def _trust(ref: str, system: str, pkey: str, score: float, when: Any) -> dict[str, Any]:
+    return {
+        "fieldRef": ref,
+        "lastUpdatedDate": when,
+        "manualOverride": False,
+        "sourcePrimaryKey": pkey,
+        "sourceSystem": system,
+        "trustRule": "SourceRanking",
+        "trustScore": score,
+    }
+
+
 @app.get("/business-entity/public/api/v1/entity-xref/{guid}/{system}/{pkey}", response_model=None)
-def read_source_record(guid: str, system: str, pkey: str) -> dict[str, Any] | JSONResponse:
+def read_source_record(
+    guid: str,
+    system: str,
+    pkey: str,
+    show_content_meta: Annotated[bool, Query(alias="_showContentMeta")] = False,
+) -> dict[str, Any] | JSONResponse:
     """Read Source Record (pp. 80-84): plain keys, groups with _id, xref _meta."""
     if "RATE429" in pkey:
         return JSONResponse(status_code=429, content={"message": "Too many requests"})
     record = _xref(guid, system, pkey)
     if record is None:
         return JSONResponse(status_code=404, content={"message": f"no source {system}/{pkey}"})
+    if show_content_meta:
+        score = 0.9 if system == "zlv_ttf" else 0.7
+        when = record["_meta"].get("lastUpdateDate")
+        return {
+            **record,
+            "_contentMeta": {"trust": {"fieldData": [_trust("/", system, pkey, score, when)]}},
+        }
     return record
 
 
