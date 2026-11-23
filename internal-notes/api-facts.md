@@ -348,3 +348,28 @@ Reference: internal-docs/B360_October2026_Business360_REST-API_Reference_en.pdf.
 - Wire models (LoginRequest, SearchRequest, MergeResponse, JsonPatchOp, ...) only hold the fields
   tx-mdm sends or reads; IDMC replies carry more.
 
+
+## CDI design - Design notebook (0.9.15)
+Source: IICS REST API Reference, November 2025 (docs.informatica.com PDF, read 2026-11-23; page
+numbers are the PDF's own). Nothing below is LIVE yet.
+
+| Fact | Status |
+|---|---|
+| `GET {baseApiUrl}/public/core/v3/objects?q=type=='<T>'` lists DTEMPLATE (mapping), MTT, DSS, WORKFLOW (linear taskflow), TASKFLOW, ...; types are not case sensitive; rows carry id, path, type, description, updatedBy, updateTime - NO createTime / createdBy (pp. 206-210) | DOC / CODE |
+| Connection and runtime environment are NOT v3 objects types | DOC |
+| `GET {baseApiUrl}/public/core/v3/objects/<id>/references?refType=Uses|usedBy&limit<=50&skip` -> `{id, count, references:[{id, appContextId, path, type, description, updateTime}]}`; appContextId = id usable in v2 calls (pp. 211-212) | DOC / CODE |
+| Doc example spells `refType=Uses` and type `Connection` (capital C) | DOC |
+| `GET {serverUrl}/api/v2/mttask/frs/<federated id>` and `/api/v2/mttask/<id>` -> mtTask: id, name, createTime, updateTime, createdBy, updatedBy, agentId, runtimeEnvironmentId, mappingId (pp. 442-447) | DOC / CODE |
+| `GET /api/v2/mapping/<id>` and `/api/v2/mapping/search?name=` -> mapping: id, name, createTime, updateTime, createdBy, updatedBy, valid, tasks (pp. 438-441) | DOC / CODE |
+| Which mapping search returns when two folders hold the same name | UNVERIFIED |
+| `GET /api/v2/runtimeEnvironment` -> array: id, name, createTime, updateTime, createdBy, updatedBy, agents, isShared, federatedId (pp. 79-83) | DOC / CODE |
+| `GET /api/v2/connection` and `/api/v2/connection/<id>`: id, name, createTime, updateTime, createdBy, updatedBy, type, agentId, runtimeEnvironmentId, federatedId - ALSO username / password / tokens, which tx-mdm never models (pp. 319-324) | DOC / CODE |
+| No v2 taskflow (TASKFLOW) detail resource is documented: taskflow created time / by unavailable | DOC (absence) |
+| The runtime environment lives on the mapping task (his are on the "laptop" Secure Agent group); a taskflow has none | Vamsi, voice 03:20-03:22 CST |
+| v2 calls on the login baseApiUrl | INFERRED (same as CDI) |
+
+## IDMC portal deep links (0.9.15 Addendum A)
+| Fact | Status |
+|---|---|
+| B360 job page: `{mdm_host}/ui-config-app/main/jobDetails/{instance_id}`; his sample `https://usw1-mdm.dm1-us.informaticacloud.com/ui-config-app/main/jobDetails/1309450654674083840` | UNVERIFIED-DOC - a portal deep link taken from his browser (03:36 CST), not a documented API |
+| CDI run / taskflow portal page | UNKNOWN - waiting for his sample; not invented |

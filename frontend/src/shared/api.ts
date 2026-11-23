@@ -30,9 +30,10 @@ function remember(method: string, response: Response): void {
   for (const listener of echoListeners) listener();
 }
 
-/** Newest echo whose tx-mdm path starts with prefix (one screen = one prefix). */
-export function latestEcho(prefix: string): EchoRef | null {
-  return echoes.find((e) => e.apiPath.startsWith(prefix)) ?? null;
+/** Newest echo whose tx-mdm path starts with prefix (one screen = one prefix). exact (0.9.15):
+ * the path must equal prefix, so a list view never picks up its detail calls. */
+export function latestEcho(prefix: string, exact = false): EchoRef | null {
+  return echoes.find((e) => (exact ? e.apiPath === prefix : e.apiPath.startsWith(prefix))) ?? null;
 }
 
 export function subscribeEchoes(listener: () => void): () => void {

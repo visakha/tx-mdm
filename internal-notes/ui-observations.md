@@ -632,3 +632,32 @@ the chip-row Listboxes instead.
   tab. The IDMC page lists only Informatica endpoints, grouped by tag: Login, CDI and taskflows,
   Business 360 jobs, Business 360 metadata, Business 360 records; each operation has its own server.
 
+
+## v0.9.15 (2026-11-23 ~03:40 CST): Design notebook + IDMC portal links
+
+NOT OBSERVED in a browser: built and checked with vitest / typecheck / build and pytest against
+the fake IDMC only. No Cypress run for this version.
+
+Design notebook (left pane notebook "Design", item "Asset types" = `nav-design`, route /design):
+- Ribbon (top pane) tabs = asset types: `ribbon-tab-MTT` Mapping task (default), `ribbon-tab-TASKFLOW`,
+  `ribbon-tab-DTEMPLATE` Mapping, `ribbon-tab-DSS`, `ribbon-tab-WORKFLOW` Linear taskflow,
+  `ribbon-tab-CONNECTION`, `ribbon-tab-RUNTIME_ENVIRONMENT`. Clicking one reloads the list.
+- Page = two columns (one column under 1100 px): left `design-list` table (Name / Path /
+  Updated / Updated by); each name is a Button "Open <type label> <name>" (`design-open-<id>`), the
+  row is clickable too. Right `design-detail-pane`: key/value table (`design-field-<Key>`), runtime
+  note, Uses table (`design-uses`, rows `design-uses-<id>`), Used by (mappings), notes.
+- In Uses / Used by, a supported type opens with Button "Open <IDMC type> <name>"
+  (`design-open-uses-<id>`): it switches the ribbon to that type and selects the asset.
+- Toolbar: Refresh (`design-refresh`, aria "Refresh <type> list and detail"), count + as-of
+  (`design-as-of`, says when the answer came from tx-mdm's cache).
+- Copy IDMC curl: `idmc-curl-design-list` and `idmc-curl-design-detail` (exact path match, so the
+  list button never copies the detail calls). Cached answers make no IDMC call.
+- Read-only; no pop-ups; no colour coding; no polling.
+
+IDMC portal links (Vamsi 03:36 CST):
+- B360 job instance ids are links (new tab, aria "Open job <id> in IDMC portal",
+  `portal-link-<slug>-<id>`) in: Currently running / Recently finished / lookup tables (slug =
+  the table test id), the Result view "Job instance" row (`run-instance-id`, slug run-result),
+  and the MDM Runs list items (slug runs; clicking the link does not pick the row).
+- URL only from the backend field `portal_url`; frontend guard test `shared/portal.test.ts`.
+- CDI: no links yet (slot waiting for his sample URL). Taskflow children: no instance id known.

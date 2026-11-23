@@ -18,11 +18,12 @@ export type SectionId =
   | "mdm-taskflows"
   | "mdm-running"
   | "mdm-runs"
-  | "b360-data";
+  | "b360-data"
+  | "design";
 
 export interface Section {
   id: SectionId;
-  notebook: "CDI" | "MDM" | "B360";
+  notebook: "CDI" | "MDM" | "B360" | "DESIGN";
   label: string;
   /** Where the left-pane item navigates to. */
   route: Route;
@@ -44,12 +45,15 @@ export const SECTIONS: readonly Section[] = [
   { id: "mdm-running", notebook: "MDM", label: "Currently running", route: { screen: "mdm-monitor", service: "mdm" }, legacyTestId: null, color: "green" },
   { id: "mdm-runs", notebook: "MDM", label: "Runs", route: { screen: "runs", service: "mdm" }, legacyTestId: null, color: "gray" },
   { id: "b360-data", notebook: "B360", label: "All business entities", route: { screen: "b360", service: "mdm", entity: null }, legacyTestId: null, color: "purple" },
+  // 0.9.15 (Vamsi 03:22-03:24 CST): "the page called design ... in the notebook".
+  { id: "design", notebook: "DESIGN", label: "Asset types", route: { screen: "design", service: "cdi" }, legacyTestId: null, color: "gray" },
 ];
 
 export const NOTEBOOK_TITLE: Record<Section["notebook"], string> = {
   CDI: "Data Integration (CDI)",
   MDM: "Business 360 (MDM)",
   B360: "B360 Data",
+  DESIGN: "Design",
 };
 
 /** Which left-pane section a route belongs to. lastMdmKind keeps Ingress/Egress lit on a job page. */
@@ -61,6 +65,8 @@ export function sectionOf(route: Route, lastMdmKind: MdmKindFilter | null): Sect
       return "mdm-running";
     case "b360":
       return "b360-data";
+    case "design":
+      return "design";
     case "taskflows":
       return route.service === "mdm" ? "mdm-taskflows" : "cdi-taskflows";
     case "runs":
@@ -144,6 +150,17 @@ export const RIBBON: Record<SectionId, readonly RibbonTab[]> = {
     // 0.9.12.4: who contributes what now (content meta) + merges pressed in this app.
     { id: "history-m", label: "Merge history (M)" },
     { id: "history-s", label: "Merge history (S)" },
+  ],
+  // 0.9.15: the top pane of Design = the asset types (tab id = IDMC type, see backend
+  // app/design/models.py TYPE_RULES; tests/designApi.test.ts keeps the two lists equal).
+  design: [
+    { id: "MTT", label: "Mapping task" },
+    { id: "TASKFLOW", label: "Taskflow" },
+    { id: "DTEMPLATE", label: "Mapping" },
+    { id: "DSS", label: "Synchronization task" },
+    { id: "WORKFLOW", label: "Linear taskflow" },
+    { id: "CONNECTION", label: "Connection" },
+    { id: "RUNTIME_ENVIRONMENT", label: "Runtime environment" },
   ],
 };
 

@@ -31,6 +31,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from app.common.portal import PortalLinks
 from app.common.runs import RunCounts, RunStatus
 from app.mdm import endpoints as ep
 from app.mdm.client import JOB_INSTANCE_STATES, MdmClient, collect_errors, counts_from_metrics
@@ -58,6 +59,11 @@ class MdmJobInstanceView(BaseModel):
     started_by: str = ""
     counts: RunCounts = Field(default_factory=RunCounts)
     errors: list[str] = Field(default_factory=list)
+    portal_url: str | None = Field(
+        default=None,
+        description="0.9.15: IDMC portal job page ({mdm_host}/ui-config-app/main/jobDetails/{id}); "
+        "UNVERIFIED-DOC, from his browser. Built by app/common/portal.py only.",
+    )
 
 
 class MdmMonitorSnapshot(BaseModel):
@@ -148,6 +154,11 @@ def build_snapshot(
 class MdmMonitor:
     def __init__(self, client: MdmClient) -> None:
         self._client = client
+        self._portal = PortalLinks(client.mdm_url)
+
+    def _link(self, view: MdmJobInstanceView) -> MdmJobInstanceView:
+        view.portal_url = self._portal.mdm_job(view.instance_id)
+        return view
 
     def snapshot(self, row_limit: int) -> MdmMonitorSnapshot:
         limit = max(1, min(row_limit, MAX_ROW_LIMIT))
@@ -158,6 +169,8 @@ class MdmMonitor:
         running = self._client.search_page(ep.JOB_SEARCH_PAGE_SIZE, 0, running_filter)
         recent = self._client.search_page(limit, 0, None)
         snap = build_snapshot(running, recent, limit, datetime.now(tz=UTC))
+        snap.running = [self._link(v) for v in snap.running]
+        snap.recent = [self._link(v) for v in snap.recent]
         snap.notes.append(
             "Org-wide B360 job search (b360.* and c360.* types), whoever started the job."
         )
@@ -168,4 +181,4 @@ class MdmMonitor:
         view = view_from_instance(body, datetime.now(tz=UTC))
         if view.instance_id == "":
             view.instance_id = instance_id
-        return view
+        return self._link(view)

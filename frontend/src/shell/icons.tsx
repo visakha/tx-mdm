@@ -4,7 +4,7 @@
 import type { HitKind } from "./search";
 import type { SectionId } from "./sections";
 
-type IconName = "task" | "taskflow" | "monitor" | "runs" | "jobs" | "ingress" | "egress" | "search" | "entity";
+type IconName = "task" | "taskflow" | "monitor" | "runs" | "jobs" | "ingress" | "egress" | "search" | "entity" | "design";
 
 const PATHS: Record<IconName, React.JSX.Element> = {
   // gear-like square: a single mapping task
@@ -24,6 +24,8 @@ const PATHS: Record<IconName, React.JSX.Element> = {
   // table grid: B360 business entity data
   entity: <><rect x="2" y="3" width="12" height="10" rx="1.5" /><path d="M2 6.5h12M6 6.5V13" /></>,
   search: <><circle cx="7" cy="7" r="4.5" /><path d="m10.5 10.5 3.5 3.5" /></>,
+  // ruler + pencil line: Design (asset metadata)
+  design: <><path d="M2 13 13 2l1 1L3 14z" /><path d="M2 13l-0.5 1.5L3 14" /><path d="M5 10l1 1M8 7l1 1" /></>,
 };
 
 export function Icon({ name }: { name: IconName }): React.JSX.Element {
@@ -47,6 +49,7 @@ export const SECTION_ICON: Record<SectionId, IconName> = {
   "mdm-running": "monitor",
   "mdm-runs": "runs",
   "b360-data": "entity",
+  design: "design",
 };
 
 export const HIT_ICON: Record<HitKind, IconName> = {

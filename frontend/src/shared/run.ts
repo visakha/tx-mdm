@@ -37,6 +37,10 @@ export interface RunView {
   log: LogLine[];
   counts: RunCounts;
   errors: string[];
+  /** 0.9.15: MDM job instance id IDMC gave this run (MDM only). */
+  idmc_instance_id?: string | null;
+  /** 0.9.15: IDMC portal page of this run, built by the backend (CDI: null until known). */
+  portal_url?: string | null;
 }
 
 const TERMINAL: ReadonlySet<RunStatus> = new Set(["SUCCESS", "WARNING", "FAILED", "STOPPED"]);

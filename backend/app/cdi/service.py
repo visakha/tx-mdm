@@ -74,6 +74,8 @@ class CdiService:
         self._task_names: set[str] = set()
         self._task_names_at = 0.0
         self._final_status: dict[str, TaskflowRunStatus] = {}  # final runs never change
+        # 0.9.15: taskflow name -> (monotonic time, mapping task names from v3 references)
+        self._referenced: dict[str, tuple[float, set[str]]] = {}
 
     def list_tasks(self, task_types: list[CdiTaskType]) -> list[CdiTask]:
         return self._client.list_tasks(task_types)
@@ -255,8 +257,27 @@ class CdiService:
         for cached in self._final_status.values():
             if cached.taskflow_name == name:
                 children.update(c.name for c in cached.subtasks)
+        referenced = set() if children else self._referenced_children(name, notes)
         snapshot = self.monitor(row_limit, only_my_tasks=False)
-        return build_history(name, snapshot, app_runs, children, notes, now_utc())
+        return build_history(name, snapshot, app_runs, children, notes, now_utc(), referenced)
+
+    def _referenced_children(self, name: str, notes: list[str]) -> set[str]:
+        """0.9.15: child mapping tasks of a taskflow from IDMC's v3 references (Uses), cached
+        TASK_NAME_CACHE_SECONDS. A failure is a note (the name guess is then used), never a 500."""
+        kept = self._referenced.get(name)
+        if kept is not None and time.monotonic() - kept[0] < TASK_NAME_CACHE_SECONDS:
+            return kept[1]
+        try:
+            flows = self._client.list_tasks([CdiTaskType.TASKFLOW])
+            flow = next((t for t in flows if t.name == name), None)
+            found = set() if flow is None else set(self._client.used_mapping_tasks(flow.id))
+        except IdmcRateLimitedError:
+            raise
+        except IdmcError as exc:
+            notes.append(f"Child mapping tasks from IDMC references unavailable: {exc}")
+            return set()
+        self._referenced[name] = (time.monotonic(), found)
+        return found
 
     def taskflow_run_status(self, run_id: str, details: bool) -> TaskflowRunStatus:
         """Status of any taskflow run by IDMC run id (works after a backend restart too).

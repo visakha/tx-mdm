@@ -85,7 +85,10 @@ def _operation(spec: IdmcCallSpec) -> JsonObj:
         }
     ok: JsonObj = {"description": "OK"}
     if spec.response_model is not None:
-        ok["content"] = {"application/json": {"schema": _ref(spec.response_model)}}
+        body_schema = _ref(spec.response_model)
+        if spec.response_array:
+            body_schema = {"type": "array", "items": body_schema}
+        ok["content"] = {"application/json": {"schema": body_schema}}
     else:
         ok["description"] = "OK (shape not modelled in tx-mdm; see the doc source)"
     op["responses"] = {

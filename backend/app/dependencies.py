@@ -13,6 +13,8 @@ from app.cdi.service import CdiService
 from app.common.idmc_session import IdmcHttp, IdmcSession
 from app.common.runs import RunRegistry
 from app.config import Settings, get_settings
+from app.design.client import DesignClient
+from app.design.service import DesignService
 from app.mdm.client import MdmClient
 from app.mdm.monitor import MdmMonitor
 from app.mdm.resolver import JobSearchResolver
@@ -80,3 +82,11 @@ def get_b360_data_service() -> B360DataService:
     settings = get_settings()
     http = IdmcHttp(get_http_client(), _new_session(settings))
     return B360DataService(http, settings.idmc_mdm_url)
+
+
+@lru_cache
+def get_design_service() -> DesignService:
+    """Read-only Design notebook (0.9.15): CDI asset metadata on the platform host, own session."""
+    settings = get_settings()
+    http = IdmcHttp(get_http_client(), _new_session(settings))
+    return DesignService(DesignClient(http, settings.idmc_platform_url))

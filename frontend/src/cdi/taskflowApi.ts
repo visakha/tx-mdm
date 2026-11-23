@@ -130,6 +130,8 @@ export interface TaskflowHistory {
   rows: HistoryRow[];
   child_tasks: string[];
   child_names_guessed: boolean;
+  /** 0.9.15: where child_tasks came from; "references" = IDMC v3 objects/<id>/references. */
+  child_names_source?: "tracked run" | "references" | "guess" | "none";
   taskflow_in_monitor: boolean;
   notes: string[];
 }

@@ -11,6 +11,7 @@ import { Input } from "@ui-sdk/react/input";
 import { ApiError, errorText } from "../shared/api";
 import { POLL_MS, POLL_SECONDS } from "../shared/poll";
 import { isTerminal, statusTone } from "../shared/run";
+import { PortalLink } from "../shared/PortalLink";
 import { RunProgress } from "../shared/RunProgress";
 import {
   cleanInstanceId,
@@ -65,7 +66,7 @@ function JobTable({
           {jobs.map((job) => (
             <tr key={job.instance_id} data-testid={`b360-row-${job.instance_id}`} data-status={job.status}>
               <td className="instance-id">
-                <code>{job.instance_id}</code>
+                <PortalLink id={job.instance_id} url={job.portal_url} slug={testId} />
               </td>
               <td className="nowrap" title={job.job_definition_id}>{job.name || job.job_definition_id}</td>
               <td className="nowrap">{job.job_type}</td>

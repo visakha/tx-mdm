@@ -1,6 +1,7 @@
 // Left pane "Runs": runs started from this backend (since it started), newest first.
 // Read-only list; clicking a run opens its result (/<service>/runs/:runKey).
 
+import { PortalLink } from "../shared/PortalLink";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@ui-sdk/react/button";
 import { Listbox, ListboxItem } from "@ui-sdk/react/listbox";
@@ -61,6 +62,13 @@ export function RunsPanel({
             <span className={`status ${statusTone(r.status)}`}>{r.status}</span>
             <span className="item-name"> {r.job_name}</span>
             <span className="item-tag">{fmt(r.started_at)}</span>
+            {r.idmc_instance_id !== null && r.idmc_instance_id !== undefined && (
+              // 0.9.15: the link opens the IDMC portal in a new tab; it does not pick the row.
+              <span className="item-tag" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+                {" "}
+                <PortalLink id={r.idmc_instance_id} url={r.portal_url} slug="runs" />
+              </span>
+            )}
           </ListboxItem>
         ))}
       </Listbox>

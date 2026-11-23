@@ -15,6 +15,7 @@ Status tags:
 | [`cdi.md`](cdi.md) | Data Integration: tasks, taskflows, monitor, naming rule |
 | [`mdm.md`](mdm.md) | Business 360 jobs: runs, Currently running, MDM taskflows |
 | [`b360-data.md`](b360-data.md) | B360 Data notebook: master vs source records, metadata, add, edit |
+| [`design.md`](design.md) | Design notebook: CDI asset types, metadata, runtime env; IDMC portal links |
 | [`agent-interface.md`](agent-interface.md) | window.agent, window.txmdm, labels, what agents cannot do |
 
 How these relate to the rest of the repo:

@@ -23,6 +23,8 @@ export interface MdmJobInstance {
   started_by: string;
   counts: RunCounts;
   errors: string[];
+  /** 0.9.15: IDMC portal job page, built by the backend (null when unknown). */
+  portal_url?: string | null;
 }
 
 export interface MdmMonitorSnapshot {

@@ -295,6 +295,17 @@ $env:IDMC_PASSWORD = "<your password>"
 bash: `export IDMC_PASSWORD='<your password>'`. The script never contains your session id or
 password. Write calls (Merge, Add, Edit) are marked "WRITES to IDMC": copying runs nothing.
 
+## Design notebook (0.9.15)
+
+Left pane -> Design -> Asset types. The top ribbon picks a CDI asset type (Mapping task,
+Taskflow, Mapping, Synchronization task, Linear taskflow, Connection, Runtime environment); the
+page lists all assets of that type and, on click, shows created / updated / by and the runtime
+environment name. A taskflow lists the mapping tasks it uses with their own metadata. Read-only
+(`GET /api/design/...`, Swagger tag "design"). Spec: `specs/design.md`.
+
+B360 job instance ids now link to the IDMC portal job page (new tab); the URL is built by the
+backend (`app/common/portal.py`).
+
 ## IDMC calls only: /docs-idmc (0.9.14)
 
 Three separate specs: `/openapi.json` (`/docs`, our API), `/openapi-typed.json` (`/docs-typed`, our

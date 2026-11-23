@@ -1,6 +1,7 @@
 // Results screen, same for CDI and MDM: name on top, status, start time, short live log,
 // counts on one side, errors on the other.
 
+import { PortalLink } from "./PortalLink";
 import { RunProgress } from "./RunProgress";
 import { isTerminal, statusTone, type RunCounts, type RunView } from "./run";
 import { RUN_POLL_SECONDS } from "./useRunPolling";
@@ -71,6 +72,14 @@ export function RunResult({
       <dl className="times">
         <dt>Type</dt>
         <dd>{run.job_kind}</dd>
+        {run.idmc_instance_id !== null && run.idmc_instance_id !== undefined && (
+          <>
+            <dt>Job instance</dt>
+            <dd data-testid="run-instance-id">
+              <PortalLink id={run.idmc_instance_id} url={run.portal_url} slug="run-result" />
+            </dd>
+          </>
+        )}
         <dt>Requested</dt>
         <dd data-testid="run-started" title="When this app submitted the run">
           {fmt(run.started_at)}

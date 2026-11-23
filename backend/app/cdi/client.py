@@ -10,6 +10,8 @@ from app.cdi.taskflow_kind import TaskDomain, mapping_task_domain, taskflow_doma
 from app.common import idmc_registry as idmc
 from app.common.idmc_session import IdmcHttp
 from app.common.runs import RunCounts, RunStatus
+from app.design.client import DesignClient, RefType
+from app.design.service import mapping_task_names
 
 
 @dataclass
@@ -65,6 +67,12 @@ class CdiClient:
             if len(objects) < ep.PAGE_SIZE:
                 return found
             skip += ep.PAGE_SIZE
+
+    def used_mapping_tasks(self, object_id: str) -> list[str]:
+        """0.9.15: names of the mapping tasks a taskflow uses, from the documented v3
+        references call (refType=Uses). Replaces the tf_ -> mt_m_ name guess."""
+        design = DesignClient(self._http, self._platform_url_override)
+        return mapping_task_names(design.references(object_id, RefType.USES))
 
     # ---- run ---------------------------------------------------------------------------------
 

@@ -15,12 +15,14 @@ documented family's pattern) - treat with care.
 """
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import StrEnum
 
 from pydantic import BaseModel, Field, JsonValue
 
 from app.b360data import endpoints as b360_ep
 from app.cdi import endpoints as cdi_ep
+from app.design import endpoints as design_ep
 from app.mdm import endpoints as mdm_ep
 
 
@@ -92,6 +94,7 @@ class Area(StrEnum):
     B360_JOBS = "Business 360 jobs"
     B360_METADATA = "Business 360 metadata"
     B360_DATA = "Business 360 records"
+    CDI_DESIGN = "CDI design (asset metadata, read-only)"
 
 
 @dataclass(frozen=True)
@@ -217,6 +220,105 @@ class TaskflowRunRequest(BaseModel):
     model_config = {"extra": "allow"}
 
 
+# ---- 0.9.15 CDI design wire models (IICS REST API Reference Nov 2025; only the fields tx-mdm
+# reads; everything else IDMC sends is ignored on parse) ----
+
+
+class V3ObjectRow(BaseModel):
+    """One asset row of GET /public/core/v3/objects (Finding an asset, pp. 206-210)."""
+
+    id: str
+    path: str = ""
+    type: str = ""
+    description: str | None = None
+    updatedBy: str | None = None
+    updateTime: datetime | None = None
+
+
+class V3ObjectsResponse(BaseModel):
+    count: int | None = None
+    objects: list[V3ObjectRow] = Field(default_factory=list)
+
+
+class V3ReferenceRow(BaseModel):
+    """One dependency of GET /objects/<id>/references (pp. 211-212). appContextId = the
+    service id usable in v2 calls (Data Integration assets only)."""
+
+    id: str
+    appContextId: str | None = None
+    path: str = ""
+    type: str = ""
+    description: str | None = None
+    updateTime: datetime | None = None
+
+
+class V3ReferencesResponse(BaseModel):
+    id: str | None = None
+    count: int | None = None
+    references: list[V3ReferenceRow] = Field(default_factory=list)
+
+
+class MtTaskWire(BaseModel):
+    """v2 mtTask object (Mapping tasks, pp. 442-447): the fields the Design page shows."""
+
+    id: str
+    name: str = ""
+    description: str | None = None
+    createTime: datetime | None = None
+    updateTime: datetime | None = None
+    createdBy: str | None = None
+    updatedBy: str | None = None
+    agentId: str | None = None
+    runtimeEnvironmentId: str | None = None
+    mappingId: str | None = None
+
+
+class MappingWire(BaseModel):
+    """v2 mapping object (Mappings, pp. 438-441)."""
+
+    id: str
+    name: str = ""
+    description: str | None = None
+    createTime: datetime | None = None
+    updateTime: datetime | None = None
+    createdBy: str | None = None
+    updatedBy: str | None = None
+    valid: bool | None = None
+    tasks: int | None = Field(default=None, description="Number of tasks that use the mapping.")
+
+
+class RuntimeEnvironmentWire(BaseModel):
+    """v2 runtimeEnvironment object (pp. 79-83). agents is not modelled (not shown)."""
+
+    id: str
+    name: str = ""
+    description: str | None = None
+    createTime: datetime | None = None
+    updateTime: datetime | None = None
+    createdBy: str | None = None
+    updatedBy: str | None = None
+    isShared: bool | None = None
+    federatedId: str | None = None
+
+
+class ConnectionWire(BaseModel):
+    """v2 connection object (pp. 319-324), SAFE fields only. IDMC also returns username,
+    password, securityToken and other secrets: they are NOT modelled, so parsing drops them and
+    nothing downstream (API, UI, logs) can ever carry them."""
+
+    id: str
+    name: str = ""
+    description: str | None = None
+    createTime: datetime | None = None
+    updateTime: datetime | None = None
+    createdBy: str | None = None
+    updatedBy: str | None = None
+    type: str | None = None
+    agentId: str | None = None
+    runtimeEnvironmentId: str | None = None
+    federatedId: str | None = None
+
+
 # ---- the registry ----
 
 
@@ -235,6 +337,7 @@ class IdmcCallSpec:
     request_model: type[BaseModel] | None = None
     request_array: bool = False  # request body is a JSON array of request_model
     response_model: type[BaseModel] | None = None
+    response_array: bool = False  # 0.9.15: response body is a JSON array of response_model
     notes: str = ""
     path_params: tuple[str, ...] = field(default=())
 
@@ -284,6 +387,8 @@ PLATFORM_OBJECTS = IdmcCallSpec(
         QueryParam("limit", "page size, up to 200"),
         QueryParam("skip", "offset"),
     ),
+    response_model=V3ObjectsResponse,
+    notes="0.9.15 Design page: also lists DTEMPLATE (mapping) and DSS (synchronization task).",
 )
 JOB_RUN = IdmcCallSpec(
     "cdi-job-run",
@@ -595,6 +700,123 @@ UNMERGE = IdmcCallSpec(
     path_params=("guid", "business_id"),
 )
 
+
+# ---- 0.9.15 CDI design (Design notebook), read-only ----
+
+OBJECT_REFERENCES = IdmcCallSpec(
+    "design-object-references",
+    Area.CDI_DESIGN,
+    HttpMethod.GET,
+    IdmcHost.PLATFORM,
+    design_ep.OBJECT_REFERENCES,
+    SessionHeader.INFA,
+    "Assets one asset uses (refType=Uses) or is used by (usedBy)",
+    f"{IICS_REF}, v3 objects/<id>/references (Finding asset dependencies, pp. 211-212)",
+    DocStatus.REFERENCE,
+    query=(
+        QueryParam("refType", "Uses or usedBy (doc example: refType=Uses)", True),
+        QueryParam("limit", "page size, up to 50"),
+        QueryParam("skip", "offset"),
+    ),
+    response_model=V3ReferencesResponse,
+    path_params=("object_id",),
+    notes="Replaces the tf_ -> mt_m_ child-name guess in taskflow history (0.9.15).",
+)
+MTTASK_BY_FRS = IdmcCallSpec(
+    "design-mttask-frs",
+    Area.CDI_DESIGN,
+    HttpMethod.GET,
+    IdmcHost.PLATFORM,
+    design_ep.MTTASK_BY_FRS,
+    SessionHeader.IC,
+    "Mapping task details by federated (v3) id: created / updated / by / runtime environment",
+    f"{IICS_REF}, v2 mttask/frs/<id> (Mapping tasks, p. 442)",
+    DocStatus.REFERENCE,
+    response_model=MtTaskWire,
+    path_params=("federated_id",),
+)
+MTTASK_BY_ID = IdmcCallSpec(
+    "design-mttask-id",
+    Area.CDI_DESIGN,
+    HttpMethod.GET,
+    IdmcHost.PLATFORM,
+    design_ep.MTTASK_BY_ID,
+    SessionHeader.IC,
+    "Mapping task details by v2 id (the appContextId of a reference)",
+    f"{IICS_REF}, v2 mttask/<id> (Mapping tasks, p. 442)",
+    DocStatus.REFERENCE,
+    response_model=MtTaskWire,
+    path_params=("task_id",),
+)
+MAPPING_BY_ID = IdmcCallSpec(
+    "design-mapping-id",
+    Area.CDI_DESIGN,
+    HttpMethod.GET,
+    IdmcHost.PLATFORM,
+    design_ep.MAPPING_BY_ID,
+    SessionHeader.IC,
+    "Mapping details by v2 id (mtTask.mappingId): name, created / updated / by",
+    f"{IICS_REF}, v2 mapping/<id> (Mappings, p. 438)",
+    DocStatus.REFERENCE,
+    response_model=MappingWire,
+    path_params=("mapping_id",),
+)
+MAPPING_SEARCH = IdmcCallSpec(
+    "design-mapping-search",
+    Area.CDI_DESIGN,
+    HttpMethod.GET,
+    IdmcHost.PLATFORM,
+    design_ep.MAPPING_SEARCH,
+    SessionHeader.IC,
+    "Mapping details by name (v3 rows carry no v2 id for a mapping)",
+    f"{IICS_REF}, v2 mapping/search?name=<name> (Mappings, p. 438)",
+    DocStatus.REFERENCE,
+    query=(QueryParam("name", "mapping name", True),),
+    response_model=MappingWire,
+    notes="Matched by name only: two mappings with the same name in different folders cannot "
+    "be told apart by this call (which one IDMC returns is UNVERIFIED).",
+)
+RUNTIME_ENVIRONMENTS = IdmcCallSpec(
+    "design-runtime-environments",
+    Area.CDI_DESIGN,
+    HttpMethod.GET,
+    IdmcHost.PLATFORM,
+    design_ep.RUNTIME_ENVIRONMENTS,
+    SessionHeader.IC,
+    "All runtime environments (Secure Agent groups): id -> name, cached by tx-mdm",
+    f"{IICS_REF}, v2 runtimeEnvironment (Runtime environments, pp. 79-83)",
+    DocStatus.REFERENCE,
+    response_model=RuntimeEnvironmentWire,
+    response_array=True,
+)
+CONNECTIONS = IdmcCallSpec(
+    "design-connections",
+    Area.CDI_DESIGN,
+    HttpMethod.GET,
+    IdmcHost.PLATFORM,
+    design_ep.CONNECTIONS,
+    SessionHeader.IC,
+    "All connections (safe fields only; secrets are never modelled)",
+    f"{IICS_REF}, v2 connection (Connections, pp. 319-324)",
+    DocStatus.REFERENCE,
+    response_model=ConnectionWire,
+    response_array=True,
+    notes="IDMC's reply also carries username / password / tokens; tx-mdm drops them on parse.",
+)
+CONNECTION_BY_ID = IdmcCallSpec(
+    "design-connection-id",
+    Area.CDI_DESIGN,
+    HttpMethod.GET,
+    IdmcHost.PLATFORM,
+    design_ep.CONNECTION_BY_ID,
+    SessionHeader.IC,
+    "One connection by v2 id (safe fields only)",
+    f"{IICS_REF}, v2 connection/<id> (Connections, pp. 319-324)",
+    DocStatus.REFERENCE,
+    response_model=ConnectionWire,
+    path_params=("connection_id",),
+)
+
 IDMC_CALLS: tuple[IdmcCallSpec, ...] = (
     LOGIN,
     PLATFORM_OBJECTS,
@@ -620,4 +842,12 @@ IDMC_CALLS: tuple[IdmcCallSpec, ...] = (
     UPDATE_SOURCE_FIELD,
     MERGE,
     UNMERGE,
+    OBJECT_REFERENCES,
+    MTTASK_BY_FRS,
+    MTTASK_BY_ID,
+    MAPPING_BY_ID,
+    MAPPING_SEARCH,
+    RUNTIME_ENVIRONMENTS,
+    CONNECTIONS,
+    CONNECTION_BY_ID,
 )

@@ -1,9 +1,9 @@
 """App version and the top three things in it. GET /api/about returns exactly this."""
 
-VERSION = "0.9.14"
+VERSION = "0.9.15"
 
 HIGHLIGHTS: tuple[str, str, str] = (
-    "API docs IDMC (/docs-idmc): only the IDMC calls we make, from one typed call registry.",
-    "Merge (M) + Merge history (M)/(S); Reference 360 picklists + lengths; source checkboxes.",
-    "Aligned Add / Edit forms; Save on first change; Ctrl+C row copy; IDMC curl to clipboard.",
+    "Design notebook: CDI asset types -> assets -> created/updated/by + runtime environment.",
+    "Taskflow -> its mapping tasks via IDMC references (replaces the tf_ -> mt_m_ name guess).",
+    "B360 job instance ids link to the IDMC portal job page (new tab), built by the backend.",
 )

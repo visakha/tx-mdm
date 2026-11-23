@@ -27,6 +27,11 @@ class MdmClient:
         self._mdm_url = mdm_url.rstrip("/")
         self._platform_url_override = platform_url_override.rstrip("/")
 
+    @property
+    def mdm_url(self) -> str:
+        """Configured MDM host (settings idmc_mdm_url); portal links are built from it."""
+        return self._mdm_url
+
     def _platform_url(self) -> str:
         return self._platform_url_override or self._http.session.current().base_api_url.rstrip("/")
 

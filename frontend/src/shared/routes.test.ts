@@ -15,6 +15,7 @@ describe("routes", () => {
     ["/taskflows", { screen: "taskflows", service: "cdi", runId: null }],
     ["/taskflows/runs/1309380263289049088", { screen: "taskflows", service: "cdi", runId: "1309380263289049088" }],
     ["/mdm/taskflows", { screen: "taskflows", service: "mdm", runId: null }],
+    ["/design", { screen: "design", service: "cdi" }],
     ["/mdm/taskflows/runs/1309401025769136128", { screen: "taskflows", service: "mdm", runId: "1309401025769136128" }],
   ];
 

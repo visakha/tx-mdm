@@ -15,6 +15,10 @@ B360 job search returns a fixed set incl. 800000000000007984, RUNNING, started f
 portal by another user (for the Business 360 Currently running view); status filters apply.
 B360 Data: metadata tenantModel/datamodel lists c360.person, c360.organization, zlv_guest;
 objects/businessEntity/<guid> gives fields + field groups; search returns 12 records each.
+Design (0.9.15): v3 objects for MTT / TASKFLOW / WORKFLOW / DTEMPLATE / DSS carry updateTime /
+updatedBy; objects/<id>/references (FED4 taskflow uses FED5 mapping task; FED5 uses MAP5 + a
+connection); v2 mttask (frs/<id>, <id>), mapping (<id>, search?name=), runtimeEnvironment (laptop
++ Cloud Hosted Agent), connection (one Oracle row WITH fake secrets, to prove they never show).
 """
 
 import json
@@ -53,18 +57,251 @@ def objects(q: str) -> dict[str, Any]:
             ]
         }
     if "MTT" in q:
-        return {"objects": [{"id": "FED1", "path": "Default/mt_load_customers"}]}
+        return {"objects": [_DESIGN_OBJECTS["FED1"], _DESIGN_OBJECTS["FED5"]]}
     if "TASKFLOW" in q:
-        return {
-            "objects": [
-                {"id": "FED3", "path": "Default/tf_demo_advanced"},
-                # A long real-style name + folder, for the full-width layout check (0.8.0).
-                {"id": "FED4", "path": "ZL_Vamsi/ZLV_CDI/tf_MDM_ZLV_TTF_Guest_Basic_EGR"},
-            ]
-        }
+        return {"objects": [_DESIGN_OBJECTS["FED3"], _DESIGN_OBJECTS["FED4"]]}
     if "WORKFLOW" in q:
-        return {"objects": [{"id": "FED2", "path": "Default/tf_load_all"}]}
+        return {"objects": [_DESIGN_OBJECTS["FED2"]]}
+    if "DTEMPLATE" in q:
+        return {"objects": [_DESIGN_OBJECTS["MAP5"]]}
+    if "DSS" in q:
+        return {"objects": [_DESIGN_OBJECTS["DSS1"]]}
     return {"objects": []}
+
+
+# ---- 0.9.15 Design notebook: v3 rows, references, v2 mttask / mapping / runtime / connection ----
+# Shapes follow the IICS REST API Reference (Nov 2025). Ids and names are made up.
+
+
+def _obj(oid: str, path: str, kind: str, by: str, when: str, desc: str = "") -> dict[str, Any]:
+    return {
+        "id": oid,
+        "path": path,
+        "type": kind,
+        "description": desc,
+        "updatedBy": by,
+        "updateTime": when,
+        "tags": [],
+    }
+
+
+_DESIGN_OBJECTS: dict[str, dict[str, Any]] = {
+    "FED1": _obj("FED1", "Default/mt_load_customers", "MTT", "fake.dev", "2026-11-20T15:00:00Z"),
+    # The child mapping task of tf_MDM_ZLV_TTF_Guest_Basic_EGR (FED4), on the laptop agent group.
+    "FED5": _obj(
+        "FED5",
+        "ZL_Vamsi/ZLV_CDI/mt_m_MDM_ZLV_TTF_Guest_Basic_EGR",
+        "MTT",
+        "VVamsi-idmcdev",
+        "2026-11-22T21:30:00Z",
+        "Guest egress to STAGING",
+    ),
+    "FED2": _obj("FED2", "Default/tf_load_all", "WORKFLOW", "fake.dev", "2026-11-19T10:00:00Z"),
+    "FED3": _obj(
+        "FED3", "Default/tf_demo_advanced", "TASKFLOW", "fake.dev", "2026-11-18T09:00:00Z"
+    ),
+    # A long real-style name + folder, for the full-width layout check (0.8.0).
+    "FED4": _obj(
+        "FED4",
+        "ZL_Vamsi/ZLV_CDI/tf_MDM_ZLV_TTF_Guest_Basic_EGR",
+        "TASKFLOW",
+        "VVamsi-idmcdev",
+        "2026-11-22T21:40:00Z",
+    ),
+    "MAP5": _obj(
+        "MAP5",
+        "ZL_Vamsi/ZLV_CDI/m_MDM_ZLV_TTF_Guest_Basic_EGR",
+        "DTEMPLATE",
+        "VVamsi-idmcdev",
+        "2026-11-22T21:20:00Z",
+    ),
+    "DSS1": _obj("DSS1", "Default/dss_copy_guests", "DSS", "fake.dev", "2026-11-10T08:00:00Z"),
+}
+
+_V2_RUNTIME = [
+    {
+        "id": "01000025000000000003",
+        "orgId": "fakeorg",
+        "name": "laptop",
+        "description": "Secure Agent group on len23",
+        "createTime": "2026-10-01T12:00:00.000Z",
+        "updateTime": "2026-11-15T12:00:00.000Z",
+        "createdBy": "VVamsi-idmcdev",
+        "updatedBy": "VVamsi-idmcdev",
+        "agents": [{"id": "01000008000000000002", "name": "len23"}],
+        "isShared": False,
+        "federatedId": "RE1",
+    },
+    {
+        "id": "01000025000000000001",
+        "orgId": "fakeorg",
+        "name": "Informatica Cloud Hosted Agent",
+        "description": "",
+        "createTime": "2026-09-01T12:00:00.000Z",
+        "updateTime": "2026-09-01T12:00:00.000Z",
+        "createdBy": "system",
+        "updatedBy": "system",
+        "agents": [],
+        "isShared": True,
+        "federatedId": "RE0",
+    },
+]
+
+_V2_MTTASK: dict[str, dict[str, Any]] = {
+    # key = v3 (federated) id; "id" = v2 id (the appContextId of a reference)
+    "FED1": {
+        "id": "0100000Z000000000001",
+        "name": "mt_load_customers",
+        "description": "",
+        "createTime": "2026-11-01T10:00:00.000Z",
+        "updateTime": "2026-11-20T15:00:00.000Z",
+        "createdBy": "fake.dev",
+        "updatedBy": "fake.dev",
+        "agentId": "01000008000000000001",
+        "runtimeEnvironmentId": "01000025000000000001",
+        "mappingId": "0100001700000000000A",
+    },
+    "FED5": {
+        "id": "0100000Z000000000005",
+        "name": "mt_m_MDM_ZLV_TTF_Guest_Basic_EGR",
+        "description": "Guest egress to STAGING",
+        "createTime": "2026-11-14T18:05:00.000Z",
+        "updateTime": "2026-11-22T21:30:00.000Z",
+        "createdBy": "VVamsi-idmcdev",
+        "updatedBy": "VVamsi-idmcdev",
+        "agentId": "01000008000000000002",
+        "runtimeEnvironmentId": "01000025000000000003",
+        "mappingId": "01000017000000000005",
+        "parameters": [],
+    },
+}
+
+_V2_MAPPING: dict[str, dict[str, Any]] = {
+    "01000017000000000005": {
+        "id": "01000017000000000005",
+        "name": "m_MDM_ZLV_TTF_Guest_Basic_EGR",
+        "description": "",
+        "createTime": "2026-11-14T17:50:00.000Z",
+        "updateTime": "2026-11-22T21:20:00.000Z",
+        "createdBy": "VVamsi-idmcdev",
+        "updatedBy": "VVamsi-idmcdev",
+        "valid": True,
+        "tasks": 1,
+    },
+}
+
+_V2_CONNECTION = [
+    {
+        "id": "0100000B000000000002",
+        "orgId": "fakeorg",
+        "name": "ORA_STAGING",
+        "description": "Oracle STAGING schema",
+        "createTime": "2026-10-02T12:00:00.000Z",
+        "updateTime": "2026-11-12T12:00:00.000Z",
+        "createdBy": "VVamsi-idmcdev",
+        "updatedBy": "VVamsi-idmcdev",
+        "agentId": "01000008000000000002",
+        "runtimeEnvironmentId": "01000025000000000003",
+        "type": "Oracle",
+        "host": "db.example.invalid",
+        "database": "ORCL",
+        "port": 1521,
+        "username": "fake_user",
+        "password": "fake-secret-must-never-show",
+        "securityToken": "fake-token-must-never-show",
+        "federatedId": "CON2",
+    },
+]
+
+_REFS_USES: dict[str, list[dict[str, Any]]] = {
+    "FED4": [
+        {
+            "id": "FED5",
+            "appContextId": "0100000Z000000000005",
+            "path": "ZL_Vamsi/ZLV_CDI/mt_m_MDM_ZLV_TTF_Guest_Basic_EGR",
+            "type": "MTT",
+            "description": "Guest egress to STAGING",
+            "updateTime": "2026-11-22T21:30:00Z",
+        }
+    ],
+    "FED5": [
+        {
+            "id": "MAP5",
+            "appContextId": "01000017000000000005",
+            "path": "ZL_Vamsi/ZLV_CDI/m_MDM_ZLV_TTF_Guest_Basic_EGR",
+            "type": "DTEMPLATE",
+            "description": "",
+            "updateTime": "2026-11-22T21:20:00Z",
+        },
+        {
+            "id": "CON2",
+            "appContextId": "0100000B000000000002",
+            "path": "ORA_STAGING",
+            "type": "Connection",
+            "description": "Oracle STAGING schema",
+            "updateTime": "2026-11-12T12:00:00Z",
+        },
+    ],
+}
+_REFS_USED_BY: dict[str, list[dict[str, Any]]] = {"MAP5": [_REFS_USES["FED4"][0]]}
+
+
+@app.get("/saas/public/core/v3/objects/{object_id}/references")
+def references(
+    object_id: str,
+    refType: str = "Uses",  # noqa: N803 (IDMC name)
+    limit: int = 25,
+    skip: int = 0,
+) -> dict[str, Any]:
+    table = _REFS_USED_BY if refType.lower() == "usedby" else _REFS_USES
+    rows = table.get(object_id, [])[skip : skip + limit]
+    return {"id": object_id, "count": len(rows), "references": rows}
+
+
+def _not_found(what: str) -> JSONResponse:
+    return JSONResponse(
+        status_code=404, content={"error": {"code": "NotFound", "description": what}}
+    )
+
+
+@app.get("/saas/api/v2/mttask/frs/{federated_id}", response_model=None)
+def mttask_frs(federated_id: str) -> dict[str, Any] | JSONResponse:
+    task = _V2_MTTASK.get(federated_id)
+    return task if task is not None else _not_found(f"mttask frs {federated_id}")
+
+
+@app.get("/saas/api/v2/mttask/{task_id}", response_model=None)
+def mttask_id(task_id: str) -> dict[str, Any] | JSONResponse:
+    task = next((t for t in _V2_MTTASK.values() if t["id"] == task_id), None)
+    return task if task is not None else _not_found(f"mttask {task_id}")
+
+
+@app.get("/saas/api/v2/mapping/search", response_model=None)
+def mapping_search(name: str) -> dict[str, Any] | JSONResponse:
+    found = next((m for m in _V2_MAPPING.values() if m["name"] == name), None)
+    return found if found is not None else _not_found(f"mapping {name}")
+
+
+@app.get("/saas/api/v2/mapping/{mapping_id}", response_model=None)
+def mapping_id(mapping_id: str) -> dict[str, Any] | JSONResponse:
+    found = _V2_MAPPING.get(mapping_id)
+    return found if found is not None else _not_found(f"mapping {mapping_id}")
+
+
+@app.get("/saas/api/v2/runtimeEnvironment")
+def runtime_environments() -> list[dict[str, Any]]:
+    return _V2_RUNTIME
+
+
+@app.get("/saas/api/v2/connection")
+def connections() -> list[dict[str, Any]]:
+    return _V2_CONNECTION
+
+
+@app.get("/saas/api/v2/connection/{connection_id}", response_model=None)
+def connection(connection_id: str) -> dict[str, Any] | JSONResponse:
+    found = next((c for c in _V2_CONNECTION if c["id"] == connection_id), None)
+    return found if found is not None else _not_found(f"connection {connection_id}")
 
 
 @app.post("/saas/api/v2/job")

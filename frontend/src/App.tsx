@@ -18,6 +18,7 @@ import { TaskflowsPanel } from "./cdi/TaskflowsPanel";
 import { MdmPanel } from "./mdm/MdmPanel";
 import { MdmMonitorPanel } from "./mdm/MdmMonitorPanel";
 import { B360DataPanel } from "./b360/B360DataPanel";
+import { DesignPanel } from "./design/DesignPanel";
 import { focusNavItems, focusNavValue, readFocus, SHOW_ALL_VALUE } from "./b360/b360Api";
 import type { BusinessEntityList } from "./b360/api-types";
 import { B360_ROUTE, MDM_TASKFLOWS_ROUTE, TASKFLOWS_ROUTE, useRoute, type MdmKindFilter, type Route } from "./shared/routes";
@@ -62,6 +63,13 @@ const HINTS: Record<string, string> = {
   "b360-data/records": "Master: the entity root, first 10 records. Click a record: its root fields and field groups stack below (detail). Read-only; Refresh reloads.",
   "b360-data/metadata": "Metadata: pick Master (golden record fields, groups, lookups, lengths) or Source (the model source records carry, for the source systems you tick).",
   "b360-data/sources": "Records (S): tick one or more source systems; only their source records show, one page of 10 master records at a time (filtered by tx-mdm after the IDMC read).",
+  "design/MTT": "Mapping tasks: click one for created / updated / by and its runtime environment. Refresh re-reads IDMC. Read-only.",
+  "design/TASKFLOW": "Taskflows: click one to see the mapping tasks it uses, each with created / updated / by / runtime environment.",
+  "design/DTEMPLATE": "Mappings: click one for created / updated / by (v2, by name) and the mapping tasks that use it.",
+  "design/DSS": "Synchronization tasks: updated time / by from v3 objects, and what each uses.",
+  "design/WORKFLOW": "Linear taskflows: updated time / by from v3 objects, and what each uses.",
+  "design/CONNECTION": "Connections: created / updated / by, type, runtime environment. No user names or passwords are ever read.",
+  "design/RUNTIME_ENVIRONMENT": "Runtime environments (Secure Agent groups): created / updated / by, shared or not.",
   "b360-data/add": "Type one record in the form (from the Pydantic model) and Save, or Generate 1-100 Faker rows, edit them, then Send to B360. Source system from b360_entities.toml. Every write asks first.",
 };
 
@@ -220,7 +228,7 @@ export function App(): React.JSX.Element {
             <Separator />
           </div>
         )}
-        {(["CDI", "MDM"] as const).map((notebook) => {
+        {(["CDI", "MDM", "DESIGN"] as const).map((notebook) => {
           const items = visibleSections.filter((s) => s.notebook === notebook);
           if (items.length === 0) return null;
           return (
@@ -354,6 +362,9 @@ export function App(): React.JSX.Element {
         </div>
         <div hidden={section !== "b360-data"}>
           <B360DataPanel route={b360Route} go={go} active={section === "b360-data"} />
+        </div>
+        <div hidden={section !== "design"}>
+          <DesignPanel active={section === "design"} />
         </div>
         <div hidden={!(section === "cdi-runs" && tab === "list")}>
           <RunsPanel service="cdi" active={section === "cdi-runs" && tab === "list"} go={go} />

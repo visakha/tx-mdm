@@ -1,6 +1,7 @@
 """MdmService: picker list (metadata + resolver), runs, and status refresh."""
 
 from app.common.idmc_session import IdmcError
+from app.common.portal import PortalLinks
 from app.common.runs import RunRegistry, RunStatus, RunView
 from app.mdm.client import MdmClient
 from app.mdm.models import MdmJob, MdmJobKind, MdmRunRequest
@@ -15,6 +16,7 @@ class MdmService:
         self._resolver = resolver
         self._registry = registry
         self._instances: dict[str, str] = {}  # run_key -> job instance id
+        self._portal = PortalLinks(client.mdm_url)
 
     def list_jobs(self) -> list[MdmJob]:
         assets = self._client.list_job_definitions()
@@ -46,6 +48,8 @@ class MdmService:
             self._registry.fail(run, str(exc))  # recorded, never retried
             return run
         self._instances[run.run_key] = instance_id
+        run.idmc_instance_id = instance_id
+        run.portal_url = self._portal.mdm_job(instance_id)
         self._registry.update_status(
             run, RunStatus.QUEUED, f"Accepted by B360, job instance {instance_id}"
         )

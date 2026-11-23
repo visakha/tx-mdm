@@ -60,6 +60,14 @@ class RunView(BaseModel):
     log: list[LogLine] = Field(default_factory=list)
     counts: RunCounts = Field(default_factory=RunCounts)
     errors: list[str] = Field(default_factory=list)
+    idmc_instance_id: str | None = Field(
+        default=None, description="0.9.15: MDM job instance id IDMC gave this run (MDM only)."
+    )
+    portal_url: str | None = Field(
+        default=None,
+        description="0.9.15: IDMC portal page of this run. MDM: jobDetails/{instance id} "
+        "(UNVERIFIED-DOC, from his browser). CDI: always null until he gives the CDI pattern.",
+    )
 
 
 def now_utc() -> datetime:

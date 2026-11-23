@@ -19,6 +19,7 @@ from app.common import idmc_echo, idmc_openapi
 from app.common.idmc_session import IdmcError, IdmcRateLimitedError
 from app.common.runs import JobAlreadyRunningError, RunNotFoundError
 from app.dependencies import get_b360_data_service
+from app.design.router import router as design_router
 from app.mdm.router import router as mdm_router
 from app.version import HIGHLIGHTS, VERSION
 
@@ -59,6 +60,10 @@ def create_app(frontend_origin: str = "http://localhost:5173") -> FastAPI:
             {
                 "name": "b360",
                 "description": "Business 360 data: entities, metadata, first records (read-only).",
+            },
+            {
+                "name": "design",
+                "description": "CDI design assets: types, lists, metadata (read-only, 0.9.15).",
             },
             {"name": "meta", "description": "Health."},
         ],
@@ -102,6 +107,7 @@ def create_app(frontend_origin: str = "http://localhost:5173") -> FastAPI:
     app.include_router(cdi_router)
     app.include_router(mdm_router)
     app.include_router(b360_router)
+    app.include_router(design_router)
 
     @app.get("/api/health", tags=["meta"], operation_id="health", summary="Liveness check")
     def health() -> dict[str, str]:

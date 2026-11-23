@@ -25,6 +25,68 @@ export interface AppliedFilter {
   value: string;
 }
 
+export interface AssetDetail {
+  type: DesignAssetType;
+  label: string;
+  as_of: string;
+  id: string;
+  v2_id?: string | null;
+  name: string;
+  path: string;
+  description?: string;
+  created_at?: string | null;
+  created_by?: string;
+  updated_at?: string | null;
+  updated_by?: string;
+  runtime_environment?: RuntimeEnvironmentRef | null;
+  runtime_note?: string;
+  mapping?: MappingRef | null;
+  connection_type?: string | null;
+  /** Runtime environment: shared. */
+  is_shared?: boolean | null;
+  /** v3 references refType=Uses. */
+  uses?: UsedAsset[];
+  /** v3 references refType=usedBy (mappings only). */
+  used_by?: UsedAsset[];
+  notes?: string[];
+}
+
+export interface AssetList {
+  type: DesignAssetType;
+  label: string;
+  as_of: string;
+  assets: AssetSummary[];
+  /** True when served from tx-mdm's cache (Refresh re-reads). */
+  from_cache: boolean;
+  notes?: string[];
+}
+
+export interface AssetSummary {
+  /** Id to open the detail with (v3 id; v2 id for connections / RE). */
+  id: string;
+  name: string;
+  /** Project / folder path (v3); the name for v2-listed types. */
+  path: string;
+  type: DesignAssetType;
+  description?: string;
+  updated_at?: string | null;
+  updated_by?: string;
+}
+
+export interface AssetTypeInfo {
+  type: DesignAssetType;
+  label: string;
+  listed_by: ListSource;
+  detail_by: DetailSource;
+  /** True when the asset itself names a runtime environment. */
+  has_runtime: boolean;
+  note: string;
+}
+
+export interface AssetTypeList {
+  types: AssetTypeInfo[];
+}
+
 export interface BusinessEntity {
   name: string;
   label: string;
@@ -108,6 +170,12 @@ export interface CreateResult {
   approval_required?: boolean | null;
   error?: string | null;
 }
+
+export type DesignAssetType = "MTT" | "TASKFLOW" | "DTEMPLATE" | "DSS" | "WORKFLOW" | "CONNECTION" | "RUNTIME_ENVIRONMENT";
+export const DESIGNASSETTYPE_VALUES: readonly DesignAssetType[] = ["MTT", "TASKFLOW", "DTEMPLATE", "DSS", "WORKFLOW", "CONNECTION", "RUNTIME_ENVIRONMENT"];
+
+export type DetailSource = "v2 mttask/frs/<id>" | "v2 mapping/search?name=" | "v2 connection/<id>" | "v2 runtimeEnvironment" | "v3 objects only";
+export const DETAILSOURCE_VALUES: readonly DetailSource[] = ["v2 mttask/frs/<id>", "v2 mapping/search?name=", "v2 connection/<id>", "v2 runtimeEnvironment", "v3 objects only"];
 
 export type DiscoveryStatus = "OK" | "NOT_AVAILABLE";
 export const DISCOVERYSTATUS_VALUES: readonly DiscoveryStatus[] = ["OK", "NOT_AVAILABLE"];
@@ -320,6 +388,9 @@ export interface IdmcEcho {
 export type LengthOrigin = "METADATA" | "CONFIG" | "DECLARED" | "LONGEST_CODE";
 export const LENGTHORIGIN_VALUES: readonly LengthOrigin[] = ["METADATA", "CONFIG", "DECLARED", "LONGEST_CODE"];
 
+export type ListSource = "v3 objects" | "v2 connection" | "v2 runtimeEnvironment";
+export const LISTSOURCE_VALUES: readonly ListSource[] = ["v3 objects", "v2 connection", "v2 runtimeEnvironment"];
+
 export interface LoginEcho {
   url: string;
   username: string;
@@ -331,6 +402,15 @@ export const LOOKUPMODE_VALUES: readonly LookupMode[] = ["SEARCH", "BUSINESS_ID"
 
 export type LookupStatus = "DECLARED" | "LABEL_MATCH" | "GUESSED" | "NOT_FOUND";
 export const LOOKUPSTATUS_VALUES: readonly LookupStatus[] = ["DECLARED", "LABEL_MATCH", "GUESSED", "NOT_FOUND"];
+
+export interface MappingRef {
+  id: string;
+  name?: string | null;
+  created_at?: string | null;
+  created_by?: string;
+  updated_at?: string | null;
+  updated_by?: string;
+}
 
 export interface MasterFieldWinner {
   field: string;
@@ -498,6 +578,12 @@ export interface RecordPage {
   /** 0.9.10: _meta keys present in these records, origin SYSTEM, reply order. */
   system_columns?: EntityField[];
   visibility?: FieldVisibility;
+}
+
+export interface RuntimeEnvironmentRef {
+  id: string;
+  /** Resolved from v2 runtimeEnvironment; null if unknown. */
+  name: string | null;
 }
 
 export type SessionHeader = "IDS-SESSION-ID" | "INFA-SESSION-ID" | "icSessionId";
@@ -675,4 +761,26 @@ export interface UpdateSourceResponse {
   sent: boolean;
   approval_required?: boolean | null;
   note: string;
+}
+
+export interface UsedAsset {
+  /** v3 (federated) id. */
+  id: string;
+  /** appContextId: the id v2 calls take. */
+  v2_id?: string | null;
+  name: string;
+  path: string;
+  /** IDMC's type string as returned (e.g. MTT, DTEMPLATE). */
+  type: string;
+  /** Design page type to open it with; null = not supported. */
+  open_type?: DesignAssetType | null;
+  /** Id to pass to the detail route. */
+  open_id?: string | null;
+  description?: string;
+  updated_at?: string | null;
+  created_at?: string | null;
+  created_by?: string;
+  updated_by?: string;
+  runtime_environment?: RuntimeEnvironmentRef | null;
+  detail_note?: string;
 }

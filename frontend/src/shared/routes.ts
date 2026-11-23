@@ -16,6 +16,7 @@
 //   /mdm/taskflows/runs/:runId  one B360 taskflow run
 //   /mdm/running            Business 360 Currently running (any starter) + lookup by id
 //   /b360, /b360/:entity    B360 Data notebook: business entities, first 10 records of one
+//   /design                 Design notebook (0.9.15): CDI asset types -> assets -> metadata
 
 import { useCallback, useEffect, useState } from "react";
 import { SLASH, tokens } from "./text";
@@ -38,7 +39,9 @@ export type Route =
   // Business 360 Currently running: every b360.* / c360.* job in the org.
   | { screen: "mdm-monitor"; service: "mdm" }
   // B360 Data notebook (0.9.5): entity = business entity internal id (null = none picked).
-  | { screen: "b360"; service: "mdm"; entity: string | null };
+  | { screen: "b360"; service: "mdm"; entity: string | null }
+  // Design notebook (0.9.15): read-only CDI asset metadata. Type = ribbon tab, asset = page state.
+  | { screen: "design"; service: "cdi" };
 
 export const MONITOR_ROUTE: Route = { screen: "monitor", service: "cdi" };
 
@@ -50,6 +53,8 @@ export const MDM_MONITOR_ROUTE: Route = { screen: "mdm-monitor", service: "mdm" 
 
 export const B360_ROUTE: Route = { screen: "b360", service: "mdm", entity: null };
 
+export const DESIGN_ROUTE: Route = { screen: "design", service: "cdi" };
+
 export const DEFAULT_ROUTE: Route = { screen: "jobs", service: "mdm" };
 
 export function parseRoute(pathname: string): Route {
@@ -58,6 +63,7 @@ export function parseRoute(pathname: string): Route {
   const [service, kind, id] = parts;
   if (service === "monitor" && kind === undefined) return MONITOR_ROUTE;
   if (service === "taskflows" && kind === undefined) return TASKFLOWS_ROUTE;
+  if (service === "design" && kind === undefined) return DESIGN_ROUTE;
   if (service === "taskflows" && kind === "runs" && id !== undefined) {
     return { screen: "taskflows", service: "cdi", runId: id };
   }
@@ -99,6 +105,8 @@ export function formatRoute(route: Route): string {
       return "/monitor";
     case "mdm-monitor":
       return "/mdm/running";
+    case "design":
+      return "/design";
     case "b360":
       return route.entity === null ? "/b360" : `/b360/${encodeURIComponent(route.entity)}`;
     case "taskflows":

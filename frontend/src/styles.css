@@ -311,3 +311,10 @@ html[data-theme="dark"] { --system: #f06fcf; }
 .nowrap { white-space: nowrap; }
 .copy-note { margin: 4px 0 0; }
 .pending-hint { margin: 4px 0; }
+
+/* 0.9.15 Design notebook: list left, metadata right; no colour coding. */
+.design-panel { display: flex; flex-direction: column; gap: 8px; }
+.design-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.design-list h3, .design-detail h3 { font-size: 15px; margin: 4px 0 8px; }
+.design-uses h4 { font-size: 14px; margin: 12px 0 4px; }
+@media (max-width: 1100px) { .design-columns { grid-template-columns: minmax(0, 1fr); } }

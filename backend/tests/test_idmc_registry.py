@@ -12,6 +12,7 @@ from app.common import idmc_registry as registry
 from app.common import idmc_session
 from app.common.idmc_openapi import build
 from app.common.idmc_registry import IDMC_CALLS, LOGIN, SOURCE_SYSTEMS, DocStatus
+from app.design import endpoints as design_ep
 from app.main import create_app
 from app.mdm import endpoints as mdm_ep
 
@@ -21,7 +22,7 @@ SENDER = "common/idmc_session.py"
 
 def _path_constants() -> dict[str, str]:
     out: dict[str, str] = {}
-    for module in (b360_ep, cdi_ep, mdm_ep):
+    for module in (b360_ep, cdi_ep, mdm_ep, design_ep):
         for name, value in vars(module).items():
             if name.isupper() and isinstance(value, str) and value.startswith("/"):
                 out[f"{module.__name__}.{name}"] = value

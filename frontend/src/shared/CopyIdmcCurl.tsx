@@ -13,9 +13,20 @@ import { copyMessage, copyText } from "./clipboard";
 
 type Flavour = "powershell" | "bash";
 
-/** prefix: tx-mdm path the screen calls; view: words for the aria-label; slug: testid part. */
-export function CopyIdmcCurl({ prefix, view, slug }: { prefix: string; view: string; slug: string }): React.JSX.Element {
-  const ref = useSyncExternalStore(subscribeEchoes, () => latestEcho(prefix));
+/** prefix: tx-mdm path the screen calls; view: words for the aria-label; slug: testid part;
+ * exact: match the path exactly (0.9.15 Design list vs detail). */
+export function CopyIdmcCurl({
+  prefix,
+  view,
+  slug,
+  exact = false,
+}: {
+  prefix: string;
+  view: string;
+  slug: string;
+  exact?: boolean;
+}): React.JSX.Element {
+  const ref = useSyncExternalStore(subscribeEchoes, () => latestEcho(prefix, exact));
   const [status, setStatus] = useState<string>("");
 
   const copyScript = (flavour: Flavour): void => {

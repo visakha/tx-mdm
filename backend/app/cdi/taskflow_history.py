@@ -8,8 +8,9 @@ the history is built from:
   2. monitor rows whose task name IS the taskflow (trackable; none seen live so far);
   3. monitor rows of its child tasks (NOT trackable: their run_id is IDMC's per-task run
      number, not a taskflow run id). Child names come from taskflow statuses this backend
-     has read; when none is known, the tf_ -> mt_m_ naming in his org is used as a GUESS and
-     the pane says so.
+     has read; else (0.9.15) from IDMC's v3 references of the taskflow (refType=Uses, the
+     documented dependency call, MTT rows); only when that call fails or lists no mapping
+     task is the tf_ -> mt_m_ naming in his org used as a GUESS, and the pane says so.
 """
 
 from datetime import datetime
@@ -52,6 +53,10 @@ class TaskflowHistory(BaseModel):
     child_tasks: list[str] = Field(description="Child task names used to match monitor rows.")
     child_names_guessed: bool = Field(
         description="True when no taskflow status named the children and tf_ -> mt_m_ was used."
+    )
+    child_names_source: Literal["tracked run", "references", "guess", "none"] = Field(
+        default="none",
+        description="0.9.15: where child_tasks came from (references = v3 objects/<id>/references)",
     )
     taskflow_in_monitor: bool = Field(
         description="True when IDMC's monitor / log listed a row under the taskflow's own name."
@@ -146,14 +151,22 @@ def build_history(
     known_children: set[str],
     notes: list[str],
     now: datetime,
+    referenced_children: set[str] | None = None,
 ) -> TaskflowHistory:
     children = set(known_children)
     guessed = False
-    if not children:
+    source: Literal["tracked run", "references", "guess", "none"] = "none"
+    if children:
+        source = "tracked run"
+    elif referenced_children:
+        children = set(referenced_children)
+        source = "references"
+    else:
         guess = guess_child(name)
         if guess is not None:
             children = {guess}
             guessed = True
+            source = "guess"
     rows = [_from_app(run_id, run, status, now) for run_id, run, status in app_runs]
     seen_ids = {r.run_id for r in rows}
     in_monitor = False
@@ -174,8 +187,9 @@ def build_history(
         )
     if guessed:
         out_notes.append(
-            f"Child task {sorted(children)[0]} is a guess from the tf_ -> mt_m_ naming; it is "
-            "confirmed once a run of this taskflow has been tracked here."
+            f"Child task {sorted(children)[0]} is a guess from the tf_ -> mt_m_ naming (IDMC's "
+            "references call gave no mapping task); it is confirmed once a run of this "
+            "taskflow has been tracked here."
         )
     return TaskflowHistory(
         taskflow_name=name,
@@ -183,6 +197,7 @@ def build_history(
         rows=sorted(rows, key=_sort_key),
         child_tasks=sorted(children),
         child_names_guessed=guessed,
+        child_names_source=source,
         taskflow_in_monitor=in_monitor,
         notes=out_notes,
     )

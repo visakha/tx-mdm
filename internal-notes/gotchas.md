@@ -200,3 +200,9 @@ documented beyond `c360person.firstName`; the backend reuses the prefix the last
   GROUP_FIELD(x_phone, ph_num); a system field whose own name has a dot
   (`_indexValidationError.code`) is therefore no special case.
 
+
+## Two worktrees, one venv (0.9.15)
+- Running `python dev/gen_ts_types.py` from a SECOND checkout with the first checkout's venv
+  imports `app` from the editable install (the first checkout), not from this one: the
+  generated types silently miss new routes. Run it as `PYTHONPATH=. python dev/gen_ts_types.py`
+  (or use this checkout's own venv). pytest is fine (rootdir comes first on sys.path).
