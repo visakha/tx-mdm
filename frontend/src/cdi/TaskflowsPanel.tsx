@@ -9,9 +9,13 @@ import { Button } from "@ui-sdk/react/button";
 import { Input } from "@ui-sdk/react/input";
 import { Listbox, ListboxItem } from "@ui-sdk/react/listbox";
 import { ApiError, errorText } from "../shared/api";
+import { catalog } from "../shared/catalog";
+import { RunProgress } from "../shared/RunProgress";
 import { statusTone } from "../shared/run";
+import { onPickTaskflow } from "../shell/search";
+import { selectRibbonTab } from "../shell/sections";
 import type { Route } from "../shared/routes";
-import { cdiApi, type CdiTask } from "./cdiApi";
+import type { CdiTask } from "./cdiApi";
 import { elapsedText, minutesText } from "./monitorApi";
 import {
   cleanRunId,
@@ -61,11 +65,21 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
 
   useEffect(() => {
     if (!active || taskflows.length > 0) return;
-    cdiApi
-      .listTasks()
+    catalog.tasks
+      .read()
       .then((all) => setTaskflows(all.filter((t) => t.type === "TASKFLOW")))
       .catch((err: unknown) => setListError(errorText(err)));
   }, [active, taskflows.length]);
+
+  // A press on a taskflow in the left-pane search picks it here and opens the Run tab.
+  useEffect(
+    () =>
+      onPickTaskflow((name) => {
+        setPicked(name);
+        selectRibbonTab("cdi-taskflows", "run");
+      }),
+    [],
+  );
 
   const runPicked = useCallback((): void => {
     if (picked === null) return;
@@ -88,6 +102,7 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
   const [pollError, setPollError] = useState<string | null>(null);
   const [stopped, setStopped] = useState<boolean>(false);
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
+  const [polls, setPolls] = useState<number>(0);
   const [logFor, setLogFor] = useState<string | null>(null);
   const [logText, setLogText] = useState<string>("");
 
@@ -95,6 +110,7 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
     setStatus(null);
     setPollError(null);
     setStopped(false);
+    setPolls(0);
     setLogFor(null);
     setLogText("");
     setAbortNote(null);
@@ -110,6 +126,7 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
         .then((next) => {
           if (cancelled) return;
           setStatus(next);
+          setPolls((n) => n + 1);
           setPollError(null);
           if (!next.is_final) timer = window.setTimeout(poll, POLL_MS);
         })
@@ -167,9 +184,9 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
   const pastedId = useMemo(() => cleanRunId(pasted), [pasted]);
 
   return (
-    <div className="panel" data-testid="taskflows-panel">
+    <div className="panel tf-panel" data-testid="taskflows-panel">
       <section className="picker" aria-label="Run taskflow by name">
-        <div className="tf-run-box">
+        <div className="tf-run-box" data-testid="tf-run-box">
         <h2>Run taskflow by name</h2>
         {listError !== null && (
           <p className="warn-text" data-testid="tf-list-error">
@@ -220,6 +237,7 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
         <Button
           aria-label={picked === null ? "Pick a taskflow first" : `Run ${picked}`}
           data-testid="tf-run"
+          data-agent-confirm={`Starts taskflow ${picked ?? "(none picked)"} on the live IDMC org`}
           disabled={picked === null || starting}
           onClick={runPicked}
         >
@@ -232,8 +250,9 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
         )}
 
         </div>
-        <div className="tf-track-box">
+        <div className="tf-track-box" data-testid="tf-track-box">
         <h2>Track a run id</h2>
+        <div className="tf-track-row">
         <Input
           aria-label="IDMC run id"
           data-testid="tf-runid-input"
@@ -251,6 +270,7 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
         >
           Track
         </Button>
+        </div>
         </div>
       </section>
 
@@ -270,14 +290,32 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
             <h2>{status.taskflow_name || "(taskflow name not reported)"}</h2>
             <p>
               Run id <code data-testid="tf-run-id">{status.run_id}</code>{" "}
-              <span className={`status ${statusTone(status.status)}`} data-testid="tf-status">
+              <span
+                className={`status ${status.aborted ? "aborted" : statusTone(status.status)}`}
+                data-testid="tf-status"
+                data-aborted={status.aborted ? "true" : "false"}
+                title={status.aborted ? "Terminated by a person; IDMC reports it as FAILED" : status.state_text}
+              >
                 {statusLabel(status)}
               </span>
             </p>
+            <RunProgress
+              final={status.is_final}
+              tone={status.aborted ? "warn" : statusTone(status.status)}
+              label={`Progress of taskflow run ${status.run_id}`}
+              detail={
+                status.subtasks.length === 0
+                  ? "no child steps reported yet"
+                  : `${String(status.subtasks.filter((c) => c.status === "SUCCESS").length)} of ${String(status.subtask_count ?? status.subtasks.length)} child steps done, ${status.totals.source_success.toLocaleString()} source rows ok`
+              }
+              polls={polls}
+              everySeconds={POLL_MS / 1000}
+            />
             {running && (
               <Button
                 aria-label={`Abort taskflow run ${status.run_id}`}
                 data-testid="tf-abort"
+                data-agent-confirm={`Terminates (aborts) taskflow run ${status.run_id} on the live IDMC org`}
                 disabled={aborting}
                 onClick={abortRun}
               >

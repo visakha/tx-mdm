@@ -130,3 +130,11 @@ Do the levels in order. Write a level that does not apply as "N/A - reason".
 - **Retrying a failed job "to be helpful".** This violates Principle IV.
 - **Copying content from other private projects into this public repo.** This violates
   Principle X.
+
+## 9. Things to remember
+
+- Every session that touches the UI reads internal-notes/ui-observations.md first and updates it in the same commit as any UI change.
+- Vamsi's words (2026-11-22 23:04 CST): "Keep that as one of your primary tasks whenever you come
+  to this repo." It is the agent's own reference so it does not re-observe the app every session.
+- Every behaviour change bumps backend/app/version.py (version + exactly three highlights);
+  GET /api/about returns only that, as the post-pull handshake.

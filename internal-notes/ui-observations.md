@@ -2,7 +2,7 @@
 
 Standing rule (Vamsi, 2026-11-22 23:04 CST): keep these notes current whenever the app changes:
 what each screen / element does, what to click for each workflow, intended vs actual behaviour.
-Last updated: 2026-11-22, OneNote layout commit. Observed with Cypress (Electron) against the
+Last updated: 2026-11-22 ~23:55 CST, v0.8.0 redesign commit. Observed with Cypress (Electron) against the
 fake IDMC (backend/dev/fake_idmc.py). Not yet observed against the live org - see the end.
 
 ## Layout (OneNote style)
@@ -96,3 +96,31 @@ plus the job / monitor / taskflow actions (`runTaskflowByName`, `trackTaskflowRu
   raw JSON string and "ended -" with 25.2 min (SUSPENDED has no endTime); long names/paths
   overflowed the taskflow list. Now: reason only, ended = updateTime, names wrap.
 - Not observed yet: a running taskflow ticking live, and a SUCCESS run with row counts.
+
+## v0.8.0 changes (observed with Cypress vs the fake IDMC, 2026-11-22)
+
+- Left-pane search (`nav-search`) now matches tasks, taskflows and MDM jobs BY NAME as you type,
+  listed under "Matches" (`search-results`, `search-count`, `search-hit-<name>`, `data-kind`),
+  max 25. Click: a taskflow opens /taskflows with it picked on the Run tab; a task or job opens
+  its detail. Section filtering still applies. Agents: `agent.act` setValue on "Search results".
+- Icons: inline SVG (shell/icons.tsx) on left-pane items and search hits. ASCII-only source.
+- Taskflows (Vamsi 23:34-23:35 CST): "Run taskflow by name" (`tf-run-box`) spans 100% of the
+  section; "Track a run id" (`tf-track-box`) is stacked BELOW it at 100%, run-id input full width
+  with Track at the right. Long names (e.g. tf_MDM_ZLV_TTF_Guest_Basic_EGR + folder path) show on
+  one line. Both boxes are visible on every Taskflows tab now (Track tab = same page, hint
+  points below). Run view sits under both. Spec: cypress/e2e/taskflows_layout.cy.js.
+- Results pane progress + poll clock (Vamsi 23:40 CST; primary target the Business 360 results
+  pane, same shared component `shared/RunProgress.tsx` on CDI results and the taskflow run view):
+  - `run-progress` (UI SDK Progress): indeterminate sweep while not final (IDMC gives no percent,
+    so none is invented); counts shown as text (`run-progress-text`). Final: full, coloured by
+    outcome, `data-tone` ok / warn / bad, `data-complete`.
+  - `poll-clock`: small SVG clock; background colour cycles on every status poll (`data-polls`),
+    grey and still when `data-final="true"`.
+  - Poll interval: MDM and CDI results now every 15 s (was 5 s); taskflow run view stays 10 s.
+  - Spec: cypress/e2e/mdm_progress.cy.js (RUNNING then SUCCESS).
+- Aborted: a taskflow ending with code processManuallyTerminated shows "ABORTED (IDMC: FAILED)"
+  in grey (`tf-status` data-aborted="true"); progress bar warn tone.
+- UI SDK confirm marks: Run (`cdi-run`, `mdm-run`, `tf-run`) and Abort (`tf-abort`) carry
+  data-agent-confirm; the bridge asks a person only for those. See ui-sdk-philosophy.md.
+- Not yet observed live for 0.8.0: everything above was seen against the fake only.
+

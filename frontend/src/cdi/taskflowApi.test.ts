@@ -23,3 +23,11 @@ describe("taskflow helpers", () => {
     ).toEqual({ jobInstanceId: "ABC123" });
   });
 });
+
+describe("aborted taskflow runs", () => {
+  it("labels a run a person terminated as ABORTED, keeping IDMC's own word", () => {
+    // Seen live 2026-11-22 23:21 CST: IDMC reports FAILED + code processManuallyTerminated.
+    expect(statusLabel({ status: "FAILED", state_text: "FAILED", aborted: true })).toBe("ABORTED (IDMC: FAILED)");
+    expect(statusLabel({ status: "FAILED", state_text: "FAILED", aborted: false })).toBe("FAILED");
+  });
+});

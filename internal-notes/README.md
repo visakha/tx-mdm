@@ -51,6 +51,11 @@ changes/            one folder per change proposal (proposal / specs / design / 
 idq-barebones-v2/   read-only snapshot of the Snowflake bare-bones package (from idq-cli)
 ```
 
+## UI rule (standing, Vamsi 2026-11-22 23:04 CST)
+
+Every session that touches the UI reads internal-notes/ui-observations.md first and updates it in the same commit as any UI change.
+The UI SDK way we use it: internal-notes/ui-sdk-philosophy.md.
+
 ## Shape rules that keep it simple
 
 - CDI and MDM are separate: they have their own session, host, list, run registry, router and

@@ -38,11 +38,18 @@ describe("Abort a running taskflow (fake IDMC)", () => {
   it("shows Abort only while running, confirms, then the run goes final", () => {
     cy.visit("/taskflows/runs/900000000000000003");
     cy.get('[data-testid="tf-status"]').should("contain", "RUNNING");
+    cy.get('[data-testid="run-progress"]').should("have.attr", "data-final", "false");
+    cy.get('[data-testid="poll-clock"]').should("have.attr", "data-final", "false");
+    cy.screenshot("taskflow-running-progress");
     cy.on("window:confirm", (text) => { expect(text).to.contain("900000000000000003"); return true; });
     cy.get('[data-testid="tf-abort"]').should("be.visible").click();
     cy.get('[data-testid="tf-abort-note"]').should("contain", "accepted");
     cy.get('[data-testid="tf-run-view"]', { timeout: 30000 }).should("have.attr", "data-status", "FAILED");
     cy.get('[data-testid="tf-abort"]').should("not.exist");
+    // IDMC reports a person's terminate as FAILED + processManuallyTerminated -> shown as ABORTED.
+    cy.get('[data-testid="tf-status"]').should("contain", "ABORTED").and("have.attr", "data-aborted", "true");
+    cy.get('[data-testid="run-progress"]').should("have.attr", "data-final", "true").and("have.attr", "data-tone", "warn");
+    cy.get('[data-testid="poll-clock"]').should("have.attr", "data-final", "true");
     cy.screenshot("abort-done");
   });
 });

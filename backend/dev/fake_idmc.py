@@ -13,6 +13,7 @@ The Monitor tab calls (activityMonitor?details=true, activityLog?rowLimit=N) get
 demo set: one running taskflow with two child steps, plus a few finished runs.
 """
 
+import json
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -49,7 +50,13 @@ def objects(q: str) -> dict[str, Any]:
     if "MTT" in q:
         return {"objects": [{"id": "FED1", "path": "Default/mt_load_customers"}]}
     if "TASKFLOW" in q:
-        return {"objects": [{"id": "FED3", "path": "Default/tf_demo_advanced"}]}
+        return {
+            "objects": [
+                {"id": "FED3", "path": "Default/tf_demo_advanced"},
+                # A long real-style name + folder, for the full-width layout check (0.8.0).
+                {"id": "FED4", "path": "ZL_Vamsi/ZLV_CDI/tf_MDM_ZLV_TTF_Guest_Basic_EGR"},
+            ]
+        }
     if "WORKFLOW" in q:
         return {"objects": [{"id": "FED2", "path": "Default/tf_load_all"}]}
     return {"objects": []}
@@ -176,7 +183,8 @@ def job_search() -> dict[str, Any]:
 
 @app.post("/job/public/api/v1/jobInstance/{kind}")
 def run_mdm(kind: str) -> dict[str, Any]:
-    return {"id": f"JI-{kind}"}
+    # A fresh instance id per start, so every run shows RUNNING first, then SUCCESS.
+    return {"id": f"JI-{kind}-{_bump('mdm-start-' + kind)}"}
 
 
 @app.get("/job/public/api/v1/jobInstance/{instance_id}")
@@ -247,11 +255,18 @@ def taskflow_status(run_id: str, subtaskDetails: str = "No") -> dict[str, Any]: 
     if run_id == TF_LONG and run_id not in TERMINATED:
         return base | {"status": "RUNNING", "subtasks": 1, "subtaskDetails": {"details": {}}}
     if run_id == TF_LONG:
-        error = "Taskflow terminated by user"
-        tasks = [_child("mt_demo_load", "14", "STOPPED", 10, 0, error)]
+        # Same shape as seen live 2026-11-22 23:21 CST after a terminate.
+        child_error = "The job was stopped by user vvamsi-idmcdev using the API."
+        tasks = [_child("mt_demo_load", "14", "STOPPED", 10, 0, child_error)]
         return base | {
             "status": "FAILED",
-            "errorMessage": error,
+            "errorMessage": json.dumps(
+                {
+                    "reason": '"Manual Process Termination"',
+                    "code": "processManuallyTerminated",
+                    "details": "",
+                }
+            ),
             "subtasks": 1,
             "subtaskDetails": {"details": {"tasks": tasks}},
         }

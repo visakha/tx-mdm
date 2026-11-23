@@ -63,4 +63,13 @@ Do it only with Vamsi's go-ahead and his credentials in `backend/.env`:
 - DOC (KB 000216333): body {"runid": [...]}, INFA-SESSION-ID or Basic auth, 204 success, max 200
   ids, 500 if any id is invalid. https://knowledge.informatica.com/s/article/000216333?language=en_US
 - COMMUNITY: method/path PUT /active-bpel/services/tf/terminate (pod host, same as tf status).
-- UNVERIFIED live: what status the run shows after terminate (FAILED vs STOPPED/SUSPENDED).
+- VERIFIED live 2026-11-22 23:21 CST: a terminated run shows FAILED + code processManuallyTerminated (see below).
+
+## Abort seen live (2026-11-22 23:21 CST, run 1309386379683184640, stopped from the portal Monitor)
+- Taskflow status after the terminate: `FAILED` (final), NOT STOPPED or SUSPENDED. errorMessage is a
+  JSON string: reason `"Manual Process Termination"` (wrapped in its own extra quotes), code
+  `processManuallyTerminated`.
+- Child MTT mt_m_MDM_ZLV_TTF_Guest_Basic: `STOPPED`, error "The job was stopped by user
+  vvamsi-idmcdev using the API." Rows: source_success 20, target_success 0 (7.6 min).
+- Since 0.8.0 the backend sets `aborted: true` on that code and strips the extra quotes; the UI
+  shows "ABORTED (IDMC: FAILED)" in grey. An ordinary failure keeps `aborted: false`.

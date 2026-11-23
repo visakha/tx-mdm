@@ -8,6 +8,7 @@ import { Listbox, ListboxItem } from "@ui-sdk/react/listbox";
 import { RunResult } from "../shared/RunResult";
 import type { RunView } from "../shared/run";
 import type { Route } from "../shared/routes";
+import { catalog } from "../shared/catalog";
 import { usePicker, useStarter } from "../shared/usePicker";
 import { useRunPolling } from "../shared/useRunPolling";
 import { CDI_TYPE_LABEL, cdiApi, type CdiTask } from "./cdiApi";
@@ -24,13 +25,13 @@ export function CdiPanel({
 }): React.JSX.Element {
   const selectedId = route.screen === "job" ? route.jobId : null;
   const runKey = route.screen === "run" ? route.runKey : null;
-  const picker = usePicker(cdiApi.listTasks, idOf, textOf, selectedId);
+  const picker = usePicker(catalog.tasks.read, idOf, textOf, selectedId);
   const onStarted = useCallback(
     (run: RunView) => go({ screen: "run", service: "cdi", runKey: run.run_key }),
     [go],
   );
   const starter = useStarter(onStarted);
-  const { run, pollError } = useRunPolling(runKey, cdiApi.runUrl);
+  const { run, pollError, polls } = useRunPolling(runKey, cdiApi.runUrl);
   const [apiName, setApiName] = useState<string>("");
 
   const task = picker.selected;
@@ -109,6 +110,7 @@ export function CdiPanel({
             <Button
               aria-label={`Run ${task.name}`}
               data-testid="cdi-run"
+              data-agent-confirm={`Starts CDI task ${task.name} on the live IDMC org`}
               disabled={starter.starting}
               onClick={runSelected}
             >
@@ -127,7 +129,7 @@ export function CdiPanel({
         {route.screen === "run" && run === null && pollError !== null && (
           <p className="warn-text">{pollError}</p>
         )}
-        {run !== null && <RunResult run={run} pollError={pollError} />}
+        {run !== null && <RunResult run={run} pollError={pollError} polls={polls} />}
       </section>
     </div>
   );

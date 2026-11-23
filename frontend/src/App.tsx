@@ -6,17 +6,23 @@
 // The URL still decides the section (deep links + agent bridge unchanged); every panel stays
 // mounted so switching sections never drops a list already loaded.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getJson } from "./shared/api";
 import { Input } from "@ui-sdk/react/input";
 import { Listbox, ListboxItem } from "@ui-sdk/react/listbox";
+import { Separator } from "@ui-sdk/react/separator";
 import { Tabs, TabsList, TabsTab } from "@ui-sdk/react/tabs";
 import { CdiPanel } from "./cdi/CdiPanel";
 import { MonitorPanel } from "./cdi/MonitorPanel";
 import { TaskflowsPanel } from "./cdi/TaskflowsPanel";
 import { MdmPanel } from "./mdm/MdmPanel";
 import { TASKFLOWS_ROUTE, useRoute, type MdmKindFilter, type Route } from "./shared/routes";
+import type { CdiTask } from "./cdi/cdiApi";
+import type { MdmJob } from "./mdm/mdmApi";
+import { catalog } from "./shared/catalog";
+import { HIT_ICON, Icon, SECTION_ICON } from "./shell/icons";
 import { RunsPanel } from "./shell/RunsPanel";
+import { HIT_LABEL, MAX_HITS, pickTaskflow, searchItems } from "./shell/search";
 import {
   matchSections,
   NOTEBOOK_TITLE,
@@ -31,8 +37,8 @@ import {
 const HINTS: Record<string, string> = {
   "cdi-tasks/tasks": "Pick a CDI task on the left of the page, then press Run.",
   "cdi-tasks/run": "The selected task, full width. Press Run to start it (one run at a time).",
-  "cdi-taskflows/run": "Pick a taskflow, check its input fields (jobInstanceId), press Run. The run is tracked on the right.",
-  "cdi-taskflows/track": "Paste an IDMC run id and press Track to follow a run started anywhere.",
+  "cdi-taskflows/run": "Pick a taskflow, check its input fields (jobInstanceId), press Run. The run shows below.",
+  "cdi-taskflows/track": "Paste an IDMC run id in Track a run id (below Run) and press Track.",
   "cdi-taskflows/summary": "Status, times and per child task rows ok / failed and errors.",
   "cdi-taskflows/log": "Press Session log on a child task to read its log.",
   "cdi-monitor/all": "Running now, recent history and runs started here. Refreshes every 15 s.",
@@ -58,6 +64,28 @@ export function App(): React.JSX.Element {
       .then((about) => setVersion(about.version))
       .catch(() => setVersion(""));
   }, []);
+  // Item search: the lists load from the shared catalog only once someone types.
+  const [tasks, setTasks] = useState<readonly CdiTask[]>([]);
+  const [jobs, setJobs] = useState<readonly MdmJob[]>([]);
+  const [searchNote, setSearchNote] = useState<string>("");
+  const searching = search.trim() !== "";
+  useEffect(() => {
+    if (!searching) return;
+    const load = (): void => {
+      setSearchNote("");
+      catalog.tasks.read().then(setTasks, () => setSearchNote("CDI tasks did not load."));
+      catalog.jobs.read().then(setJobs, () => setSearchNote("MDM jobs did not load."));
+    };
+    load();
+    const stopTasks = catalog.tasks.onChange(load);
+    const stopJobs = catalog.jobs.onChange(load);
+    return () => {
+      stopTasks();
+      stopJobs();
+    };
+  }, [searching]);
+  const hits = useMemo(() => searchItems(search, tasks, jobs), [search, tasks, jobs]);
+
   const lastKind = useRef<MdmKindFilter | null>(null);
   if (route.screen === "kind") lastKind.current = route.kind;
   if (route.screen === "jobs" && route.service === "mdm") lastKind.current = null;
@@ -96,13 +124,60 @@ export function App(): React.JSX.Element {
       </header>
 
       <aside className="navpane" aria-label="Notebooks">
-        <Input
-          aria-label="Search sections"
-          data-testid="nav-search"
-          placeholder="Search (e.g. taskflow, egress)"
-          value={search}
-          onValueChange={(value) => setSearch(value ?? "")}
-        />
+        <div className="search-box">
+          <Icon name="search" />
+          <Input
+            aria-label="Search tasks, taskflows and jobs"
+            data-testid="nav-search"
+            placeholder="Search by name (e.g. guest, egress)"
+            value={search}
+            onValueChange={(value) => setSearch(value ?? "")}
+          />
+        </div>
+        {searching && (
+          <div className="notebook matches" data-testid="search-results">
+            <h2>
+              Matches <span className="count" data-testid="search-count">{hits.length}</span>
+            </h2>
+            {hits.length > 0 && (
+              <Listbox
+                aria-label="Search results"
+                value={null}
+                onValueChange={(value) => {
+                  const hit = hits.find((h) => h.value === value);
+                  if (hit === undefined) return;
+                  go(hit.route);
+                  if (hit.taskflowName !== null) pickTaskflow(hit.taskflowName);
+                }}
+              >
+                {hits.slice(0, MAX_HITS).map((hit) => (
+                  <ListboxItem
+                    key={hit.value}
+                    value={hit.value}
+                    className={`hit-item k-${hit.kind}`}
+                    data-testid={`search-hit-${hit.name}`}
+                    data-kind={hit.kind}
+                    title={`${HIT_LABEL[hit.kind]} - ${hit.where}`}
+                  >
+                    <Icon name={HIT_ICON[hit.kind]} />
+                    <span className="hit-text">
+                      <span className="item-name">{hit.name}</span>
+                      <span className="hit-where">
+                        {HIT_LABEL[hit.kind]} - {hit.where}
+                      </span>
+                    </span>
+                  </ListboxItem>
+                ))}
+              </Listbox>
+            )}
+            {hits.length > MAX_HITS && (
+              <p className="muted">{hits.length - MAX_HITS} more - type more of the name.</p>
+            )}
+            {hits.length === 0 && searchNote === "" && <p className="muted">No task, taskflow or job matches.</p>}
+            {searchNote !== "" && <p className="warn-text">{searchNote}</p>}
+            <Separator />
+          </div>
+        )}
         {(["CDI", "MDM"] as const).map((notebook) => {
           const items = visibleSections.filter((s) => s.notebook === notebook);
           if (items.length === 0) return null;
@@ -126,6 +201,7 @@ export function App(): React.JSX.Element {
                     data-nav={s.id}
                   >
                     <span className="swatch" aria-hidden="true" />
+                    <Icon name={SECTION_ICON[s.id]} />
                     <span className="item-name">{s.label}</span>
                   </ListboxItem>
                 ))}
@@ -133,7 +209,6 @@ export function App(): React.JSX.Element {
             </div>
           );
         })}
-        {visibleSections.length === 0 && <p className="muted">No section matches.</p>}
       </aside>
 
       <div className="ribbon">

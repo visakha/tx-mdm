@@ -3,6 +3,12 @@
 Newest first. Each entry records what was decided, why, and what it supersedes. Reversing a
 decision means adding a new entry, never editing an old one.
 
+## 2026-11-22 - D-UI-1: UI observation notes are mandatory
+
+Every session that touches the UI reads internal-notes/ui-observations.md first and updates it in the same commit as any UI change. (Vamsi, 23:04 CST: "Keep that as one of your primary tasks whenever you come to this
+repo."). Also D-UI-2 (23:34-23:35 CST): on Taskflows, "Run taskflow by name" and "Track a run
+id" are stacked vertically, each 100% wide, so long names and run ids show on one line.
+
 ## 2026-11-22 - D11: Outbound HTTP ignores ambient proxy env vars by default
 
 - **Decision:** the backend builds its httpx client with `trust_env=False` and an explicit

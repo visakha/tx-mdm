@@ -9,6 +9,7 @@ import { Listbox, ListboxItem } from "@ui-sdk/react/listbox";
 import { RunResult } from "../shared/RunResult";
 import type { RunView } from "../shared/run";
 import type { MdmKindFilter, Route } from "../shared/routes";
+import { catalog } from "../shared/catalog";
 import { usePicker, useStarter } from "../shared/usePicker";
 import { useRunPolling } from "../shared/useRunPolling";
 import { mdmApi, type MdmJob } from "./mdmApi";
@@ -28,13 +29,13 @@ export function MdmPanel({
 }): React.JSX.Element {
   const selectedId = route.screen === "job" ? route.jobId : null;
   const runKey = route.screen === "run" ? route.runKey : null;
-  const picker = usePicker(mdmApi.listJobs, idOf, textOf, selectedId);
+  const picker = usePicker(catalog.jobs.read, idOf, textOf, selectedId);
   const onStarted = useCallback(
     (run: RunView) => go({ screen: "run", service: "mdm", runKey: run.run_key }),
     [go],
   );
   const starter = useStarter(onStarted);
-  const { run, pollError } = useRunPolling(runKey, mdmApi.runUrl);
+  const { run, pollError, polls } = useRunPolling(runKey, mdmApi.runUrl);
 
   const job = picker.selected;
 
@@ -95,6 +96,7 @@ export function MdmPanel({
             <Button
               aria-label={`Run ${job.name}`}
               data-testid="mdm-run"
+              data-agent-confirm={`Starts MDM ${job.kind} job ${job.name} on the live IDMC org`}
               disabled={starter.starting || !job.runnable}
               onClick={() => starter.start(() => mdmApi.startRun(job.asset_id))}
             >
@@ -113,7 +115,7 @@ export function MdmPanel({
         {route.screen === "run" && run === null && pollError !== null && (
           <p className="warn-text">{pollError}</p>
         )}
-        {run !== null && <RunResult run={run} pollError={pollError} />}
+        {run !== null && <RunResult run={run} pollError={pollError} polls={polls} />}
       </section>
     </div>
   );

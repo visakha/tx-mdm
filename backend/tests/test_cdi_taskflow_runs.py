@@ -251,3 +251,24 @@ def test_terminate_more_than_200_ids_is_400(idmc_http: IdmcHttp):
 def test_terminate_429_is_hard_stop(idmc: respx.MockRouter, idmc_http: IdmcHttp):
     idmc.put(f"{POD}/active-bpel/services/tf/terminate").respond(429)
     assert _app(idmc_http).post("/api/cdi/taskflows/runs/1/terminate").status_code == 429
+
+
+def test_live_aborted_shape_is_failed_with_aborted_flag_and_clean_reason():
+    """Shape seen live 2026-11-22 23:21 CST for run 1309386379683184640, aborted in the portal."""
+    body = dict(SUSPENDED)
+    body["status"] = "FAILED"
+    body["endTime"] = "2026-11-23T05:21:37Z"
+    body["errorMessage"] = (
+        '{"reason":"\\"Manual Process Termination\\"","code":"processManuallyTerminated",'
+        '"details":""}'
+    )
+    status = status_from_body(RUN, body, NOW)
+    assert status.status.value == "FAILED" and status.is_final
+    assert status.aborted is True
+    assert status.error == "Manual Process Termination"
+
+
+def test_ordinary_failure_is_not_aborted():
+    body = dict(SUSPENDED)
+    body["errorMessage"] = '{"reason":"boom","code":"error","details":""}'
+    assert status_from_body(RUN, body, NOW).aborted is False

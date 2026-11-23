@@ -55,6 +55,8 @@ export interface TaskflowRunStatus {
   elapsed_minutes: number | null;
   started_by: string;
   error: string;
+  /** IDMC code processManuallyTerminated: a person aborted it. IDMC still says FAILED. */
+  aborted: boolean;
   subtask_count: number | null;
   subtasks: SubtaskRun[];
   totals: RunTotals;
@@ -127,6 +129,7 @@ export function cleanRunId(text: string): string | null {
 }
 
 /** "SUSPENDED" shows as STOPPED in our status; keep IDMC's word visible next to it. */
-export function statusLabel(status: TaskflowRunStatus): string {
+export function statusLabel(status: Pick<TaskflowRunStatus, "status" | "state_text" | "aborted">): string {
+  if (status.aborted) return `ABORTED (IDMC: ${status.state_text})`;
   return status.state_text === status.status ? status.status : `${status.status} (${status.state_text})`;
 }

@@ -9,7 +9,8 @@ describe("OneNote layout (fake IDMC)", () => {
     cy.get('[data-testid="ribbon-tab-log"]').should("exist");
     cy.get('[data-testid="crumb"]').should("contain", "Taskflows");
     cy.get('[data-testid="tf-item-tf_demo_advanced"]').should("be.visible");
-    cy.get('[data-testid="tf-runid-input"]').should("not.be.visible");
+    // 0.8.0: Track a run id is stacked below Run, both visible.
+    cy.get('[data-testid="tf-runid-input"]').should("be.visible");
     cy.get('[data-testid="ribbon-tab-track"]').click();
     cy.get('[data-testid="tf-runid-input"]').should("be.visible").type("900000000000000002");
     cy.get('[data-testid="tf-track"]').click();
@@ -54,7 +55,7 @@ describe("OneNote layout (fake IDMC)", () => {
     cy.get('[data-testid="cdi-run"]').click();
     cy.location("pathname").should("match", /\/cdi\/runs\/\w+/);
     cy.get('[data-testid="crumb"]').should("contain", "Runs");
-    cy.get('[data-testid="run-result"]', { timeout: 30000 }).should("have.attr", "data-status", "SUCCESS");
+    cy.get('[data-testid="run-result"]', { timeout: 60000 }).should("have.attr", "data-status", "SUCCESS");
     cy.get('[data-testid="ribbon-tab-list"]').click();
     cy.get('[data-testid="runs-cdi"]').should("be.visible").find('[data-testid^="run-item-"]').should("have.length.at.least", 1);
     cy.screenshot("onenote-runs");

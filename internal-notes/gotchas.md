@@ -103,3 +103,8 @@ this; `app/main.py` forces stdout/stderr to ASCII with backslash escapes at runt
   a community post confirms PUT /active-bpel/services/tf/terminate). Not yet called live.
 - Backend: `POST /api/cdi/taskflows/runs/{run_id}/terminate` (optional `{"run_ids": [...]}`).
   IDMC 500 -> our 502 with the text; never retried. UI: "Abort run" while RUNNING, with confirm.
+
+## A person's abort reports FAILED, not STOPPED (seen live 2026-11-22 23:21 CST)
+- Do not read "FAILED" on a taskflow as a crash without checking `aborted` (code
+  processManuallyTerminated). The child mapping task shows STOPPED "stopped by user ... using the
+  API" even when the stop was pressed in the portal Monitor. The reason text arrives in extra quotes.

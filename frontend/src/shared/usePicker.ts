@@ -17,7 +17,8 @@ export interface PickerState<T> {
 }
 
 export function usePicker<T>(
-  load: () => Promise<T[]>,
+  /** fresh=false may answer from the shared catalog copy; Refresh passes fresh=true. */
+  load: (fresh: boolean) => Promise<T[]>,
   idOf: (item: T) => string,
   textOf: (item: T) => string,
   selectedId: string | null,
@@ -27,16 +28,17 @@ export function usePicker<T>(
   const [loadError, setLoadError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("");
 
-  const reload = useCallback(() => {
+  const fetchItems = useCallback((fresh: boolean) => {
     setLoading(true);
     setLoadError(null);
-    load()
+    load(fresh)
       .then(setItems)
       .catch((err: unknown) => setLoadError(errorText(err)))
       .finally(() => setLoading(false));
   }, [load]);
 
-  useEffect(reload, [reload]);
+  useEffect(() => fetchItems(false), [fetchItems]);
+  const reload = useCallback(() => fetchItems(true), [fetchItems]);
 
   const visible = useMemo(() => {
     const needle = filter.trim().toLowerCase();

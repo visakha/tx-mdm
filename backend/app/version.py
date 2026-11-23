@@ -1,9 +1,9 @@
 """App version and the top three things in it. GET /api/about returns exactly this."""
 
-VERSION = "0.7.0"
+VERSION = "0.8.0"
 
 HIGHLIGHTS: tuple[str, str, str] = (
-    "Run a CDI taskflow by name with its input fields (jobInstanceId), then follow it by run id.",
-    "Abort a running taskflow by run id (Abort button and POST .../terminate).",
-    "OneNote-style layout: left pane with search and sections, contextual tabs on top.",
+    "Left-pane search now finds tasks, taskflows and jobs by name and opens them in one click.",
+    "Run results show a progress bar and a clock that changes colour on every 15 s status check.",
+    "Taskflows: Run by name and Track a run id are stacked full width; an abort shows as Aborted.",
 )

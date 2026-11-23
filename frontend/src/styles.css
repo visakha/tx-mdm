@@ -125,8 +125,6 @@ main { flex: 1; padding: 16px 20px; }
 [data-section$="-runs"][data-view="result"] .panel,
 [data-section="cdi-taskflows"][data-view="summary"] .panel,
 [data-section="cdi-taskflows"][data-view="log"] .panel { grid-template-columns: 1fr; }
-[data-section="cdi-taskflows"][data-view="run"] .tf-track-box,
-[data-section="cdi-taskflows"][data-view="track"] .tf-run-box,
 [data-section="cdi-taskflows"][data-view="summary"] [data-testid="tf-log-viewer"] { display: none; }
 .tf-run-box, .tf-track-box { display: flex; flex-direction: column; gap: 8px; }
 [data-section="cdi-monitor"][data-view="running"] section[aria-label="Recent history"],
@@ -147,3 +145,65 @@ main { flex: 1; padding: 16px 20px; }
   font-size: 0.75rem;
   opacity: 0.85;
 }
+
+/* 0.8.0: icons, item search, aborted status */
+.icon { flex: none; color: #5b5f6b; }
+.nav-item[aria-selected="true"] .icon, .nav-item[data-selected] .icon { color: var(--one); }
+.search-box { display: flex; align-items: center; gap: 6px; }
+.search-box input { flex: 1; min-width: 0; }
+.matches h2 { display: flex; align-items: center; gap: 6px; }
+.matches .count { background: var(--one-soft); color: var(--one); border-radius: 8px; padding: 0 6px; font-size: 11px; }
+.hit-item { display: flex; align-items: flex-start; gap: 8px; padding: 5px 8px; border-radius: 4px; cursor: pointer; }
+.hit-item:hover, .hit-item[data-highlighted] { background: var(--one-soft); }
+.hit-item .icon { margin-top: 2px; }
+.hit-text { display: flex; flex-direction: column; min-width: 0; }
+.hit-text .item-name { overflow-wrap: anywhere; font-size: 13px; }
+.hit-where { font-size: 11px; color: #667; overflow-wrap: anywhere; }
+.k-taskflow .icon { color: var(--c-purple); } .k-task .icon { color: var(--c-blue); }
+.k-ingress .icon { color: var(--c-orange); } .k-egress .icon { color: var(--c-red); }
+.k-mdm-job .icon { color: var(--c-teal); }
+.status.aborted { background: #5b5f6b; }
+.matches [role="separator"] { border: none; border-top: 1px solid var(--line); margin: 8px 0 0; }
+
+/* 0.8.0 (Vamsi 23:34-23:35 CST): Taskflows = one column. "Run taskflow by name" spans 100%,
+   "Track a run id" is stacked BELOW it at 100%, the run view below both. Long taskflow names
+   and run ids stay on one line (no wrapping). */
+.panel.tf-panel { grid-template-columns: minmax(0, 1fr); }
+.tf-panel .picker { max-height: none; overflow: visible; background: none; border: none; padding: 0; gap: 12px; }
+.tf-panel .tf-run-box, .tf-panel .tf-track-box {
+  width: 100%; box-sizing: border-box; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 12px;
+}
+.tf-panel [data-testid="tf-list"] {
+  display: block; width: 100%; max-width: none; box-sizing: border-box; overflow-x: auto;
+}
+.tf-panel [data-testid="tf-list"] [role="option"] { display: flex; gap: 10px; align-items: baseline; }
+.tf-panel [data-testid="tf-param-add"] { align-self: flex-start; }
+.tf-panel .tf-name, .tf-panel .tf-path { white-space: nowrap; overflow-wrap: normal; }
+.tf-panel .param-row { grid-template-columns: minmax(160px, 1fr) 2fr; }
+.tf-panel input { width: 100%; box-sizing: border-box; }
+.tf-track-row { display: flex; gap: 8px; align-items: center; width: 100%; }
+.tf-track-row input { flex: 1; min-width: 0; }
+.tf-panel [data-testid="tf-run"] { align-self: flex-start; }
+.tf-panel [data-testid="tf-list"] [role="option"] { padding: 4px 8px; border-radius: 4px; cursor: pointer; }
+.tf-panel [data-testid="tf-list"] [role="option"][aria-selected="true"] { background: var(--one-soft); outline: 1px solid var(--one); }
+
+/* 0.8.0 (Vamsi 23:40 CST): run progress bar + poll clock on result panes */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.run-progress-row { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+.run-progress { flex: 1; min-width: 120px; }
+.run-progress-track { position: relative; height: 10px; border-radius: 5px; background: #e6e8ee; overflow: hidden; }
+.run-progress-fill { height: 100%; border-radius: 5px; background: var(--busy); transition: width 0.4s; }
+.run-progress-fill[data-indeterminate] { position: absolute; width: 35%; animation: run-sweep 1.4s ease-in-out infinite; }
+@keyframes run-sweep { from { left: -35%; } to { left: 100%; } }
+@media (prefers-reduced-motion: reduce) { .run-progress-fill[data-indeterminate] { animation: none; left: 0; width: 100%; opacity: 0.5; } }
+.tone-ok .run-progress-fill { background: var(--ok); }
+.tone-warn .run-progress-fill { background: var(--warn); }
+.tone-bad .run-progress-fill { background: var(--bad); }
+.poll-clock { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; transition: background 0.3s; flex: none; }
+.run-progress-text { font-size: 12px; color: #556; white-space: nowrap; }
+/* result panes never spill past the page edge (seen in the 0.8.0 screenshot review) */
+.result, .detail, .run-box { box-sizing: border-box; max-width: 100%; min-width: 0; }
+.run-progress-text { white-space: normal; flex: 0 1 auto; min-width: 0; }
+.result .log { overflow-wrap: anywhere; }
+.run-box .run-progress-row { width: 100%; }
+.tf-panel .detail { overflow-x: auto; }

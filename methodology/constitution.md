@@ -77,6 +77,12 @@ no mock framework beyond `respx` for HTTP.
 - The declared agent actions (`window.txmdm`) and the OpenAPI schema (summaries, descriptions,
   `operationId`s) are part of the public contract: changing them is a spec change.
 
+### IX-a. UI observation notes (standing rule, 2026-11-22)
+
+Every session that touches the UI reads internal-notes/ui-observations.md first and updates it in the same commit as any UI change.
+The notes say what each screen does, what to click per workflow, and intended vs observed
+behaviour - from real Cypress runs, not from memory.
+
 ### X. Public repository hygiene (NON-NEGOTIABLE)
 
 This repo is public:

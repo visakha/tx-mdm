@@ -118,6 +118,11 @@ class TaskflowRunStatus(BaseModel):
     )
     started_by: str = ""
     error: str = ""
+    aborted: bool = Field(
+        default=False,
+        description="True when IDMC says the run was terminated by a person (code "
+        "processManuallyTerminated). IDMC then reports status FAILED, not STOPPED.",
+    )
     subtask_count: int | None = None
     subtasks: list[SubtaskRun] = Field(default_factory=list)
     totals: RunTotals = Field(default_factory=RunTotals)
@@ -190,7 +195,30 @@ def _reason_of(message: str) -> str:
     except ValueError:
         return message
     reason = parsed.get("reason") if isinstance(parsed, dict) else None
-    return reason if isinstance(reason, str) and reason != "" else message
+    if not isinstance(reason, str):
+        return message
+    # Live abort reason arrives wrapped in its own quotes: "\"Manual Process Termination\"".
+    reason = reason.strip().strip('"').strip()
+    return reason if reason != "" else message
+
+
+ABORTED_CODE = "processManuallyTerminated"
+
+
+def _code_of(message: str) -> str:
+    """The "code" of a JSON errorMessage, or "" when the message is plain text.
+
+    Seen live 2026-11-22 23:21 CST after a terminate from the portal Monitor: reason
+    "Manual Process Termination" (in extra quotes), code "processManuallyTerminated".
+    """
+    if not message.startswith("{"):
+        return ""
+    try:
+        parsed = json.loads(message)
+    except ValueError:
+        return ""
+    code = parsed.get("code") if isinstance(parsed, dict) else None
+    return code if isinstance(code, str) else ""
 
 
 # ---- translation (pure, unit tested) ---------------------------------------------------------
@@ -250,6 +278,7 @@ def status_from_body(run_id: str, body: dict[str, Any], now: datetime) -> Taskfl
         elapsed_minutes=minutes_between(started, ended or now),
         started_by=_text(body, "startedBy"),
         error=_error(body, "errorMessage"),
+        aborted=_code_of(_text(body, "errorMessage")) == ABORTED_CODE,
         subtask_count=_int(body.get("subtasks")),
         subtasks=subtasks,
         totals=totals_of(subtasks),
