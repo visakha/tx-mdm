@@ -25,8 +25,9 @@ class CdiTask(BaseModel):
     updated_at: datetime | None = None
     domain: TaskDomain = Field(
         default=TaskDomain.CDI,
-        description="mdm = Business 360 taskflow (tf_MDM_*, *_EGR, *_IGR; needs jobInstanceId), "
-        "else cdi. See app/cdi/taskflow_kind.py.",
+        description="mdm = Business 360 taskflow (tf_MDM_*, *_EGR, *_IGR; needs jobInstanceId) or "
+        "its child mapping task (mt_m_MDM_*, *_EGR, *_IGR; runs via its taskflow only), else "
+        "cdi. See app/cdi/taskflow_kind.py.",
     )
 
 

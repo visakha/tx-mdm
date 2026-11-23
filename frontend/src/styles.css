@@ -253,3 +253,6 @@ main { flex: 1; padding: 16px 20px; }
 .b360-records tr.clickable:hover, .b360-records tr.selected { background: var(--hover, rgba(127, 127, 127, 0.12)); }
 .b360-group h4 { margin: 8px 0 4px; }
 .b360-group table.kv th { text-align: left; width: 30%; }
+/* 0.9.6: read-only Business 360 child mapping tasks under the MDM taskflow picker. */
+.tf-child-tasks { margin-top: 12px; }
+.tf-child-tasks td.nowrap { white-space: nowrap; }

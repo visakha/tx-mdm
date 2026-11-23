@@ -6,7 +6,7 @@ from typing import Any
 
 from app.cdi import endpoints as ep
 from app.cdi.models import CdiRunHandle, CdiTask, CdiTaskType
-from app.cdi.taskflow_kind import TaskDomain, taskflow_domain
+from app.cdi.taskflow_kind import TaskDomain, mapping_task_domain, taskflow_domain
 from app.common.idmc_session import IdmcHttp
 from app.common.runs import RunCounts, RunStatus
 
@@ -208,6 +208,14 @@ class CdiClient:
 # ---- pure translation functions (unit tested) ------------------------------------------------
 
 
+def _domain_of(name: str, task_type: CdiTaskType) -> TaskDomain:
+    if task_type is CdiTaskType.TASKFLOW:
+        return taskflow_domain(name)
+    if task_type is CdiTaskType.MTT:
+        return mapping_task_domain(name)
+    return TaskDomain.CDI
+
+
 def to_cdi_task(obj: dict[str, Any], task_type: CdiTaskType) -> CdiTask:
     path = str(obj.get("path", ""))
     name = path.rsplit("/", 1)[-1] if path else str(obj.get("id"))
@@ -218,7 +226,7 @@ def to_cdi_task(obj: dict[str, Any], task_type: CdiTaskType) -> CdiTask:
         type=task_type,
         description=str(obj.get("description") or ""),
         updated_at=obj.get("updateTime"),
-        domain=taskflow_domain(name) if task_type is CdiTaskType.TASKFLOW else TaskDomain.CDI,
+        domain=_domain_of(name, task_type),
     )
 
 

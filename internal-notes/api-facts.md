@@ -177,3 +177,17 @@ Step 3 - the first 10 records
 - Confidence: search HIGH (documented); businessEntity metadata MEDIUM (path from two outside
   sources, shape guessed from the documented sibling); tenantModel/datamodel MEDIUM-LOW (path
   known, shape not printed anywhere we have).
+
+## MDM vs CDI mapping tasks (0.9.6, Vamsi's yes 2026-11-23 00:58 CST)
+
+- Extends the taskflow naming rule to mapping tasks (MTT), in the same place:
+  backend/app/cdi/taskflow_kind.py (`is_mdm_mapping_task`, `mapping_task_domain`).
+- MDM mapping task: name starts `mt_m_MDM_` or ends `_EGR` / `_IGR` (any case).
+  `mt_m_Ldg_*` and `mt_m_Stg_*` stay CDI even with MDM in the name.
+- Live names (from /api/cdi/tasks on his backend, 2026-11-23 00:57 CST):
+  mt_m_MDM_ZLV_TTF_Guest_Basic -> mdm, mt_m_MDM_ZLV_TTF_Guest_Basic_EGR -> mdm,
+  the 9 mt_m_Ldg_/mt_m_Stg_ tasks -> cdi.
+- `GET /api/cdi/tasks` tags them `domain: "mdm"`. `POST /api/cdi/runs` answers 400 for an MDM
+  mapping task ("runs via its taskflow") and never calls IDMC: the mapping reads the taskflow's
+  jobInstanceId, so a lone start would fail with "[FATAL] Invalid/Default JobInstanceId".
+- CDI Monitor and taskflow history are unchanged (they still list these child rows by name).

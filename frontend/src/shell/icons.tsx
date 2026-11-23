@@ -51,6 +51,7 @@ export const SECTION_ICON: Record<SectionId, IconName> = {
 
 export const HIT_ICON: Record<HitKind, IconName> = {
   task: "task",
+  "mdm-mapping-task": "task",
   taskflow: "taskflow",
   "mdm-taskflow": "taskflow",
   ingress: "ingress",

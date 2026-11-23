@@ -13,7 +13,7 @@ from app.cdi.monitor import (
     keep,
 )
 from app.cdi.taskflow_history import TaskflowHistory, build_history
-from app.cdi.taskflow_kind import parameter_problem
+from app.cdi.taskflow_kind import mapping_task_run_problem, parameter_problem
 from app.cdi.taskflow_runs import (
     SubtaskRun,
     TaskflowRunStatus,
@@ -83,6 +83,10 @@ class CdiService:
             problem = parameter_problem(request.task_name, request.parameters)
             if problem is not None:
                 raise TaskflowParameterError(problem)
+        if request.task_type is CdiTaskType.MTT:
+            mtt_problem = mapping_task_run_problem(request.task_name)
+            if mtt_problem is not None:
+                raise TaskflowParameterError(mtt_problem)
         run = self._registry.reserve(request.task_id, request.task_name, request.task_type.value)
         api_name = request.api_name or request.task_name
         try:

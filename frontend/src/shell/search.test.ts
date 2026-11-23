@@ -12,7 +12,7 @@ const job = (id: string, name: string, kind: MdmJob["kind"]): MdmJob => ({
 });
 
 const TASKS = [
-  task("t1", "mt_m_MDM_ZLV_TTF_Guest_Basic", "MTT"),
+  task("t1", "mt_m_MDM_ZLV_TTF_Guest_Basic", "MTT", "ZL_Vamsi/ZLV_CDI", "mdm"),
   task("t2", "tf_MDM_ZLV_TTF_Guest_Basic", "TASKFLOW", "ZL_Vamsi/ZLV_CDI", "mdm"),
   task("t4", "tf_Stg_MDM_CDI_TTF", "TASKFLOW", "MDM_TTF/CDI_STG"),
   task("t3", "mt_m_Ldg_MDM_CDI_TTF_CLIENTS", "MTT", "MDM_TTF/CDI_LDG"),
@@ -22,13 +22,19 @@ const JOBS = [job("j1", "Egress ZLV Guest basic Src_TTF", "Egress"), job("j2", "
 describe("left-pane item search", () => {
   it("finds tasks, taskflows and jobs by name, any case", () => {
     const hits = searchItems("guest", TASKS, JOBS);
-    expect(hits.map((h) => h.kind).sort()).toEqual(["egress", "ingress", "mdm-taskflow", "task"]);
+    expect(hits.map((h) => h.kind).sort()).toEqual(["egress", "ingress", "mdm-mapping-task", "mdm-taskflow"]);
   });
 
   it("needs every typed word; sends MDM taskflows to the Business 360 Taskflows section", () => {
     const [hit] = searchItems("tf_mdm guest", TASKS, JOBS);
     expect(hit?.kind).toBe("mdm-taskflow");
     expect(hit?.taskflowName).toBe("tf_MDM_ZLV_TTF_Guest_Basic");
+    expect(hit?.route).toEqual({ screen: "taskflows", service: "mdm", runId: null });
+  });
+
+  it("0.9.6: sends MDM child mapping tasks to the Business 360 Taskflows section, read only", () => {
+    const [hit] = searchItems("mt_m_mdm", TASKS, JOBS);
+    expect(hit?.kind).toBe("mdm-mapping-task");
     expect(hit?.route).toEqual({ screen: "taskflows", service: "mdm", runId: null });
   });
 

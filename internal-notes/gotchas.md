@@ -135,3 +135,12 @@ this; `app/main.py` forces stdout/stderr to ASCII with backslash escapes at runt
 - openapi-typescript does not install next to TypeScript 7 (npm ERESOLVE peer range), so the
   generator is a small script: backend/dev/gen_ts_types.py. Older modules (cdi, mdm, taskflows)
   still have hand-written TS types; move them under the generator when they are next touched.
+
+## MDM child mapping tasks never run on their own (0.9.6)
+
+- mt_m_MDM_* / *_EGR / *_IGR mapping tasks read the jobInstanceId their taskflow passes. Started
+  alone they get the default value and fail ("[FATAL] Invalid/Default JobInstanceId", seen live
+  2026-11-22). So they are visible only (Business 360 Taskflows, "Child mapping tasks") and the
+  backend refuses a direct start with 400. Start the taskflow instead.
+- Parent link in the UI is a name guess (tf_X -> mt_m_X); with no match it just says "runs via
+  its taskflow".

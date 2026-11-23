@@ -330,3 +330,18 @@ agent and the panel fetches once for the screen (two read-only searches).
 Observed: only against the fake IDMC (unit tests + typecheck + build). Not yet run in a real
 browser or Cypress; not yet seen against his org (the metadata shapes are UNVERIFIED, see
 api-facts.md "B360 Data notebook").
+
+## v0.9.6 (2026-11-23): MDM child mapping tasks moved to Business 360
+
+Intended:
+- CDI notebook > Tasks picker no longer lists mt_m_MDM_* / *_EGR / *_IGR mapping tasks (filter on
+  `domain !== "mdm"`, unchanged code, the backend now tags them mdm).
+- Business 360 notebook > Taskflows (jobInstanceId) > Run tab: under the run box, a read-only
+  "Child mapping tasks" table (`mdm-child-tasks`, rows `mdm-child-task-<name>`): mapping task,
+  "Runs via its taskflow" (link `mdm-child-task-parent-<name>` picks that taskflow in the list
+  above; name guess tf_X -> mt_m_X; no match -> muted "runs via its taskflow"), folder.
+  No Run button for them.
+- Left-pane search: hit kind `mdm-mapping-task`, label "MDM mapping task (runs via its taskflow)",
+  opens Business 360 Taskflows.
+- CDI Monitor and taskflow history unchanged.
+Observed: unit tests + typecheck + build only. Not run in a browser or Cypress.

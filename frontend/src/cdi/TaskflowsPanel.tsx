@@ -70,6 +70,16 @@ interface Props {
   domain: Service;
 }
 
+/**
+ * 0.9.6: the taskflow a Business 360 child mapping task runs under, by his naming
+ * (tf_X -> mt_m_X), or null when no listed taskflow matches. A name guess, shown as such.
+ */
+export function parentTaskflowOf(mappingTask: string, taskflows: readonly CdiTask[]): string | null {
+  const lowered = mappingTask.toLowerCase();
+  const hit = taskflows.find((t) => t.name.toLowerCase().replace(/^tf_/, "mt_m_") === lowered);
+  return hit === undefined ? null : hit.name;
+}
+
 export function TaskflowsPanel({ route, go, active, domain }: Props): React.JSX.Element {
   const sectionId: SectionId = domain === "mdm" ? "mdm-taskflows" : "cdi-taskflows";
   const isMdm = domain === "mdm";
@@ -78,6 +88,8 @@ export function TaskflowsPanel({ route, go, active, domain }: Props): React.JSX.
 
   // ---- taskflow list + run by name ----
   const [taskflows, setTaskflows] = useState<CdiTask[]>([]);
+  // 0.9.6: Business 360 child mapping tasks (mt_m_MDM_*, *_EGR, *_IGR), shown read-only.
+  const [childTasks, setChildTasks] = useState<CdiTask[]>([]);
   const [listError, setListError] = useState<string | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
   // MDM taskflows: jobInstanceId row, EMPTY (he types the real id). CDI taskflows: no rows.
@@ -93,9 +105,12 @@ export function TaskflowsPanel({ route, go, active, domain }: Props): React.JSX.
     if (!active || taskflows.length > 0) return;
     catalog.tasks
       .read()
-      .then((all) => setTaskflows(all.filter((t) => t.type === "TASKFLOW" && t.domain === domain)))
+      .then((all) => {
+        setTaskflows(all.filter((t) => t.type === "TASKFLOW" && t.domain === domain));
+        setChildTasks(isMdm ? all.filter((t) => t.type === "MTT" && t.domain === "mdm") : []);
+      })
       .catch((err: unknown) => setListError(errorText(err)));
-  }, [active, taskflows.length, domain]);
+  }, [active, taskflows.length, domain, isMdm]);
 
   // A press on a taskflow in the left-pane search picks it here and opens the Run tab.
   useEffect(
@@ -476,6 +491,55 @@ export function TaskflowsPanel({ route, go, active, domain }: Props): React.JSX.
               use its Summary or Session log link to follow it.
             </p>
           </div>
+          {isMdm && (
+            <div className="tf-child-tasks" data-testid="mdm-child-tasks">
+              <h3>Child mapping tasks</h3>
+              <p className="muted">
+                Read only. These run via their taskflow, which passes the jobInstanceId; they are never
+                started on their own.
+              </p>
+              {childTasks.length === 0 ? (
+                <p className="muted" data-testid="mdm-child-tasks-empty">No Business 360 mapping tasks found.</p>
+              ) : (
+                <div className="table-wrap"><table className="monitor" data-testid="mdm-child-tasks-table">
+                  <thead>
+                    <tr>
+                      <th>Mapping task</th>
+                      <th>Runs via its taskflow</th>
+                      <th>Folder</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {childTasks.map((t) => {
+                      const parent = parentTaskflowOf(t.name, taskflows);
+                      return (
+                        <tr key={t.id} data-testid={`mdm-child-task-${t.name}`}>
+                          <td className="nowrap">{t.name}</td>
+                          <td className="nowrap">
+                            {parent === null ? (
+                              <span className="muted">runs via its taskflow</span>
+                            ) : (
+                              <a
+                                href="#"
+                                data-testid={`mdm-child-task-parent-${t.name}`}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  setPicked(parent);
+                                }}
+                              >
+                                {parent}
+                              </a>
+                            )}
+                          </td>
+                          <td className="nowrap muted">{t.path.slice(0, Math.max(0, t.path.length - t.name.length - 1))}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table></div>
+              )}
+            </div>
+          )}
         </section>
       )}
 

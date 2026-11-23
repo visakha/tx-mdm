@@ -5,7 +5,7 @@ import type { CdiTask } from "../cdi/cdiApi";
 import type { MdmJob } from "../mdm/mdmApi";
 import type { Route } from "../shared/routes";
 
-export type HitKind = "task" | "taskflow" | "mdm-taskflow" | "ingress" | "egress" | "mdm-job";
+export type HitKind = "task" | "mdm-mapping-task" | "taskflow" | "mdm-taskflow" | "ingress" | "egress" | "mdm-job";
 
 export interface SearchHit {
   /** Unique listbox value, e.g. "task:4H16HBEOd4ekHq2fXGZ9kI". */
@@ -39,7 +39,10 @@ export function searchItems(text: string, tasks: readonly CdiTask[], jobs: reado
     ...tasks.map((t): SearchHit =>
       t.type === "TASKFLOW"
         ? { value: `taskflow:${t.id}`, kind: t.domain === "mdm" ? "mdm-taskflow" : "taskflow", name: t.name, where: folderOf(t.path, t.name), route: { screen: "taskflows", service: t.domain === "mdm" ? "mdm" : "cdi", runId: null }, taskflowName: t.name }
-        : { value: `task:${t.id}`, kind: "task", name: t.name, where: folderOf(t.path, t.name), route: { screen: "job", service: "cdi", jobId: t.id }, taskflowName: null },
+        : t.domain === "mdm"
+          ? // 0.9.6: Business 360 child mapping task - opens the B360 Taskflows section (read only).
+            { value: `task:${t.id}`, kind: "mdm-mapping-task", name: t.name, where: folderOf(t.path, t.name), route: { screen: "taskflows", service: "mdm", runId: null }, taskflowName: null }
+          : { value: `task:${t.id}`, kind: "task", name: t.name, where: folderOf(t.path, t.name), route: { screen: "job", service: "cdi", jobId: t.id }, taskflowName: null },
     ),
     ...jobs.map((j): SearchHit => ({ value: `job:${j.asset_id}`, kind: mdmKind(j), name: j.name, where: folderOf(j.path, j.name), route: { screen: "job", service: "mdm", jobId: j.asset_id }, taskflowName: null })),
   ];
@@ -52,6 +55,7 @@ export function searchItems(text: string, tasks: readonly CdiTask[], jobs: reado
 
 export const HIT_LABEL: Record<HitKind, string> = {
   task: "CDI task",
+  "mdm-mapping-task": "MDM mapping task (runs via its taskflow)",
   taskflow: "CDI taskflow",
   "mdm-taskflow": "MDM taskflow",
   ingress: "MDM ingress",
