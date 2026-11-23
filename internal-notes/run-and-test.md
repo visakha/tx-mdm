@@ -58,3 +58,11 @@ git ls-remote origin main
 Both live in `backend/app/version.py`. After `git pull` + restart, call it and check the
 version is the one you expect; the UI title bar shows it too (`about-version`), and agents can
 call `txmdm.about()`.
+
+## B360 entities file (0.9.7)
+
+- `backend/b360_entities.toml` holds the left-pane entity list. Read ONCE at startup
+  (`app/b360data/scope.py`, stdlib tomllib -> Pydantic `FocusConfig`). Edit, then restart uvicorn.
+- `B360_ENTITIES_FILE=/path/other.toml` points elsewhere (tests use tmp files).
+- Bad file (not TOML, missing `name`, unknown key, bad characters, duplicate) = `FocusConfigError`
+  at startup. Check: `GET /api/b360/entities` -> `focus` (each entry with `found`) and `focus_file`.

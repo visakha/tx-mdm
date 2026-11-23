@@ -6,8 +6,16 @@ IDMC JSON is parsed into typed models in app.b360data.wire, right where it arriv
 import time
 
 from app.b360data import endpoints as ep
+from app.b360data import scope as entity_scope
 from app.b360data import wire
-from app.b360data.models import BusinessEntity, BusinessEntityList, RecordPage
+from app.b360data.models import (
+    BusinessEntity,
+    BusinessEntityList,
+    BusinessEntitySummary,
+    EntityScope,
+    FocusEntityStatus,
+    RecordPage,
+)
 from app.common.idmc_session import IdmcHttp
 
 
@@ -17,10 +25,27 @@ class B360DataService:
         self._mdm_url = mdm_url.rstrip("/")
         self._meta_cache: dict[str, tuple[float, BusinessEntity]] = {}
 
-    def entities(self) -> BusinessEntityList:
+    def entities(self, scope: EntityScope = EntityScope.FOCUS) -> BusinessEntityList:
         body: object = self._http.request("GET", self._mdm_url + ep.DATAMODEL, ep.MDM_HEADERS)
+        every = wire.entities_from_datamodel(body)
+        config = entity_scope.focus_config()
+        by_id = {e.name.lower(): e for e in every}
+        status: list[FocusEntityStatus] = []
+        focused: list[BusinessEntitySummary] = []
+        for wanted in config.entity:
+            hit = by_id.get(wanted.name.lower())
+            label = wanted.label or (hit.label if hit else wanted.name)
+            status.append(FocusEntityStatus(name=wanted.name, label=label, found=hit is not None))
+            if hit is not None:
+                focused.append(hit.model_copy(update={"label": label}))
+        shown = every if scope is EntityScope.ALL else focused
         return BusinessEntityList(
-            entities=wire.entities_from_datamodel(body), source="GET " + ep.DATAMODEL
+            scope=scope,
+            entities=shown,
+            total=len(every),
+            focus=status,
+            focus_file=str(entity_scope.config_path()),
+            source="GET " + ep.DATAMODEL,
         )
 
     def metadata(self, guid: str) -> BusinessEntity:

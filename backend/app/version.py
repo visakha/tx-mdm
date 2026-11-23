@@ -1,9 +1,9 @@
 """App version and the top three things in it. GET /api/about returns exactly this."""
 
-VERSION = "0.9.6"
+VERSION = "0.9.7"
 
 HIGHLIGHTS: tuple[str, str, str] = (
-    "MDM child mapping tasks (mt_m_MDM_*, *_EGR, *_IGR) moved out of the CDI notebook.",
-    "Business 360 Taskflows shows them read only, each linked to the taskflow it runs via.",
-    "The backend refuses to start an MDM mapping task on its own (400, never sent to IDMC).",
+    "B360 Data left pane lists the entities in backend/b360_entities.toml (zlv_guest today).",
+    "Edit that TOML file and restart the backend to change them; unknown names show not found.",
+    "Entity page is master-detail: root records on top, field groups stacked below; Metadata tab.",
 )

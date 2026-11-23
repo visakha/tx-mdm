@@ -9,7 +9,15 @@ export interface BusinessEntity {
 }
 
 export interface BusinessEntityList {
+  scope: EntityScope;
+  /** focus: only the focus entities found in the metadata; all: every entity. */
   entities: BusinessEntitySummary[];
+  /** How many entities the metadata listed in all. */
+  total: number;
+  /** Entries of b360_entities.toml in file order, each marked found or not. */
+  focus: FocusEntityStatus[];
+  /** The TOML file the focus list was read from. */
+  focus_file: string;
   /** The metadata call the list was derived from. */
   source: string;
 }
@@ -18,10 +26,17 @@ export interface BusinessEntitySummary {
   /** Internal id (guid) of the business entity, e.g. c360.person. */
   name: string;
   label: string;
+  /** Custom / out of the box / reference / template. */
+  category: EntityCategory;
+  /** True when this entity is listed in b360_entities.toml. */
+  focus: boolean;
 }
 
 export type Cardinality = "ONE" | "MANY";
 export const CARDINALITY_VALUES: readonly Cardinality[] = ["ONE", "MANY"];
+
+export type EntityCategory = "CUSTOM" | "OUT_OF_THE_BOX" | "REFERENCE" | "TEMPLATE";
+export const ENTITYCATEGORY_VALUES: readonly EntityCategory[] = ["CUSTOM", "OUT_OF_THE_BOX", "REFERENCE", "TEMPLATE"];
 
 export interface EntityField {
   name: string;
@@ -40,6 +55,9 @@ export interface EntityRecord {
   groups: FieldGroupRows[];
 }
 
+export type EntityScope = "focus" | "all";
+export const ENTITYSCOPE_VALUES: readonly EntityScope[] = ["focus", "all"];
+
 export type FieldDataType = "STRING" | "PICKLIST" | "DEPENDENT_PICKLIST" | "DATE" | "DATETIME" | "DOUBLE" | "DECIMAL" | "BOOLEAN" | "INTEGER" | "UNKNOWN";
 export const FIELDDATATYPE_VALUES: readonly FieldDataType[] = ["STRING", "PICKLIST", "DEPENDENT_PICKLIST", "DATE", "DATETIME", "DOUBLE", "DECIMAL", "BOOLEAN", "INTEGER", "UNKNOWN"];
 
@@ -55,6 +73,15 @@ export interface FieldGroupRows {
   group: string;
   /** One map per row, keyed by field name. */
   rows: (Record<string, string | number | boolean | null>)[];
+}
+
+export interface FocusEntityStatus {
+  /** Entity id as written in b360_entities.toml. */
+  name: string;
+  /** Label override from the file, else the metadata label. */
+  label: string;
+  /** False when the org metadata has no entity with this id. */
+  found: boolean;
 }
 
 export interface RecordPage {

@@ -13,7 +13,7 @@ The Monitor tab calls (activityMonitor?details=true, activityLog?rowLimit=N) get
 demo set: one running taskflow with two child steps, plus a few finished runs.
 B360 job search returns a fixed set incl. 800000000000007984, RUNNING, started from the
 portal by another user (for the Business 360 Currently running view); status filters apply.
-B360 Data: metadata tenantModel/datamodel lists c360.person, c360.organization, zlv.guest;
+B360 Data: metadata tenantModel/datamodel lists c360.person, c360.organization, zlv_guest;
 objects/businessEntity/<guid> gives fields + field groups; search returns 12 records each.
 """
 
@@ -491,9 +491,9 @@ _B360_ENTITIES: dict[str, dict[str, Any]] = {
             ),
         ],
     },
-    "zlv.guest": {
+    "zlv_guest": {
         "eClass": _CORE + "BusinessEntity",
-        "guid": "zlv.guest",
+        "guid": "zlv_guest",
         "name": "Guest",
         "label": {"eClass": _CORE + "LocalizedText", "en": "ZLV Guest"},
         "field": [

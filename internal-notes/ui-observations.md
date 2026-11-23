@@ -345,3 +345,25 @@ Intended:
   opens Business 360 Taskflows.
 - CDI Monitor and taskflow history unchanged.
 Observed: unit tests + typecheck + build only. Not run in a browser or Cypress.
+
+## v0.9.7 (2026-11-23): B360 Data - TOML entities in the left pane, master-detail page
+
+Intended (his words 01:00-01:04 CST): "ZLV guest as a business entity listed in the notebook";
+"master detail pane where the master is the business entity root and the field groups will show
+up as a stacked pane"; the list in a TOML file he edits.
+
+- Left pane, notebook "B360 Data": one item per `[[entity]]` in `backend/b360_entities.toml`
+  (label from the file, else metadata) - `data-testid="nav-b360-entity-<name>"`. Not in the org:
+  disabled, struck through, "(not found in org)". Last item "Show all entities"
+  (`nav-b360-all`) -> `/b360`, every entity grouped Custom / Out of the box / Reference / Templates.
+- Click "ZLV Guest" -> `/b360/zlv_guest`, ribbon tabs **Records** | **Metadata**.
+- Records tab, stacked, both full width: MASTER (`b360-master`) = first 10 records, root fields as
+  columns (`b360-records-table`, rows `b360-record-<businessId>`); the first record is picked
+  automatically. DETAIL (`b360-detail`) below = "Root fields" key/value table, then each field
+  group as its own block (`b360-group-<name>`), stacked, no tabs; zlv_guest has none, so it shows
+  "This entity has no field groups." (`b360-no-groups`).
+- Metadata tab (`b360-metadata`): root fields table (field, label, type, mandatory, searchable),
+  then one table per field group with its cardinality.
+- Agent bridge unchanged: `listB360Entities(scope)`, `getB360Metadata`, `getB360Records`,
+  `openB360Record`. `openNavSection("b360-data")` opens the all-entities page.
+- Not yet observed in a browser (no Cypress for this version).

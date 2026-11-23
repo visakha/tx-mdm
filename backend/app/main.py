@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.b360data import scope as b360_scope
 from app.b360data.router import router as b360_router
 from app.cdi.router import router as cdi_router
 from app.common.idmc_session import IdmcError, IdmcRateLimitedError
@@ -30,6 +31,8 @@ _force_ascii_console()
 
 
 def create_app(frontend_origin: str = "http://localhost:5173") -> FastAPI:
+    # Read backend/b360_entities.toml now, so a bad file stops startup with a clear error.
+    b360_scope.focus_config()
     app = FastAPI(
         title="TX MDM job runner",
         version=VERSION,

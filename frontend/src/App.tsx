@@ -18,6 +18,8 @@ import { TaskflowsPanel } from "./cdi/TaskflowsPanel";
 import { MdmPanel } from "./mdm/MdmPanel";
 import { MdmMonitorPanel } from "./mdm/MdmMonitorPanel";
 import { B360DataPanel } from "./b360/B360DataPanel";
+import { focusNavItems, focusNavValue, readFocus, SHOW_ALL_VALUE } from "./b360/b360Api";
+import type { BusinessEntityList } from "./b360/api-types";
 import { B360_ROUTE, MDM_TASKFLOWS_ROUTE, TASKFLOWS_ROUTE, useRoute, type MdmKindFilter, type Route } from "./shared/routes";
 import type { CdiTask } from "./cdi/cdiApi";
 import type { MdmJob } from "./mdm/mdmApi";
@@ -57,7 +59,8 @@ const HINTS: Record<string, string> = {
   "mdm-running/lookup": "Paste any full job instance id and press Look up.",
   "mdm-runs/list": "Runs started from this backend. Pick one to see its result.",
   "mdm-runs/result": "Result of the selected run.",
-  "b360-data/entities": "Business entities found by the metadata APIs. Click one for its first 10 records, click a record for its field groups. Read-only; press Refresh to reload.",
+  "b360-data/records": "Master: the entity root, first 10 records. Click a record: its root fields and field groups stack below (detail). Read-only; Refresh reloads.",
+  "b360-data/metadata": "The entity's root fields and field groups from the B360 metadata: type, mandatory, searchable.",
 };
 
 function hintOf(section: SectionId, tab: string): string {
@@ -93,6 +96,18 @@ export function App(): React.JSX.Element {
       stopJobs();
     };
   }, [searching]);
+  // B360 Data left pane: the entities of backend/b360_entities.toml (scope=focus), loaded once.
+  const [focus, setFocus] = useState<BusinessEntityList | null>(null);
+  const [focusNote, setFocusNote] = useState<string>("");
+  useEffect(() => {
+    readFocus().then(
+      (list) => {
+        setFocus(list);
+        setFocusNote("");
+      },
+      () => setFocusNote("B360 entities did not load."),
+    );
+  }, []);
   const hits = useMemo(() => searchItems(search, tasks, jobs), [search, tasks, jobs]);
 
   const lastKind = useRef<MdmKindFilter | null>(null);
@@ -127,7 +142,9 @@ export function App(): React.JSX.Element {
         <h1>TX MDM Job Runner</h1>
         <span className="crumb" data-testid="crumb">
           {NOTEBOOK_TITLE[SECTIONS.find((s) => s.id === section)?.notebook ?? "CDI"]} -{" "}
-          {SECTIONS.find((s) => s.id === section)?.label}
+          {route.screen === "b360" && route.entity !== null
+            ? (focus?.focus.find((f) => f.name === route.entity)?.label ?? route.entity)
+            : SECTIONS.find((s) => s.id === section)?.label}
         </span>
         <span className="about-version" data-testid="about-version" title="Backend version (GET /api/about)">
           {version === "" ? "" : `v${version}`}
@@ -189,7 +206,7 @@ export function App(): React.JSX.Element {
             <Separator />
           </div>
         )}
-        {(["CDI", "MDM", "B360"] as const).map((notebook) => {
+        {(["CDI", "MDM"] as const).map((notebook) => {
           const items = visibleSections.filter((s) => s.notebook === notebook);
           if (items.length === 0) return null;
           return (
@@ -220,6 +237,64 @@ export function App(): React.JSX.Element {
             </div>
           );
         })}
+        {(() => {
+          const items = focusNavItems(focus, search);
+          const showAllMatches = !searching || visibleSections.some((v) => v.notebook === "B360");
+          if (searching && items.length === 0 && !showAllMatches) return null;
+          const current = section === "b360-data" ? focusNavValue(route.screen === "b360" ? route.entity : null) : null;
+          return (
+            <div className="notebook" key="B360" data-testid="notebook-B360">
+              <h2>{NOTEBOOK_TITLE.B360}</h2>
+              <Listbox
+                aria-label={`${NOTEBOOK_TITLE.B360} sections`}
+                value={current}
+                onValueChange={(value) => {
+                  if (value === SHOW_ALL_VALUE) {
+                    go(B360_ROUTE);
+                    return;
+                  }
+                  const item = items.find((i) => i.value === value);
+                  if (item !== undefined && item.found) {
+                    go({ screen: "b360", service: "mdm", entity: item.name });
+                    selectRibbonTab("b360-data", "records");
+                  }
+                }}
+              >
+                {items.map((item) => (
+                  <ListboxItem
+                    key={item.value}
+                    value={item.value}
+                    disabled={!item.found}
+                    className={`nav-item c-purple${item.found ? "" : " not-found"}`}
+                    data-testid={`nav-b360-entity-${item.name}`}
+                    data-nav="b360-data"
+                    title={item.found ? item.name : `${item.name}: listed in b360_entities.toml but not found in org`}
+                  >
+                    <span className="swatch" aria-hidden="true" />
+                    <Icon name="entity" />
+                    <span className="item-name">{item.label}</span>
+                    {!item.found && <span className="muted small"> (not found in org)</span>}
+                  </ListboxItem>
+                ))}
+                {showAllMatches && (
+                  <ListboxItem
+                    value={SHOW_ALL_VALUE}
+                    className="nav-item c-gray show-all"
+                    data-testid="nav-b360-all"
+                    data-nav="b360-data"
+                  >
+                    <span className="swatch" aria-hidden="true" />
+                    <span className="item-name small">Show all entities</span>
+                  </ListboxItem>
+                )}
+              </Listbox>
+              {focus !== null && focus.focus.length === 0 && (
+                <p className="muted small">No entities in b360_entities.toml.</p>
+              )}
+              {focusNote !== "" && <p className="warn-text small">{focusNote}</p>}
+            </div>
+          );
+        })()}
       </aside>
 
       <div className="ribbon">

@@ -144,3 +144,9 @@ this; `app/main.py` forces stdout/stderr to ASCII with backslash escapes at runt
   backend refuses a direct start with 400. Start the taskflow instead.
 - Parent link in the UI is a name guess (tf_X -> mt_m_X); with no match it just says "runs via
   its taskflow".
+
+## B360 entities TOML (0.9.7)
+- Edits to `backend/b360_entities.toml` do nothing until the backend restarts (read once, cached).
+- File must be plain ASCII; a typo in `name` does not crash - the left pane shows
+  "not found in org" (`found: false` in `GET /api/b360/entities`).
+- The left pane loads the focus list once per page load; reload the browser after a restart.

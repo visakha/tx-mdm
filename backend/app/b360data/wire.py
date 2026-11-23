@@ -21,6 +21,7 @@ from datetime import UTC, date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter, ValidationError
 
+from app.b360data import scope as entity_scope
 from app.b360data.models import (
     BusinessEntity,
     BusinessEntitySummary,
@@ -152,7 +153,12 @@ def entities_from_datamodel(body: object) -> list[BusinessEntitySummary]:
             node = _node(cand)
             key = node.guid or node.name if node else None
             if node and key and key not in seen:
-                seen[key] = BusinessEntitySummary(name=key, label=node.text)
+                seen[key] = BusinessEntitySummary(
+                    name=key,
+                    label=node.text,
+                    category=entity_scope.category_of(key),
+                    focus=entity_scope.is_focus(key),
+                )
     return sorted(seen.values(), key=lambda e: e.label.lower())
 
 

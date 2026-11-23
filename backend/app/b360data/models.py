@@ -30,6 +30,20 @@ class Cardinality(StrEnum):
     MANY = "MANY"
 
 
+class EntityScope(StrEnum):
+    FOCUS = "focus"  # only the entities in backend/b360_entities.toml (default)
+    ALL = "all"  # every entity the metadata APIs return
+
+
+class EntityCategory(StrEnum):
+    """Decided by name prefix in app.b360data.scope.category_of."""
+
+    CUSTOM = "CUSTOM"  # the org's own entities, e.g. zlv_guest
+    OUT_OF_THE_BOX = "OUT_OF_THE_BOX"  # c360.*
+    REFERENCE = "REFERENCE"  # rdm.*
+    TEMPLATE = "TEMPLATE"  # entity.*
+
+
 # One cell. Which member is used is driven by the field's declared FieldDataType.
 FieldValue = str | int | float | bool | date | datetime | None
 
@@ -37,10 +51,28 @@ FieldValue = str | int | float | bool | date | datetime | None
 class BusinessEntitySummary(BaseModel):
     name: str = Field(description="Internal id (guid) of the business entity, e.g. c360.person.")
     label: str
+    category: EntityCategory = Field(description="Custom / out of the box / reference / template.")
+    focus: bool = Field(description="True when this entity is listed in b360_entities.toml.")
+
+
+class FocusEntityStatus(BaseModel):
+    """One entry of b360_entities.toml, checked against the org metadata."""
+
+    name: str = Field(description="Entity id as written in b360_entities.toml.")
+    label: str = Field(description="Label override from the file, else the metadata label.")
+    found: bool = Field(description="False when the org metadata has no entity with this id.")
 
 
 class BusinessEntityList(BaseModel):
-    entities: list[BusinessEntitySummary]
+    scope: EntityScope
+    entities: list[BusinessEntitySummary] = Field(
+        description="focus: only the focus entities found in the metadata; all: every entity."
+    )
+    total: int = Field(description="How many entities the metadata listed in all.")
+    focus: list[FocusEntityStatus] = Field(
+        description="Entries of b360_entities.toml in file order, each marked found or not."
+    )
+    focus_file: str = Field(description="The TOML file the focus list was read from.")
     source: str = Field(description="The metadata call the list was derived from.")
 
 

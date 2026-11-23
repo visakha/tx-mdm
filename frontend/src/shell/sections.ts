@@ -43,7 +43,7 @@ export const SECTIONS: readonly Section[] = [
   { id: "mdm-taskflows", notebook: "MDM", label: "Taskflows (jobInstanceId)", route: { screen: "taskflows", service: "mdm", runId: null }, legacyTestId: null, color: "purple" },
   { id: "mdm-running", notebook: "MDM", label: "Currently running", route: { screen: "mdm-monitor", service: "mdm" }, legacyTestId: null, color: "green" },
   { id: "mdm-runs", notebook: "MDM", label: "Runs", route: { screen: "runs", service: "mdm" }, legacyTestId: null, color: "gray" },
-  { id: "b360-data", notebook: "B360", label: "Business entities", route: { screen: "b360", service: "mdm", entity: null }, legacyTestId: null, color: "purple" },
+  { id: "b360-data", notebook: "B360", label: "All business entities", route: { screen: "b360", service: "mdm", entity: null }, legacyTestId: null, color: "purple" },
 ];
 
 export const NOTEBOOK_TITLE: Record<Section["notebook"], string> = {
@@ -131,7 +131,10 @@ export const RIBBON: Record<SectionId, readonly RibbonTab[]> = {
     { id: "list", label: "Runs" },
     { id: "result", label: "Result" },
   ],
-  "b360-data": [{ id: "entities", label: "Entities" }],
+  "b360-data": [
+    { id: "records", label: "Records" },
+    { id: "metadata", label: "Metadata" },
+  ],
 };
 
 /** Left-pane search: sections whose label or notebook matches the text. */

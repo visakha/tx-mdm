@@ -191,3 +191,12 @@ Step 3 - the first 10 records
   mapping task ("runs via its taskflow") and never calls IDMC: the mapping reads the taskflow's
   jobInstanceId, so a lone start would fail with "[FATAL] Invalid/Default JobInstanceId".
 - CDI Monitor and taskflow history are unchanged (they still list these child rows by name).
+
+## B360 Data focus list (0.9.7, Vamsi 2026-11-23 01:00-01:04 CST)
+- Live (his backend, 0.9.5, 2026-11-23 ~00:59 CST): datamodel lists 106 entities - 97 `rdm.*`,
+  5 `entity.*` templates, `c360.person`, `c360.organization`, `zlv_guest` (6 STRING fields, no
+  field groups, 21 records), `zlv_person` (5 fields + group `alt_id`, 0 records).
+- His words: "let's focus on ZLV guest only. c360 person is out of the box" and "what business
+  entity [to] be shown should be written to a config file or a toml file in the backend".
+- So `scope=focus` filters the derived list to the TOML entries; nothing else is hardcoded.
+  Category is by name prefix only (`app/b360data/scope.py: category_of`).

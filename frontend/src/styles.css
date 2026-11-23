@@ -256,3 +256,11 @@ main { flex: 1; padding: 16px 20px; }
 /* 0.9.6: read-only Business 360 child mapping tasks under the MDM taskflow picker. */
 .tf-child-tasks { margin-top: 12px; }
 .tf-child-tasks td.nowrap { white-space: nowrap; }
+/* 0.9.7: Show all entities, grouped by category. */
+.b360-category h3 { margin: 12px 0 4px; font-size: 14px; }
+/* 0.9.7: B360 Data master-detail, stacked full width; left-pane TOML entities. */
+.b360-records.master-detail { display: flex; flex-direction: column; gap: 12px; }
+.b360-master, .b360-detail { width: 100%; min-width: 0; }
+.b360-detail { border-top: 1px solid var(--border, rgba(127, 127, 127, 0.35)); padding-top: 8px; }
+.nav-item.not-found .item-name { text-decoration: line-through; opacity: 0.7; }
+.nav-item.show-all .item-name { font-size: 0.85em; text-decoration: underline; }

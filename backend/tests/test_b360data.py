@@ -1,9 +1,13 @@
 from datetime import UTC, date, datetime
+from pathlib import Path
 
+import pytest
 import respx
 from fastapi.testclient import TestClient
 
-from app.b360data.models import Cardinality, FieldDataType
+from app.b360data import scope as entity_scope
+from app.b360data.models import Cardinality, EntityCategory, FieldDataType
+from app.b360data.scope import FocusConfigError, category_of, is_focus, load_focus_config
 from app.b360data.service import B360DataService
 from app.b360data.wire import (
     business_entity_from_metadata,
@@ -22,7 +26,7 @@ PERSON = fake_idmc._B360_ENTITIES["c360.person"]
 
 def test_entities_derived_from_datamodel_only() -> None:
     entities = entities_from_datamodel(fake_idmc.datamodel())
-    assert [e.name for e in entities] == ["c360.organization", "c360.person", "zlv.guest"]
+    assert [e.name for e in entities] == ["c360.organization", "c360.person", "zlv_guest"]
     assert entities[2].label == "ZLV Guest"
 
 
@@ -66,8 +70,8 @@ def test_record_rows_and_groups() -> None:
 
 
 def test_guest_integer_group_value_is_int() -> None:
-    meta = business_entity_from_metadata(fake_idmc._B360_ENTITIES["zlv.guest"], "zlv.guest")
-    rec = record_from_search(fake_idmc._fake_records("zlv.guest")[2], meta)
+    meta = business_entity_from_metadata(fake_idmc._B360_ENTITIES["zlv_guest"], "zlv_guest")
+    rec = record_from_search(fake_idmc._fake_records("zlv_guest")[2], meta)
     assert rec.groups[0].rows[0]["nights"] == 3
 
 
@@ -93,7 +97,19 @@ def test_api_end_to_end(idmc: respx.MockRouter, idmc_http: IdmcHttp) -> None:
     app = create_app()
     app.dependency_overrides[get_b360_data_service] = lambda: B360DataService(idmc_http, MDM)
     client = TestClient(app)
-    assert len(client.get("/api/b360/entities").json()["entities"]) == 3
+    focus = client.get("/api/b360/entities").json()
+    assert focus["scope"] == "focus"
+    assert [e["name"] for e in focus["entities"]] == ["zlv_guest"]
+    assert focus["total"] == 3
+    assert focus["focus"] == [{"name": "zlv_guest", "label": "ZLV Guest", "found": True}]
+    assert focus["focus_file"].endswith("b360_entities.toml")
+    every = client.get("/api/b360/entities?scope=all").json()
+    assert {e["name"]: e["category"] for e in every["entities"]} == {
+        "c360.organization": "OUT_OF_THE_BOX",
+        "c360.person": "OUT_OF_THE_BOX",
+        "zlv_guest": "CUSTOM",
+    }
+    assert client.get("/api/b360/entities?scope=bogus").status_code == 422
     page = client.get("/api/b360/entities/c360.person/records?limit=10").json()
     assert len(page["records"]) == 10
     assert page["hits"] == 12
@@ -125,3 +141,84 @@ def test_bad_entity_name_rejected() -> None:
     app = create_app()
     app.dependency_overrides[get_b360_data_service] = lambda: None
     assert TestClient(app).get("/api/b360/entities/bad%20name/records").status_code == 422
+
+
+@pytest.mark.parametrize(
+    ("name", "category"),
+    [
+        ("zlv_guest", EntityCategory.CUSTOM),
+        ("zlv_person", EntityCategory.CUSTOM),
+        ("c360.person", EntityCategory.OUT_OF_THE_BOX),
+        ("rdm.country", EntityCategory.REFERENCE),
+        ("entity.template1", EntityCategory.TEMPLATE),
+    ],
+)
+def test_category_by_name_prefix(name: str, category: EntityCategory) -> None:
+    assert category_of(name) is category
+
+
+def test_committed_toml_lists_zlv_guest_only() -> None:
+    config = load_focus_config(entity_scope.DEFAULT_FILE)
+    assert config.names() == ["zlv_guest"]
+    assert is_focus("ZLV_GUEST")
+    assert not is_focus("zlv_person")
+
+
+def test_toml_label_override_and_order(tmp_path: Path) -> None:
+    f = tmp_path / "e.toml"
+    f.write_text('[[entity]]\nname = "zlv_person"\nlabel = "People"\n[[entity]]\nname = "a.b"\n')
+    config = load_focus_config(f)
+    assert config.names() == ["zlv_person", "a.b"]
+    assert config.label_override("ZLV_PERSON") == "People"
+    assert config.label_override("a.b") is None
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "[[entity]\nname = ",  # not TOML
+        '[[entity]]\nlabel = "x"\n',  # name missing
+        '[[entity]]\nname = "bad name"\n',  # bad characters
+        '[[entity]]\nname = "a"\ncolour = "red"\n',  # unknown key
+        '[[entity]]\nname = "a"\n[[entity]]\nname = "A"\n',  # duplicate
+    ],
+)
+def test_bad_toml_is_a_clear_error(tmp_path: Path, text: str) -> None:
+    f = tmp_path / "e.toml"
+    f.write_text(text)
+    with pytest.raises(FocusConfigError, match="B360 entities file"):
+        load_focus_config(f)
+
+
+def test_missing_file_is_a_clear_error(tmp_path: Path) -> None:
+    with pytest.raises(FocusConfigError, match="not found"):
+        load_focus_config(tmp_path / "nope.toml")
+
+
+def test_env_var_points_elsewhere(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    f = tmp_path / "other.toml"
+    f.write_text('[[entity]]\nname = "zlv_guest"\n[[entity]]\nname = "not_in_org"\n')
+    monkeypatch.setenv(entity_scope.ENV_VAR, str(f))
+    assert entity_scope.config_path() == f
+
+
+def test_name_not_in_org_is_reported_not_crashed(
+    idmc: respx.MockRouter, idmc_http: IdmcHttp, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        entity_scope,
+        "focus_config",
+        lambda: entity_scope.FocusConfig.model_validate(
+            {"entity": [{"name": "not_in_org"}, {"name": "zlv_guest", "label": "Guests"}]}
+        ),
+    )
+    idmc.get(f"{MDM}/metadata/api/v2/objects/tenantModel/datamodel").respond(
+        200, json=fake_idmc.datamodel()
+    )
+    listing = B360DataService(idmc_http, MDM).entities()
+    assert [e.name for e in listing.entities] == ["zlv_guest"]
+    assert listing.entities[0].label == "Guests"
+    assert [(f.name, f.label, f.found) for f in listing.focus] == [
+        ("not_in_org", "not_in_org", False),
+        ("zlv_guest", "Guests", True),
+    ]

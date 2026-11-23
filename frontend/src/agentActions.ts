@@ -72,7 +72,7 @@ export const ACTIONS: readonly ActionInfo[] = [
   { name: "getMonitor", args: "(onlyMyTasks = true, rowLimit = 50)", description: "Read running CDI jobs (elapsed minutes) + recent history (status, rows, errors, taskflow steps).", sideEffect: false },
   { name: "openMdmMonitor", args: "()", description: "Show Business 360 Currently running (/mdm/running).", sideEffect: false },
   { name: "getMdmMonitor", args: "(rowLimit = 25)", description: "Read every running B360 job (b360.* / c360.*) in the org, whoever started it, plus recently finished ones.", sideEffect: false },
-  { name: "listB360Entities", args: "()", description: "B360 Data: business entities derived from the metadata APIs (GET /api/b360/entities); also opens the notebook.", sideEffect: false },
+  { name: "listB360Entities", args: "(scope = 'focus')", description: "B360 Data: business entities derived from the metadata APIs (GET /api/b360/entities?scope=focus|all). focus (default) = only the entities in backend/b360_entities.toml (left pane); all = every entity with its category (CUSTOM, OUT_OF_THE_BOX c360.*, REFERENCE rdm.*, TEMPLATE entity.*). Opens the notebook (all-entities page).", sideEffect: false },
   { name: "getB360Metadata", args: "(name)", description: "B360 Data: one entity's typed fields + field groups from its metadata.", sideEffect: false },
   { name: "getB360Records", args: "(name)", description: "B360 Data: open an entity and read its first 10 records (top-level values + field group rows).", sideEffect: false },
   { name: "openB360Record", args: "(businessId)", description: "B360 Data: open one record of the open entity; its field groups show stacked below.", sideEffect: false },
@@ -185,9 +185,9 @@ export const txmdm = {
     taskflowApi.sessionLog(runId, childTask ?? null),
   openMdmMonitor: (): void => navigate(MDM_MONITOR_ROUTE),
   getMdmMonitor: (rowLimit = 25): Promise<MdmMonitorSnapshot> => mdmMonitorApi.get(rowLimit),
-  listB360Entities: (): Promise<BusinessEntityList> => {
+  listB360Entities: (scope: "focus" | "all" = "focus"): Promise<BusinessEntityList> => {
     navigate(B360_ROUTE);
-    return b360Api.entities();
+    return b360Api.entities(scope);
   },
   getB360Metadata: (name: string): Promise<BusinessEntity> => b360Api.metadata(name),
   getB360Records: (name: string): Promise<RecordPage> => {

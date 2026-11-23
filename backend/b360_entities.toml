@@ -1,0 +1,18 @@
+# Business entities shown in the B360 Data notebook (left pane, under "B360 Data").
+#
+# How to edit:
+#   - Add one [[entity]] block per business entity you want listed.
+#   - name  = the entity's internal id as the B360 metadata reports it (e.g. zlv_guest,
+#             c360.person). Case does not matter.
+#   - label = optional. Overrides the label from the metadata in the left pane.
+#   - Order here is the order in the left pane.
+#   - A name that is not in your org's metadata shows as "not found in org"; nothing crashes.
+#
+# The backend reads this file ONCE at startup. Edit, save, then restart the backend
+# (Ctrl+C, then uvicorn again). A bad file stops the backend at startup with a clear error.
+# Another file can be used instead: set B360_ENTITIES_FILE to its path.
+# Plain ASCII only.
+
+[[entity]]
+name = "zlv_guest"
+# label = "ZLV Guest"
