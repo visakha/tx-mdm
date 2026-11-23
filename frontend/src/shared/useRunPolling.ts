@@ -12,11 +12,13 @@ const POLL_MS = RUN_POLL_SECONDS * 1000;
 export function useRunPolling(
   runKey: string | null,
   runUrl: (runKey: string) => string,
-): { run: RunView | null; pollError: string | null; polls: number } {
+): { run: RunView | null; pollError: string | null; polls: number; lastRefresh: Date | null } {
   const [run, setRun] = useState<RunView | null>(null);
   const [pollError, setPollError] = useState<string | null>(null);
   /** How many status checks have answered (drives the poll clock). */
   const [polls, setPolls] = useState<number>(0);
+  /** When the last status check answered (shown as "Last refresh"). */
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
   useEffect(() => {
     if (runKey === null) {
@@ -32,6 +34,7 @@ export function useRunPolling(
           if (cancelled) return;
           setRun(next);
           setPolls((n) => n + 1);
+          setLastRefresh(new Date());
           setPollError(null);
           if (!isTerminal(next.status)) timer = window.setTimeout(check, POLL_MS);
         })
@@ -46,6 +49,7 @@ export function useRunPolling(
 
     setRun(null);
     setPolls(0);
+    setLastRefresh(null);
     setPollError(null);
     check();
     return () => {
@@ -54,5 +58,5 @@ export function useRunPolling(
     };
   }, [runKey, runUrl]);
 
-  return { run, pollError, polls };
+  return { run, pollError, polls, lastRefresh };
 }

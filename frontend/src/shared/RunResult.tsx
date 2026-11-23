@@ -43,10 +43,13 @@ export function RunResult({
   run,
   pollError,
   polls,
+  lastRefresh = null,
 }: {
   run: RunView;
   pollError: string | null;
   polls: number;
+  /** When the last status check answered; null before the first answer. */
+  lastRefresh?: Date | null;
 }): React.JSX.Element {
   const c = run.counts;
   const known = [c.source_success, c.target_success].filter((v): v is number => v !== null);
@@ -75,6 +78,10 @@ export function RunResult({
         <dt>Started in IDMC</dt>
         <dd data-testid="run-idmc-started" title="Start time reported by Informatica">
           {run.idmc_started_at === null ? "not reported yet" : fmt(run.idmc_started_at)}
+        </dd>
+        <dt>Last refresh</dt>
+        <dd data-testid="run-last-refresh" title="When this page last checked the status (every 15 s while running)">
+          {lastRefresh === null ? "-" : lastRefresh.toLocaleString()}
         </dd>
         <dt>Ended</dt>
         <dd>{fmt(run.ended_at)}</dd>

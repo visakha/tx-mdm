@@ -35,7 +35,7 @@ export function MdmPanel({
     [go],
   );
   const starter = useStarter(onStarted);
-  const { run, pollError, polls } = useRunPolling(runKey, mdmApi.runUrl);
+  const { run, pollError, polls, lastRefresh } = useRunPolling(runKey, mdmApi.runUrl);
 
   const job = picker.selected;
 
@@ -115,7 +115,7 @@ export function MdmPanel({
         {route.screen === "run" && run === null && pollError !== null && (
           <p className="warn-text">{pollError}</p>
         )}
-        {run !== null && <RunResult run={run} pollError={pollError} polls={polls} />}
+        {run !== null && <RunResult run={run} pollError={pollError} polls={polls} lastRefresh={lastRefresh} />}
       </section>
     </div>
   );

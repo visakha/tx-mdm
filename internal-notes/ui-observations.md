@@ -124,3 +124,9 @@ plus the job / monitor / taskflow actions (`runTaskflowByName`, `trackTaskflowRu
   data-agent-confirm; the bridge asks a person only for those. See ui-sdk-philosophy.md.
 - Not yet observed live for 0.8.0: everything above was seen against the fake only.
 
+
+## 2026-11-23 hotfix: run results pane (Vamsi, live call)
+- Indeterminate progress sweep slowed 3x (1.4s -> 4.2s per pass).
+- Poll clock enlarged (22px -> 30px circle, 14px -> 20px icon).
+- Status text ("Running - no row counts reported yet") now sits on its own line UNDER the progress bar, not beside it.
+- New "Last refresh" row in the times list, directly before "Ended" (data-testid run-last-refresh): local date/time of the last answered status check, same format as Requested / Started in IDMC; updates in place every 15 s while running, "-" before the first answer.

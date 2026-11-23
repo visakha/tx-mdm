@@ -189,18 +189,19 @@ main { flex: 1; padding: 16px 20px; }
 
 /* 0.8.0 (Vamsi 23:40 CST): run progress bar + poll clock on result panes */
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.run-progress-row { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+.run-progress-block { margin: 8px 0; width: 100%; }
+.run-progress-row { display: flex; align-items: center; gap: 10px; margin: 0; }
 .run-progress { flex: 1; min-width: 120px; }
 .run-progress-track { position: relative; height: 10px; border-radius: 5px; background: #e6e8ee; overflow: hidden; }
 .run-progress-fill { height: 100%; border-radius: 5px; background: var(--busy); transition: width 0.4s; }
-.run-progress-fill[data-indeterminate] { position: absolute; width: 35%; animation: run-sweep 1.4s ease-in-out infinite; }
+.run-progress-fill[data-indeterminate] { position: absolute; width: 35%; animation: run-sweep 4.2s ease-in-out infinite; }
 @keyframes run-sweep { from { left: -35%; } to { left: 100%; } }
 @media (prefers-reduced-motion: reduce) { .run-progress-fill[data-indeterminate] { animation: none; left: 0; width: 100%; opacity: 0.5; } }
 .tone-ok .run-progress-fill { background: var(--ok); }
 .tone-warn .run-progress-fill { background: var(--warn); }
 .tone-bad .run-progress-fill { background: var(--bad); }
-.poll-clock { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; transition: background 0.3s; flex: none; }
-.run-progress-text { font-size: 12px; color: #556; white-space: nowrap; }
+.poll-clock { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; transition: background 0.3s; flex: none; }
+.run-progress-text { font-size: 12px; color: #556; white-space: nowrap; margin-top: 4px; }
 /* result panes never spill past the page edge (seen in the 0.8.0 screenshot review) */
 .result, .detail, .run-box { box-sizing: border-box; max-width: 100%; min-width: 0; }
 .run-progress-text { white-space: normal; flex: 0 1 auto; min-width: 0; }

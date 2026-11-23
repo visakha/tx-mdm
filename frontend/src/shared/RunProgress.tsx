@@ -9,7 +9,12 @@
 // Poll clock: a small inline SVG clock whose background colour changes on every status poll,
 // so a person can see the page is still checking. It stops (grey) once the run is final.
 
-import { Progress, ProgressIndicator, ProgressLabel, ProgressTrack } from "@ui-sdk/react/progress";
+import {
+  Progress,
+  ProgressIndicator,
+  ProgressLabel,
+  ProgressTrack,
+} from "@ui-sdk/react/progress";
 
 export type Tone = "ok" | "warn" | "bad" | "busy";
 
@@ -17,7 +22,12 @@ const CLOCK_COLOURS = ["#2b6fc2", "#7719aa", "#11808a", "#c8641a"] as const;
 
 /** Background colour for the n-th poll; cycles so each refresh visibly changes it. */
 export function clockColour(polls: number): string {
-  return CLOCK_COLOURS[((polls % CLOCK_COLOURS.length) + CLOCK_COLOURS.length) % CLOCK_COLOURS.length] ?? "#2b6fc2";
+  return (
+    CLOCK_COLOURS[
+      ((polls % CLOCK_COLOURS.length) + CLOCK_COLOURS.length) %
+        CLOCK_COLOURS.length
+    ] ?? "#2b6fc2"
+  );
 }
 
 export function PollClock({
@@ -41,11 +51,23 @@ export function PollClock({
       title={title}
       style={{ background: final ? "#9aa0aa" : clockColour(polls) }}
     >
-      <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="#fff" strokeWidth="1.6"
-        strokeLinecap="round" aria-hidden="true" focusable="false">
+      <svg
+        viewBox="0 0 16 16"
+        width="20"
+        height="20"
+        fill="none"
+        stroke="#fff"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        aria-hidden="true"
+        focusable="false"
+      >
         <circle cx="8" cy="8" r="6" />
         {/* the minute hand turns a quarter per poll */}
-        <path d="M8 8V4" transform={`rotate(${String((polls % 4) * 90)} 8 8)`} />
+        <path
+          d="M8 8V4"
+          transform={`rotate(${String((polls % 4) * 90)} 8 8)`}
+        />
         <path d="M8 8l2.5 1.5" />
       </svg>
       <span className="sr-only">{title}</span>
@@ -71,24 +93,26 @@ export function RunProgress({
   everySeconds: number;
 }): React.JSX.Element {
   return (
-    <div className="run-progress-row">
-      <Progress
-        value={final ? 100 : null}
-        className={`run-progress tone-${final ? tone : "busy"}`}
-        data-testid="run-progress"
-        data-final={final ? "true" : "false"}
-        data-tone={final ? tone : "busy"}
-      >
-        <ProgressLabel className="sr-only">{label}</ProgressLabel>
-        <ProgressTrack className="run-progress-track">
-          <ProgressIndicator className="run-progress-fill" />
-        </ProgressTrack>
-      </Progress>
-      <PollClock polls={polls} final={final} everySeconds={everySeconds} />
-      <span className="run-progress-text" data-testid="run-progress-text">
+    <div className="run-progress-block">
+      <div className="run-progress-row">
+        <Progress
+          value={final ? 100 : null}
+          className={`run-progress tone-${final ? tone : "busy"}`}
+          data-testid="run-progress"
+          data-final={final ? "true" : "false"}
+          data-tone={final ? tone : "busy"}
+        >
+          <ProgressLabel className="sr-only">{label}</ProgressLabel>
+          <ProgressTrack className="run-progress-track">
+            <ProgressIndicator className="run-progress-fill" />
+          </ProgressTrack>
+        </Progress>
+        <PollClock polls={polls} final={final} everySeconds={everySeconds} />
+      </div>
+      <div className="run-progress-text" data-testid="run-progress-text">
         {final ? "Finished" : "Running"}
         {detail !== "" ? ` - ${detail}` : ""}
-      </span>
+      </div>
     </div>
   );
 }
