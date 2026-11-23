@@ -268,3 +268,18 @@ main { flex: 1; padding: 16px 20px; }
 .b360-add { width: 100%; display: flex; flex-direction: column; gap: 8px; }
 .b360-add input[type="text"], .b360-add input[type="number"], .b360-add input[type="date"], .b360-add input[type="datetime-local"], .b360-add select { font: inherit; padding: 3px 6px; min-width: 8em; }
 .b360-add pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* ---- 0.9.9 B360 Data: system metadata in magenta (explicit request, Metadata tab only) ---- */
+:root { --system: #b0127f; }
+.system-row td, .system-row code, .system-group h4, .system-text { color: var(--system); }
+.system-tag {
+  display: inline-block; margin-left: 6px; padding: 0 5px; font-size: 11px; line-height: 16px;
+  border: 1px solid var(--system); border-radius: 3px; color: var(--system); vertical-align: middle;
+}
+.b360-filters label { display: inline-flex; align-items: center; gap: 4px; }
+.b360-filters input { width: 160px; }
+.b360-pager { margin: 6px 0; }
+.sort-head { background: none; border: 0; padding: 0; font: inherit; font-weight: 600; cursor: pointer; color: inherit; }
+.sort-head:disabled { cursor: default; opacity: 0.6; }
+@media (prefers-color-scheme: dark) { :root { --system: #f06fcf; } }
+html[data-theme="dark"] { --system: #f06fcf; }

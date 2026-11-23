@@ -19,10 +19,30 @@ import type {
   GeneratedRows,
   NewRecord,
   RecordPage,
+  SortOrder,
   SourceSystemList,
 } from "./api-types";
 
-export type { BusinessEntity, BusinessEntityList, EntityField, EntityRecord, RecordPage };
+export type { BusinessEntity, BusinessEntityList, EntityField, EntityRecord, RecordPage, SortOrder };
+
+/** 0.9.9 Records query: page (1-based), name filters (STARTS_WITH), exact Business ID, sort. */
+export interface RecordQuery {
+  page?: number;
+  firstName?: string;
+  lastName?: string;
+  businessId?: string;
+  sort?: SortOrder;
+}
+
+/** Query string for GET /records. Empty filters are left out; only Last updated sorts. */
+export function recordsQuery(limit: number, q: RecordQuery = {}): string {
+  const params = new URLSearchParams({ limit: String(limit), page: String(q.page ?? 1) });
+  if (q.firstName?.trim()) params.set("first_name", q.firstName.trim());
+  if (q.lastName?.trim()) params.set("last_name", q.lastName.trim());
+  if (q.businessId?.trim()) params.set("business_id", q.businessId.trim());
+  params.set("sort", q.sort ?? "NEWEST_FIRST");
+  return params.toString();
+}
 
 /** One cell value, as the backend types it from the field's declared data type. */
 export type CellValue = string | number | boolean | null;
@@ -36,8 +56,8 @@ export const b360Api = {
   entities: (scope: EntityScope = "focus"): Promise<BusinessEntityList> =>
     getJson<BusinessEntityList>(`/api/b360/entities?scope=${scope}`),
   metadata: (name: string): Promise<BusinessEntity> => getJson<BusinessEntity>(`${base(name)}/metadata`),
-  records: (name: string, limit = B360_LIMIT): Promise<RecordPage> =>
-    getJson<RecordPage>(`${base(name)}/records?limit=${limit}`),
+  records: (name: string, q: RecordQuery = {}, limit = B360_LIMIT): Promise<RecordPage> =>
+    getJson<RecordPage>(`${base(name)}/records?${recordsQuery(limit, q)}`),
   // 0.9.8 Add records. Only create() writes to IDMC, and only on a person's Save / Send.
   sourceSystems: (): Promise<SourceSystemList> => getJson<SourceSystemList>("/api/b360/source-systems"),
   formSchema: (name: string): Promise<FormSchema> => getJson<FormSchema>(`${base(name)}/form-schema`),
@@ -173,4 +193,11 @@ export function readFocus(fresh = false): Promise<BusinessEntityList> {
     });
   }
   return focusPromise;
+}
+
+/** Last updated cell: local date/time like the rest of the app (toLocaleString), "-" if absent. */
+export function lastUpdatedText(value: string | null | undefined): string {
+  if (value === null || value === undefined || value === "") return "-";
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? value : d.toLocaleString();
 }

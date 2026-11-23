@@ -163,3 +163,9 @@ this; `app/main.py` forces stdout/stderr to ASCII with backslash escapes at runt
 - The generator's `ffr_` rule (lower-case letters and digits) is the builder's guess at "ffr"; `clns_` =
   upper-case letters and digits. Both live in `app/b360data/testdata.py`.
 - `pip install -e ".[dev]"` again after pulling 0.9.8: `faker` is a new dependency.
+
+## B360 lastUpdateDate types (0.9.9)
+
+`_meta.lastUpdateDate` is an epoch-ms STRING in search results but an epoch NUMBER in Read Master Record.
+`wire._epoch_or_iso` takes both (and ISO text). The filter fieldName prefix for custom entities is not
+documented beyond `c360person.firstName`; the backend reuses the prefix the last search reply used.

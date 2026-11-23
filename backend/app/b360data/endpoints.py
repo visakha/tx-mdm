@@ -34,3 +34,16 @@ MAX_CREATE = 100
 # /metadata/api/v2/objects/<type> family as businessEntity. UNVERIFIED: may 404 on a real org;
 # the service then reports NOT_AVAILABLE and the TOML allowed list is used alone.
 SOURCE_SYSTEMS = "/metadata/api/v2/objects/sourceSystem"
+
+# 0.9.9 Records paging, filters, sort (Search API pp. 20-36):
+#   recordOffset + recordsToReturn + pageSize (p. 25-26); filters.filter[] {fieldName, comparator,
+#   fieldValue} (p. 23-25; STARTS_WITH accepts partial values); sort [{fieldName, order}] (p. 26).
+#   fieldName for an entity field = "<entity guid without dots>.<field>" as in c360person.firstName
+#   (p. 27, 30); for a custom entity the prefix the search reply itself uses is preferred.
+#   Last updated = _meta.lastUpdateDate (p. 27 response, p. 31 filter example). The sort on it is
+#   UNVERIFIED (the reference only shows sort: [] and the field in a filter).
+PAGE_SIZE = 10
+MAX_PAGE = 1000  # 10,000-record search window (maxRecords note p. 26)
+LAST_UPDATE_FIELD = "_meta.lastUpdateDate"
+# Read Master Record by Business ID, pp. 56-58: GET .../entity/<businessEntity>/<businessId>
+READ_RECORD = "/business-entity/public/api/v1/entity/{guid}/{business_id}"

@@ -218,3 +218,29 @@ Step 3 - the first 10 records
   - UNDOCUMENTED, UNVERIFIED; any non-429 error -> `NOT_AVAILABLE`, the TOML list is used alone.
 - Default sourcePKey: `TXMDM-<yyyymmddHHMMSS>-<n>` (backend local time, n = 1-based row in the request).
 - Never called against the live org by the builder: tests use respx + the fake IDMC only.
+
+## B360 Records paging, filters, sort, Business ID lookup (0.9.9, Vamsi 2026-11-23 ~01:30 CST)
+
+All from the B360 REST API Reference (Oct 2026). Search: `POST {mdm}/search/public/api/v1/search`.
+
+- Paging: `recordOffset` = (page-1)*10, `recordsToReturn` = 10, `pageSize` = 10 (pp. 25-26). Page count
+  = ceil(`hits` / 10). The search window is 10,000 records, so the API refuses page > 1000.
+- Name filters: `filters.filter[] = {fieldName, comparator: "STARTS_WITH", fieldValue}` (pp. 23-25;
+  STARTS_WITH / CONTAINS accept partial values). fieldName = `<prefix>.<field>`, where prefix is the one
+  the search reply itself uses for root keys (learned from the last reply, `wire.key_prefix`), else the
+  documented rule "entity id without dots" (`c360person.firstName`, p. 27). For zlv_guest that is
+  `zlv_guest.first_name` / `zlv_guest.last_name`. UNVERIFIED against his org. The first/last name field
+  is the root field whose name, ignoring case and `_`, is `firstname` / `lastname`; none -> 400, nothing sent.
+- Last updated: `_meta.lastUpdateDate` (p. 27 search sample, epoch ms as a STRING; pp. 56-57 / 61-62 _meta
+  table "date when the master record was last updated" - any channel). Sort:
+  `sort: [{"fieldName": "_meta.lastUpdateDate", "order": "DESCENDING" | "ASCENDING"}]` (p. 26 sort params;
+  p. 31 uses `_meta.lastUpdateDate` as a filter fieldName). Using it as a SORT fieldName is UNVERIFIED.
+  Only this column sorts (Vamsi: "Only that one").
+- Business ID: exact match through Read Master Record by Business ID,
+  `GET {mdm}/business-entity/public/api/v1/entity/<businessEntity>/<businessId>` (pp. 56-58). Reply keys
+  are plain field names (no prefix) plus `_meta` (lastUpdateDate here is an epoch NUMBER). 404 / 400 ->
+  empty page with a note (our choice); 429 passed through, never retried.
+- System metadata: fields/groups flagged system in the metadata reply (UNVERIFIED flag names `system`,
+  `systemField`, `isSystem`) or named with a leading `_` are SYSTEM; plus the documented system items not
+  in the reply (`_meta` group pp. 56-57, validationType / validationState / recordStateIndicator /
+  `_indexValidationError.code`) marked `origin_source = DOCUMENTED`.

@@ -20,10 +20,12 @@ from app.b360data.models import (
     GeneratedRows,
     GenerateRequest,
     RecordPage,
+    SortOrder,
     SourceSystemList,
 )
 from app.b360data.service import (
     B360DataService,
+    B360InputError,
     DuplicateSourcePKeyError,
     SourceNotAllowedError,
 )
@@ -67,16 +69,34 @@ def entity_metadata(name: EntityName, service: Service) -> BusinessEntity:
     "/entities/{name}/records",
     response_model=RecordPage,
     operation_id="b360_entity_records",
-    summary="First N master records of one business entity",
-    description="Read-only POST search/public/api/v1/search with entityType={name}, "
-    "search=*. Columns and field groups come from the entity metadata.",
+    summary="One page of master records: paged, filtered, sorted by Last updated",
+    description="Read-only. POST search/public/api/v1/search with recordOffset/recordsToReturn "
+    "(10 per page), optional STARTS_WITH filters on the entity's first/last name field, sort on "
+    "_meta.lastUpdateDate (the only sort). business_id switches to Read Master Record by "
+    "Business ID (GET business-entity/public/api/v1/entity/{name}/{businessId}), exact match.",
 )
 def entity_records(
     name: EntityName,
     service: Service,
-    limit: Annotated[int, Query(ge=1, le=ep.MAX_LIMIT)] = ep.DEFAULT_LIMIT,
+    limit: Annotated[int, Query(ge=1, le=ep.MAX_LIMIT)] = ep.PAGE_SIZE,
+    page: Annotated[int, Query(ge=1, le=ep.MAX_PAGE)] = 1,
+    first_name: Annotated[str, Query(max_length=100)] = "",
+    last_name: Annotated[str, Query(max_length=100)] = "",
+    business_id: Annotated[str, Query(max_length=100)] = "",
+    sort: SortOrder = SortOrder.NEWEST_FIRST,
 ) -> RecordPage:
-    return service.records(name, limit)
+    try:
+        return service.records(
+            name,
+            limit,
+            page=page,
+            first_name=first_name,
+            last_name=last_name,
+            business_id=business_id,
+            sort=sort,
+        )
+    except B360InputError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get(

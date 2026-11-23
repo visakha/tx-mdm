@@ -392,3 +392,36 @@ or generate N test rows with Faker, then save them through the REST API.
 - Agent bridge: `getB360SourceSystems()`, `generateB360Rows(name, count)` (read-only). Creating is only by
   a person's button.
 - Not yet seen on a screen: built and unit-tested only; no Cypress, no screenshot, not run against his org.
+
+
+## v0.9.9 (2026-11-23): B360 Data - Records paging, filters, Last updated sort, system metadata
+
+Asked by Vamsi (voice, ~01:30 CST): 10 per page with Prev / Next, filter by first name, last name and
+Business ID, a Last updated column sortable server side (only that one), and system fields in the Metadata tab.
+
+- Records tab master list (`b360-master`): filter row `b360-filters` with First name `b360-filter-first`,
+  Last name `b360-filter-last` (both "starts with"), Business ID `b360-filter-bid` (exact), Apply
+  `b360-filter-apply` (also Enter in a box; always goes back to page 1), Clear `b360-filter-clear`.
+- `b360-filters-applied` lists the filters the backend actually sent; `b360-records-note` explains a
+  Business ID lookup (or "No active master record with business ID ...").
+- Pager `b360-pager`: Prev `b360-page-prev`, `b360-page-info` "Page X of Y (N records)" (N = search hits),
+  Next `b360-page-next`. Prev disabled on page 1, Next on the last page.
+- Table: Business id, then **Last updated** (header button `b360-sort-updated`, data-sort NEWEST_FIRST /
+  OLDEST_FIRST, default newest first; click flips and goes to page 1), then the root columns. Cell
+  `b360-updated-<businessId>` shows `_meta.lastUpdateDate` with toLocaleString; tooltip "by <updatedBy>".
+  Disabled while showing a Business ID result (one row). No other column sorts.
+- Business ID lookup shows a one-row master list; clicking it opens the detail as before.
+- Metadata tab: configured root fields and field groups as before (normal text), then "System fields"
+  (`b360-meta-system-fields`) and system field groups (e.g. `b360-meta-group-_meta`) in magenta
+  (`--system` CSS variable, lighter in dark mode) with a small "system" label; rows carry
+  `data-origin="SYSTEM"`. "(documented)" marks items taken from the B360 REST API Reference because the
+  org metadata reply did not list them. Colour is used ONLY here (taskflow history stays colourless).
+- Agent bridge: `getB360Records(name, {page, firstName, lastName, businessId, sort})`.
+- Not yet seen on a screen: built and unit-tested on the fake IDMC only; no Cypress, not run against his org.
+- Backend-first (Vamsi 2026-11-23 01:40 CST: "make sure everything is all pragmatic. Everything is supported
+  by the backend API first."): every 0.9.9 control sits on `GET /api/b360/entities/{name}/records`
+  (typed `RecordPage`, in Swagger) or `GET /api/b360/entities/{name}` (typed `BusinessEntity` with
+  `system_fields` / `system_field_groups`), each grounded in a documented IDMC call (Search API, Read Master
+  Record by Business ID, metadata v2). Not faked in the UI. Caveats: the Last updated SORT and the custom-entity
+  filter prefix are documented shapes not yet proven on his org; "(documented)" system items come from the
+  API reference, not from the org's metadata reply.

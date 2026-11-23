@@ -3,8 +3,10 @@
 IDMC JSON is parsed into typed models in app.b360data.wire, right where it arrives.
 """
 
+import math
 import time
 from datetime import datetime
+from urllib.parse import quote
 
 import httpx
 
@@ -12,6 +14,7 @@ from app.b360data import endpoints as ep
 from app.b360data import forms, testdata, wire
 from app.b360data import scope as entity_scope
 from app.b360data.models import (
+    AppliedFilter,
     BusinessEntity,
     BusinessEntityList,
     BusinessEntitySummary,
@@ -25,10 +28,17 @@ from app.b360data.models import (
     FormSchema,
     GeneratedRows,
     GenerateRequest,
+    LookupMode,
+    NameFilterComparator,
     RecordPage,
+    SortOrder,
     SourceSystemList,
 )
 from app.common.idmc_session import IdmcError, IdmcHttp, IdmcRateLimitedError
+
+
+class B360InputError(ValueError):
+    """A request the backend refuses before calling IDMC (shown as 400)."""
 
 
 class SourceNotAllowedError(ValueError):
@@ -48,6 +58,7 @@ class B360DataService:
         self._http = http
         self._mdm_url = mdm_url.rstrip("/")
         self._meta_cache: dict[str, tuple[float, BusinessEntity]] = {}
+        self._prefix: dict[str, str] = {}
 
     def entities(self, scope: EntityScope = EntityScope.FOCUS) -> BusinessEntityList:
         body: object = self._http.request("GET", self._mdm_url + ep.DATAMODEL, ep.MDM_HEADERS)
@@ -83,21 +94,122 @@ class B360DataService:
         self._meta_cache[guid] = (time.monotonic(), entity)
         return entity
 
-    def records(self, guid: str, limit: int) -> RecordPage:
+    def records(
+        self,
+        guid: str,
+        limit: int = ep.PAGE_SIZE,
+        *,
+        page: int = 1,
+        first_name: str = "",
+        last_name: str = "",
+        business_id: str = "",
+        sort: SortOrder = SortOrder.NEWEST_FIRST,
+    ) -> RecordPage:
         entity = self.metadata(guid)
-        body: object = self._http.request(
-            "POST",
-            self._mdm_url + ep.SEARCH,
-            ep.MDM_HEADERS,
-            json={"entityType": guid, "search": "*", "pageSize": limit, "recordsToReturn": limit},
+        if business_id.strip():
+            return self._by_business_id(entity, business_id.strip(), limit, sort)
+        filters = self._name_filters(entity, first_name, last_name)
+        body: dict[str, object] = {
+            "entityType": guid,
+            "search": "*",
+            "pageSize": limit,
+            "pageOffset": 0,
+            "recordOffset": (page - 1) * limit,
+            "recordsToReturn": limit,
+            "sort": [
+                {
+                    "fieldName": ep.LAST_UPDATE_FIELD,
+                    "order": "DESCENDING" if sort is SortOrder.NEWEST_FIRST else "ASCENDING",
+                }
+            ],
+        }
+        if filters:
+            body["filters"] = {
+                "filter": [
+                    {
+                        "fieldName": f.field_name,
+                        "comparator": f.comparator.value,
+                        "fieldValue": f.value,
+                    }
+                    for f in filters
+                ]
+            }
+        reply: object = self._http.request(
+            "POST", self._mdm_url + ep.SEARCH, ep.MDM_HEADERS, json=body
         )
-        result = wire.search_response(body)
+        result = wire.search_response(reply)
         raw = result.records[:limit]
+        seen_prefix = wire.key_prefix(raw)
+        if seen_prefix:
+            self._prefix[guid] = seen_prefix
+        hits = result.hits
         return RecordPage(
             entity=entity,
-            hits=result.hits,
+            hits=hits,
             records=[wire.record_from_search(r, entity) for r in raw],
             unknown_keys=wire.unknown_keys(raw, entity),
+            page=page,
+            page_size=limit,
+            total_pages=max(1, math.ceil((hits or 0) / limit)),
+            sort=sort,
+            filters=filters,
+            mode=LookupMode.SEARCH,
+        )
+
+    def _field_prefix(self, guid: str) -> str:
+        """Prefix the last search reply used for this entity, else the documented rule (p. 27)."""
+        return self._prefix.get(guid) or guid.replace(".", "")
+
+    def _name_filters(self, entity: BusinessEntity, first: str, last: str) -> list[AppliedFilter]:
+        out: list[AppliedFilter] = []
+        wanted_fields = (("First name", "firstname", first), ("Last name", "lastname", last))
+        for label, wanted, value in wanted_fields:
+            if not value.strip():
+                continue
+            field = next(
+                (f for f in entity.fields if f.name.lower().replace("_", "") == wanted), None
+            )
+            if field is None:
+                raise B360InputError(f"{entity.name} has no {label.lower()} field to filter on.")
+            out.append(
+                AppliedFilter(
+                    label=label,
+                    field_name=f"{self._field_prefix(entity.name)}.{field.name}",
+                    comparator=NameFilterComparator.STARTS_WITH,
+                    value=value.strip(),
+                )
+            )
+        return out
+
+    def _by_business_id(
+        self, entity: BusinessEntity, business_id: str, limit: int, sort: SortOrder
+    ) -> RecordPage:
+        url = self._mdm_url + ep.READ_RECORD.format(
+            guid=quote(entity.name, safe="."), business_id=quote(business_id, safe="")
+        )
+        note = "Read Master Record by Business ID (exact match)."
+        try:
+            reply: object = self._http.request("GET", url, ep.MDM_HEADERS)
+            data = wire.as_json(reply)
+            raw = [data] if isinstance(data, dict) and data else []
+        except IdmcRateLimitedError:
+            raise
+        except IdmcError as exc:
+            if exc.status_code not in (400, 404):
+                raise
+            raw, note = [], f"No active master record with business ID {business_id} ({exc})."
+        return RecordPage(
+            entity=entity,
+            hits=len(raw),
+            records=[wire.record_from_search(r, entity) for r in raw],
+            unknown_keys=wire.unknown_keys(raw, entity),
+            page=1,
+            page_size=limit,
+            total_pages=1,
+            sort=sort,
+            mode=LookupMode.BUSINESS_ID,
+            business_id=business_id,
+            note=note,
         )
 
     # ------------------------------------------------------------------ 0.9.8 Add records

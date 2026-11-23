@@ -18,6 +18,7 @@ objects/businessEntity/<guid> gives fields + field groups; search returns 12 rec
 """
 
 import json
+import time
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -499,10 +500,15 @@ _B360_ENTITIES: dict[str, dict[str, Any]] = {
         "field": [
             _f("guestId", "Guest Id", searchable=True),
             _f("fullName", "Full Name", searchable=True),
+            _f("first_name", "First Name", searchable=True),
+            _f("last_name", "Last Name", searchable=True),
             _fg("Stay", "Stays", [_f("hotel", "Hotel"), _f("nights", "Nights", "IntegerField")]),
         ],
     },
 }
+
+
+_BASE_UPDATE_MS = 1_793_491_200_000  # 2026-11-01T00:00:00Z
 
 
 def _fake_records(guid: str) -> list[dict[str, Any]]:
@@ -513,6 +519,10 @@ def _fake_records(guid: str) -> list[dict[str, Any]]:
             "businessId": f"3000000000000000000000{i:05d}",
             "businessEntity": guid,
             "status": "ACTIVE",
+            # epoch ms as a string, like the reference sample (p. 27); record i updated i hours
+            # after 2026-11-01 so newest-first order is 12, 11, ... 1.
+            "lastUpdateDate": str(_BASE_UPDATE_MS + i * 3_600_000),
+            "updatedBy": "fake.loader",
         }
         if guid == "c360.person":
             rows.append(
@@ -552,6 +562,8 @@ def _fake_records(guid: str) -> list[dict[str, Any]]:
                     "_meta": meta,
                     f"{prefix}.guestId": f"G{i:03d}",
                     f"{prefix}.fullName": f"Guest {i}",
+                    f"{prefix}.first_name": ["Anna", "Ben", "Carla"][i % 3] + str(i),
+                    f"{prefix}.last_name": "Smith" if i % 2 else "Jones",
                     f"{prefix}.Stay": [{"hotel": "Leander Inn", "nights": i}],
                 }
             )
@@ -570,19 +582,62 @@ def business_entity(guid: str) -> dict[str, Any] | JSONResponse:
     return _B360_ENTITIES[guid]
 
 
+def _all_records(guid: str) -> list[dict[str, Any]]:
+    return _fake_records(guid) + _CREATED.get(guid, []) if guid in _B360_ENTITIES else []
+
+
+def _matches(record: dict[str, Any], flt: dict[str, Any]) -> bool:
+    value = str(record.get(str(flt.get("fieldName")), "") or "").lower()
+    wanted = str(flt.get("fieldValue") or "").lower()
+    match str(flt.get("comparator")):
+        case "STARTS_WITH":
+            return value.startswith(wanted)
+        case "EQUALS":
+            return value == wanted
+        case _:
+            return True
+
+
 @app.post("/search/public/api/v1/search")
 def be_search(body: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:  # noqa: B008
+    """Honours recordOffset / recordsToReturn, filters (STARTS_WITH, EQUALS, case-insensitive)
+    and a sort on _meta.lastUpdateDate, the way the 0.9.9 Records page sends them."""
     guid = str(body.get("entityType") or "")
-    records = _fake_records(guid) + _CREATED.get(guid, []) if guid in _B360_ENTITIES else []
+    records = _all_records(guid)
+    filters = body.get("filters") or {}
+    for flt in filters.get("filter", []) if isinstance(filters, dict) else []:
+        records = [r for r in records if _matches(r, flt)]
+    for item in body.get("sort") or []:
+        if item.get("fieldName") == "_meta.lastUpdateDate":
+            records = sorted(
+                records,
+                key=lambda r: int(r.get("_meta", {}).get("lastUpdateDate") or 0),
+                reverse=item.get("order") == "DESCENDING",
+            )
     size = int(body.get("recordsToReturn") or body.get("pageSize") or 25)
+    offset = int(body.get("recordOffset") or 0)
     return {
         "searchResult": {
             "hits": len(records),
             "pageSize": size,
             "pageOffset": 0,
-            "records": records[:size],
+            "recordOffset": offset,
+            "recordsToReturn": size,
+            "records": records[offset : offset + size],
         }
     }
+
+
+@app.get("/business-entity/public/api/v1/entity/{guid}/{business_id}", response_model=None)
+def read_master_record(guid: str, business_id: str) -> dict[str, Any] | JSONResponse:
+    """Read Master Record by Business ID (pp. 56-58): unprefixed field keys + _meta."""
+    for record in _all_records(guid):
+        if record.get("_meta", {}).get("businessId") == business_id:
+            return {
+                **{k.split(".", 1)[1]: v for k, v in record.items() if "." in k},
+                "_meta": record["_meta"],
+            }
+    return JSONResponse(status_code=404, content={"message": f"no record {business_id}"})
 
 
 # ---- 0.9.8 Add records ----------------------------------------------------------------------
@@ -619,7 +674,14 @@ def create_master_record(
     rows = _CREATED.setdefault(guid, [])
     business_id = f"TX{len(rows) + 1:013d}"
     prefix = guid.replace(".", "")
-    record: dict[str, Any] = {"_meta": {"businessId": business_id, "businessEntity": guid}}
+    record: dict[str, Any] = {
+        "_meta": {
+            "businessId": business_id,
+            "businessEntity": guid,
+            "lastUpdateDate": str(int(time.time() * 1000)),
+            "updatedBy": "tx-mdm",
+        }
+    }
     record.update({f"{prefix}.{key}": value for key, value in body.items()})
     rows.append(record)
     return {"approvalRequired": False, "id": business_id, "businessId": business_id}

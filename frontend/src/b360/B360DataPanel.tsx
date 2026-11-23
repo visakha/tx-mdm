@@ -25,9 +25,11 @@ import {
   groupByCategory,
   cellText,
   groupRows,
+  lastUpdatedText,
   recordColumns,
   type EntityRecord,
   type RecordPage,
+  type RecordQuery,
 } from "./b360Api";
 
 function errorMessage(err: unknown): string {
@@ -107,6 +109,10 @@ function RecordDetail({ page, record }: { page: RecordPage; record: EntityRecord
   );
 }
 
+function SystemTag(): React.JSX.Element {
+  return <span className="system-tag">system</span>;
+}
+
 function FieldTable({ fields, testId }: { fields: BusinessEntity["fields"]; testId: string }): React.JSX.Element {
   return (
     <div className="table-wrap">
@@ -122,9 +128,14 @@ function FieldTable({ fields, testId }: { fields: BusinessEntity["fields"]; test
         </thead>
         <tbody>
           {fields.map((f) => (
-            <tr key={f.name}>
-              <td><code>{f.name}</code></td>
-              <td>{f.label}</td>
+            <tr key={f.name} className={f.origin === "SYSTEM" ? "system-row" : undefined} data-origin={f.origin ?? "CONFIGURED"}>
+              <td>
+                <code>{f.name}</code> {f.origin === "SYSTEM" && <SystemTag />}
+              </td>
+              <td>
+                {f.label}
+                {f.origin_source === "DOCUMENTED" && <span className="small"> (documented)</span>}
+              </td>
               <td title={f.raw_type}>{f.data_type}</td>
               <td>{f.mandatory ? "yes" : "-"}</td>
               <td>{f.searchable ? "yes" : "-"}</td>
@@ -137,8 +148,30 @@ function FieldTable({ fields, testId }: { fields: BusinessEntity["fields"]; test
 }
 
 function MetadataView({ entity }: { entity: BusinessEntity }): React.JSX.Element {
+  const systemFields = entity.system_fields ?? [];
+  const systemGroups = entity.system_field_groups ?? [];
+  const groupBlock = (g: BusinessEntity["field_groups"][number]): React.JSX.Element => (
+    <section
+      key={g.name}
+      className={`b360-group${g.origin === "SYSTEM" ? " system-group" : ""}`}
+      data-testid={`b360-meta-group-${g.name}`}
+      data-origin={g.origin ?? "CONFIGURED"}
+    >
+      <h4>
+        {g.label} <span className="muted small">({g.name}, {g.cardinality})</span>
+        {g.origin === "SYSTEM" && <SystemTag />}
+        {g.origin_source === "DOCUMENTED" && <span className="small"> documented in the B360 REST API Reference</span>}
+      </h4>
+      <FieldTable fields={g.fields} testId={`b360-meta-group-fields-${g.name}`} />
+    </section>
+  );
   return (
     <div className="b360-meta" data-testid="b360-metadata">
+      <p className="muted small">
+        Configured fields are in normal text. <span className="system-text">System fields and field groups are in magenta</span>{" "}
+        with a system label: added by Business 360 itself. &quot;documented&quot; means the org metadata reply did not list it and it
+        comes from the B360 REST API Reference.
+      </p>
       <section className="b360-group">
         <h4>
           Root fields <span className="count">{entity.fields.length}</span>
@@ -146,17 +179,19 @@ function MetadataView({ entity }: { entity: BusinessEntity }): React.JSX.Element
         <FieldTable fields={entity.fields} testId="b360-meta-fields" />
       </section>
       {entity.field_groups.length === 0 ? (
-        <p className="muted">This entity has no field groups.</p>
+        <p className="muted">This entity has no configured field groups.</p>
       ) : (
-        entity.field_groups.map((g) => (
-          <section key={g.name} className="b360-group" data-testid={`b360-meta-group-${g.name}`}>
-            <h4>
-              {g.label} <span className="muted small">({g.name}, {g.cardinality})</span>
-            </h4>
-            <FieldTable fields={g.fields} testId={`b360-meta-group-fields-${g.name}`} />
-          </section>
-        ))
+        entity.field_groups.map(groupBlock)
       )}
+      {systemFields.length > 0 && (
+        <section className="b360-group system-group" data-testid="b360-meta-system-fields" data-origin="SYSTEM">
+          <h4>
+            System fields <span className="count">{systemFields.length}</span> <SystemTag />
+          </h4>
+          <FieldTable fields={systemFields} testId="b360-meta-system-fields-table" />
+        </section>
+      )}
+      {systemGroups.map(groupBlock)}
     </div>
   );
 }
@@ -179,6 +214,13 @@ export function B360DataPanel({
   const [selected, setSelected] = useState<Selected>({ entity: null, record: null });
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
+  // 0.9.9: paging, filters (first / last name STARTS_WITH, exact Business ID), Last updated sort.
+  const [query, setQuery] = useState<RecordQuery>({ page: 1, sort: "NEWEST_FIRST" });
+  const [draft, setDraft] = useState<{ firstName: string; lastName: string; businessId: string }>({
+    firstName: "",
+    lastName: "",
+    businessId: "",
+  });
 
   const loadAll = useCallback((): void => {
     setError("");
@@ -194,12 +236,12 @@ export function B360DataPanel({
       .finally(() => setLoading(false));
   }, []);
 
-  const loadRecords = useCallback((name: string): void => {
+  const loadRecords = useCallback((name: string, q: RecordQuery = { page: 1, sort: "NEWEST_FIRST" }): void => {
     setError("");
-    setPage(null);
     setLoading(true);
+    setQuery(q);
     b360Api
-      .records(name, B360_LIMIT)
+      .records(name, q, B360_LIMIT)
       .then((p) => {
         setPage(p);
         // Detail shows straight away: the first record is picked unless one already is.
@@ -217,6 +259,8 @@ export function B360DataPanel({
     if (!active || entityName === null) return;
     if (selected.entity === entityName) return;
     setSelected({ entity: entityName, record: null });
+    setPage(null);
+    setDraft({ firstName: "", lastName: "", businessId: "" });
     loadRecords(entityName);
   }, [active, entityName, selected.entity, loadRecords]);
 
@@ -230,7 +274,22 @@ export function B360DataPanel({
 
   const refresh = (): void => {
     if (entityName === null) loadAll();
-    else loadRecords(entityName);
+    else loadRecords(entityName, query);
+  };
+  const applyFilters = (): void => {
+    if (entityName !== null) loadRecords(entityName, { ...draft, page: 1, sort: query.sort });
+  };
+  const clearFilters = (): void => {
+    setDraft({ firstName: "", lastName: "", businessId: "" });
+    if (entityName !== null) loadRecords(entityName, { page: 1, sort: query.sort });
+  };
+  const goPage = (n: number): void => {
+    if (entityName !== null) loadRecords(entityName, { ...query, page: n });
+  };
+  const toggleSort = (): void => {
+    if (entityName === null) return;
+    const sort = query.sort === "OLDEST_FIRST" ? "NEWEST_FIRST" : "OLDEST_FIRST";
+    loadRecords(entityName, { ...query, page: 1, sort });
   };
 
   const entityButton = (e: BusinessEntitySummary): React.JSX.Element => (
@@ -299,16 +358,68 @@ export function B360DataPanel({
       {page !== null && tab === "metadata" && <MetadataView entity={page.entity} />}
 
       {page !== null && tab === "add" && (
-        <AddRecordsView entity={page.entity.name} onSaved={() => loadRecords(page.entity.name)} />
+        <AddRecordsView entity={page.entity.name} onSaved={() => loadRecords(page.entity.name, { page: 1, sort: "NEWEST_FIRST" })} />
       )}
 
       {page !== null && tab !== "metadata" && tab !== "add" && (
         <div className="b360-records master-detail" data-testid="b360-records" data-entity={page.entity.name}>
           <section className="b360-master" data-testid="b360-master">
             <h3>
-              Master: {page.entity.label} root, first {page.records.length}
-              {page.hits !== null ? ` of ${page.hits.toLocaleString()}` : ""} records
+              Master: {page.entity.label} root
+              {page.mode === "BUSINESS_ID" ? ` - business ID ${page.business_id ?? ""}` : ""}
             </h3>
+            <div className="toolbar b360-filters" data-testid="b360-filters">
+              {(
+                [
+                  ["firstName", "First name", "b360-filter-first"],
+                  ["lastName", "Last name", "b360-filter-last"],
+                  ["businessId", "Business ID", "b360-filter-bid"],
+                ] as const
+              ).map(([key, label, testId]) => (
+                <label key={key}>
+                  {label}{" "}
+                  <input
+                    type="text"
+                    data-testid={testId}
+                    value={draft[key]}
+                    placeholder={key === "businessId" ? "exact" : "starts with"}
+                    onChange={(e) => setDraft((d) => ({ ...d, [key]: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") applyFilters();
+                    }}
+                  />
+                </label>
+              ))}
+              <Button data-testid="b360-filter-apply" onClick={applyFilters} disabled={loading}>
+                Apply
+              </Button>
+              <Button data-testid="b360-filter-clear" onClick={clearFilters} disabled={loading}>
+                Clear
+              </Button>
+            </div>
+            {page.note !== "" && page.note !== undefined && (
+              <p className="muted small" data-testid="b360-records-note">{page.note}</p>
+            )}
+            {page.filters !== undefined && page.filters.length > 0 && (
+              <p className="muted small" data-testid="b360-filters-applied">
+                Filtered: {page.filters.map((f) => `${f.label} ${f.comparator.toLowerCase().replace("_", " ")} "${f.value}"`).join(", ")}
+              </p>
+            )}
+            <div className="toolbar b360-pager" data-testid="b360-pager">
+              <Button data-testid="b360-page-prev" onClick={() => goPage((page.page ?? 1) - 1)} disabled={loading || (page.page ?? 1) <= 1}>
+                Prev
+              </Button>
+              <span data-testid="b360-page-info">
+                Page {page.page ?? 1} of {page.total_pages ?? 1} ({(page.hits ?? page.records.length).toLocaleString()} records)
+              </span>
+              <Button
+                data-testid="b360-page-next"
+                onClick={() => goPage((page.page ?? 1) + 1)}
+                disabled={loading || (page.page ?? 1) >= (page.total_pages ?? 1)}
+              >
+                Next
+              </Button>
+            </div>
             {page.unknown_keys.length > 0 && (
               <p className="muted small" data-testid="b360-unknown-keys">
                 Not in the metadata (not shown): {page.unknown_keys.join(", ")}
@@ -322,6 +433,19 @@ export function B360DataPanel({
                   <thead>
                     <tr>
                       <th>Business id</th>
+                      <th>
+                        <button
+                          type="button"
+                          className="sort-head"
+                          data-testid="b360-sort-updated"
+                          data-sort={query.sort ?? "NEWEST_FIRST"}
+                          title="Sort all records by last update (any channel): click to flip"
+                          onClick={toggleSort}
+                          disabled={loading || page.mode === "BUSINESS_ID"}
+                        >
+                          Last updated {query.sort === "OLDEST_FIRST" ? "(oldest first) ^" : "(newest first) v"}
+                        </button>
+                      </th>
                       {recordColumns(page.entity).map((f) => (
                         <th key={f.name} title={`${f.name} (${f.data_type})`}>{f.label}</th>
                       ))}
@@ -337,6 +461,9 @@ export function B360DataPanel({
                         onClick={() => setSelected((s) => ({ ...s, record: r.business_id }))}
                       >
                         <td><code>{r.business_id}</code></td>
+                        <td data-testid={`b360-updated-${r.business_id}`} title={r.updated_by ? `by ${r.updated_by}` : undefined}>
+                          {lastUpdatedText(r.last_updated)}
+                        </td>
                         {recordColumns(page.entity).map((f) => (
                           <td key={f.name}>{cellText(r.values[f.name], f.data_type)}</td>
                         ))}

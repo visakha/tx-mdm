@@ -31,7 +31,9 @@ from app.b360data.models import (
     FieldDataType,
     FieldGroup,
     FieldGroupRows,
+    FieldOrigin,
     FieldValue,
+    OriginSource,
 )
 
 _JSON = TypeAdapter(JsonValue)
@@ -79,6 +81,9 @@ class WireNode(_Wire):
     mandatory: bool | None = None
     searchable: bool | None = None
     options: WireOptions | None = None
+    system: bool | None = None  # UNVERIFIED flag names for system-defined metadata objects
+    system_field: bool | None = Field(default=None, alias="systemField")
+    is_system: bool | None = Field(default=None, alias="isSystem")
     field: list["WireNode"] | None = None
     fields: list["WireNode"] | None = None
 
@@ -93,6 +98,16 @@ class WireNode(_Wire):
         if isinstance(self.label, str) and self.label:
             return self.label
         return self.name or self.guid or ""
+
+    @property
+    def is_system_object(self) -> bool:
+        """System-defined: an explicit system flag, or a name starting with "_" (like _meta).
+
+        UNVERIFIED: the reference does not print the businessEntity metadata reply, so we do not
+        know whether (or how) it marks system fields. Live zlv_guest (2026-11-23) came back with
+        configured fields only.
+        """
+        return bool(self.system or self.system_field or self.is_system) or self.name.startswith("_")
 
     @property
     def children(self) -> list["WireNode"]:
@@ -162,7 +177,11 @@ def entities_from_datamodel(body: object) -> list[BusinessEntitySummary]:
     return sorted(seen.values(), key=lambda e: e.label.lower())
 
 
-def _field(node: WireNode) -> EntityField:
+def _origin(node: WireNode, parent_system: bool = False) -> FieldOrigin:
+    return FieldOrigin.SYSTEM if parent_system or node.is_system_object else FieldOrigin.CONFIGURED
+
+
+def _field(node: WireNode, parent_system: bool = False) -> EntityField:
     raw_type = node.type_name
     searchable = bool(node.searchable or (node.options and node.options.searchable))
     return EntityField(
@@ -172,7 +191,74 @@ def _field(node: WireNode) -> EntityField:
         raw_type=raw_type,
         searchable=searchable,
         mandatory=bool(node.mandatory),
+        origin=_origin(node, parent_system),
     )
+
+
+def _group(node: WireNode) -> FieldGroup:
+    system = node.is_system_object
+    return FieldGroup(
+        name=node.name,
+        label=node.text,
+        cardinality=Cardinality.ONE if node.allow_many is False else Cardinality.MANY,
+        fields=[_field(c, system) for c in node.children if not c.is_group],
+        origin=_origin(node),
+    )
+
+
+# ---- documented system fields (0.9.9) ---------------------------------------------------------
+# B360 REST API Reference Oct 2026. _meta parameters: Read Master Record by Business ID pp. 56-57
+# and p. 61-62; search response p. 27 (score, status). System filter fields: Search API p. 25 and
+# p. 29 (recordStateIndicator), p. 26 (_indexValidationError.code). Shown only when the org's
+# metadata reply does not already list them.
+
+
+def _doc_field(
+    name: str, label: str, data_type: FieldDataType = FieldDataType.STRING
+) -> EntityField:
+    return EntityField(
+        name=name,
+        label=label,
+        data_type=data_type,
+        raw_type="documented",
+        searchable=False,
+        mandatory=False,
+        origin=FieldOrigin.SYSTEM,
+        origin_source=OriginSource.DOCUMENTED,
+    )
+
+
+DOCUMENTED_SYSTEM_FIELDS: tuple[EntityField, ...] = (
+    _doc_field("validationType", "Validation type (ERROR, WARNING, INFO)"),
+    _doc_field("validationState", "Validation state (PASSED, FAILED)"),
+    _doc_field("recordStateIndicator", "Record state (ACTIVE, DELETED)"),
+    _doc_field("_indexValidationError.code", "Index validation error code"),
+)
+
+DOCUMENTED_SYSTEM_GROUPS: tuple[FieldGroup, ...] = (
+    FieldGroup(
+        name="_meta",
+        label="Record system metadata",
+        cardinality=Cardinality.ONE,
+        origin=FieldOrigin.SYSTEM,
+        origin_source=OriginSource.DOCUMENTED,
+        fields=[
+            _doc_field("businessId", "Business ID"),
+            _doc_field("id", "Internal ID (do not use)"),
+            _doc_field("businessEntity", "Business entity"),
+            _doc_field("state", "State (search: status)"),
+            _doc_field("validation", "Validation status"),
+            _doc_field("consolidation", "Match and merge status"),
+            _doc_field("searchIndex", "Search index state"),
+            _doc_field("score", "Trust score (search)", FieldDataType.DOUBLE),
+            _doc_field("createdBy", "Created by"),
+            _doc_field("creationDate", "Creation date", FieldDataType.DATETIME),
+            _doc_field("updatedBy", "Updated by"),
+            _doc_field("lastUpdateDate", "Last update date", FieldDataType.DATETIME),
+            _doc_field("changeList", "Pending workflow task id"),
+        ],
+    ),
+)
 
 
 def business_entity_from_metadata(body: object, guid: str) -> BusinessEntity:
@@ -183,18 +269,22 @@ def business_entity_from_metadata(body: object, guid: str) -> BusinessEntity:
         root = next((n for n in content if n.guid == guid), content[0] if content else WireNode())
     else:
         root = _node(value) or WireNode()
-    fields = [_field(c) for c in root.children if not c.is_group]
-    groups = [
-        FieldGroup(
-            name=g.name,
-            label=g.text,
-            cardinality=Cardinality.ONE if g.allow_many is False else Cardinality.MANY,
-            fields=[_field(c) for c in g.children if not c.is_group],
-        )
-        for g in root.children
-        if g.is_group
-    ]
-    return BusinessEntity(name=guid, label=root.text or guid, fields=fields, field_groups=groups)
+    all_fields = [_field(c) for c in root.children if not c.is_group]
+    all_groups = [_group(g) for g in root.children if g.is_group]
+    sys_fields = [f for f in all_fields if f.origin is FieldOrigin.SYSTEM]
+    sys_groups = [g for g in all_groups if g.origin is FieldOrigin.SYSTEM]
+    seen_f = {f.name for f in sys_fields}
+    seen_g = {g.name for g in sys_groups}
+    sys_fields += [f for f in DOCUMENTED_SYSTEM_FIELDS if f.name not in seen_f]
+    sys_groups += [g for g in DOCUMENTED_SYSTEM_GROUPS if g.name not in seen_g]
+    return BusinessEntity(
+        name=guid,
+        label=root.text or guid,
+        fields=[f for f in all_fields if f.origin is FieldOrigin.CONFIGURED],
+        field_groups=[g for g in all_groups if g.origin is FieldOrigin.CONFIGURED],
+        system_fields=sys_fields,
+        system_field_groups=sys_groups,
+    )
 
 
 def search_response(body: object) -> WireSearchResult:
@@ -215,6 +305,8 @@ def _picklist_text(raw: dict[str, JsonValue]) -> str | None:
 def _epoch_or_iso(raw: JsonValue) -> datetime | None:
     if isinstance(raw, (int, float)) and not isinstance(raw, bool):
         return datetime.fromtimestamp(raw / 1000, tz=UTC)
+    if isinstance(raw, str) and raw.isdigit():  # search returns epoch ms as a string (p. 27)
+        return datetime.fromtimestamp(int(raw) / 1000, tz=UTC)
     if isinstance(raw, str):
         try:
             return datetime.fromisoformat(raw.replace("Z", "+00:00"))
@@ -271,7 +363,9 @@ def _local(key: str) -> str:
 def record_from_search(raw: dict[str, JsonValue], entity: BusinessEntity) -> EntityRecord:
     by_local = {_local(k): v for k, v in raw.items() if not k.startswith("_")}
     meta = raw.get("_meta")
-    business_id = meta.get("businessId") if isinstance(meta, dict) else None
+    meta_d: dict[str, JsonValue] = meta if isinstance(meta, dict) else {}
+    business_id = meta_d.get("businessId")
+    updated_by = meta_d.get("updatedBy")
     values = {f.name: typed_value(by_local.get(f.name), f.data_type) for f in entity.fields}
     groups: list[FieldGroupRows] = []
     for group in entity.field_groups:
@@ -291,7 +385,18 @@ def record_from_search(raw: dict[str, JsonValue], entity: BusinessEntity) -> Ent
         business_id=str(business_id) if business_id is not None else "",
         values=values,
         groups=groups,
+        last_updated=_epoch_or_iso(meta_d.get("lastUpdateDate")),
+        updated_by=str(updated_by) if isinstance(updated_by, (str, int)) else None,
     )
+
+
+def key_prefix(records: list[dict[str, JsonValue]]) -> str | None:
+    """The "<prefix>." of the search record keys (c360person on p. 33), as IDMC really sent it."""
+    for record in records:
+        for key in record:
+            if not key.startswith("_") and "." in key:
+                return key.split(".", 1)[0]
+    return None
 
 
 def unknown_keys(records: list[dict[str, JsonValue]], entity: BusinessEntity) -> list[str]:

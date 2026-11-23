@@ -76,6 +76,20 @@ class BusinessEntityList(BaseModel):
     source: str = Field(description="The metadata call the list was derived from.")
 
 
+class FieldOrigin(StrEnum):
+    """0.9.9: who defined a field / field group (Vamsi 2026-11-23: show system ones in magenta)."""
+
+    CONFIGURED = "CONFIGURED"  # modelled by the org in Business 360 Console (e.g. first_name)
+    SYSTEM = "SYSTEM"  # added by Business 360 itself (_meta.*, validation fields, ...)
+
+
+class OriginSource(StrEnum):
+    """Where we learned of the field: the org's metadata reply, or only the reference PDF."""
+
+    METADATA = "METADATA"  # GET metadata/api/v2/objects/businessEntity/<guid>
+    DOCUMENTED = "DOCUMENTED"  # B360 REST API Reference Oct 2026 (_meta table p. 61-62, p. 25)
+
+
 class EntityField(BaseModel):
     name: str
     label: str
@@ -83,6 +97,8 @@ class EntityField(BaseModel):
     raw_type: str = Field(description="Type as IDMC sent it (eClass suffix), kept for UNKNOWN.")
     searchable: bool
     mandatory: bool
+    origin: FieldOrigin = FieldOrigin.CONFIGURED
+    origin_source: OriginSource = OriginSource.METADATA
 
 
 class FieldGroup(BaseModel):
@@ -90,13 +106,21 @@ class FieldGroup(BaseModel):
     label: str
     cardinality: Cardinality
     fields: list[EntityField]
+    origin: FieldOrigin = FieldOrigin.CONFIGURED
+    origin_source: OriginSource = OriginSource.METADATA
 
 
 class BusinessEntity(BaseModel):
     name: str
     label: str
-    fields: list[EntityField]
-    field_groups: list[FieldGroup]
+    fields: list[EntityField] = Field(description="CONFIGURED root fields (records columns, form).")
+    field_groups: list[FieldGroup] = Field(description="CONFIGURED field groups.")
+    system_fields: list[EntityField] = Field(
+        default_factory=list, description="SYSTEM root fields (Metadata tab only)."
+    )
+    system_field_groups: list[FieldGroup] = Field(
+        default_factory=list, description="SYSTEM field groups, e.g. _meta (Metadata tab only)."
+    )
 
 
 class FieldGroupRows(BaseModel):
@@ -108,6 +132,33 @@ class EntityRecord(BaseModel):
     business_id: str
     values: dict[str, FieldValue] = Field(description="Top-level fields, keyed by field name.")
     groups: list[FieldGroupRows]
+    last_updated: datetime | None = Field(
+        default=None, description="_meta.lastUpdateDate: last change via any channel (UTC)."
+    )
+    updated_by: str | None = Field(default=None, description="_meta.updatedBy")
+
+
+class SortOrder(StrEnum):
+    """0.9.9: the ONLY sort is Last updated (_meta.lastUpdateDate), server-side."""
+
+    NEWEST_FIRST = "NEWEST_FIRST"  # DESCENDING (default)
+    OLDEST_FIRST = "OLDEST_FIRST"  # ASCENDING
+
+
+class NameFilterComparator(StrEnum):
+    STARTS_WITH = "STARTS_WITH"  # Search API comparator, partial values allowed (p. 24-25)
+
+
+class AppliedFilter(BaseModel):
+    label: str = Field(description="First name / Last name")
+    field_name: str = Field(description="fieldName sent to IDMC, e.g. zlv_guest.first_name")
+    comparator: NameFilterComparator
+    value: str
+
+
+class LookupMode(StrEnum):
+    SEARCH = "SEARCH"  # Search API page (filters + sort + paging)
+    BUSINESS_ID = "BUSINESS_ID"  # Read Master Record by Business ID (p. 56-58)
 
 
 class RecordPage(BaseModel):
@@ -117,6 +168,14 @@ class RecordPage(BaseModel):
     unknown_keys: list[str] = Field(
         description="Record keys the entity metadata did not describe (listed, never guessed)."
     )
+    page: int = 1
+    page_size: int = 10
+    total_pages: int = 1
+    sort: SortOrder = SortOrder.NEWEST_FIRST
+    filters: list[AppliedFilter] = Field(default_factory=list)
+    mode: LookupMode = LookupMode.SEARCH
+    business_id: str | None = Field(default=None, description="Set when mode is BUSINESS_ID.")
+    note: str = ""
 
 
 # ---------------------------------------------------------------------------------------------
