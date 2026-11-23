@@ -59,3 +59,23 @@ The spec-driven paperwork (specs/ and changes/ proposals) has not kept pace with
 voice-driven builds since the Monitor tab; the decisions live in the briefs and these
 notes. Vamsi chose (2026-11-23) to capture the gist here rather than backfill per-version
 proposals.
+
+## Where this sits next to Spec Kit / spec-driven development
+
+GitHub Spec Kit's flow is constitution -> specify -> clarify -> plan -> tasks -> implement
+-> converge (https://github.com/github/spec-kit). What we actually do, step by step:
+
+| Spec Kit step | What we do here | Status |
+|---|---|---|
+| constitution | methodology/constitution.md + the spine above (typed, API-first, ASCII, no pop-ups, password stays local) | used knowingly |
+| specify (what/why) | Vamsi says it out loud on his own screen | used, but spoken, not written |
+| clarify | Muse reads it back; "no, no, no" corrections | used, live and fast |
+| plan + tasks | the builder brief (hidden_files/brief-*.md) with addenda | used, kept outside the repo |
+| implement | builder agent, small version per ask | used |
+| converge (code vs spec) | Vamsi's screen + live reads + bridge drive; notes updated | used, the spec it converges to is his eyes |
+| specs/ and changes/ archive | not kept up since the Monitor tab | skipped |
+
+In short: we run a spoken, very short-cycle version of spec-driven development. The
+constitution is strong and enforced by tests; the specification lives in his words and
+the briefs instead of in specs/; clarify and converge happen live on his screen. That is
+closer to an agile loop with a constitution than to Spec Kit's phase-gated pipeline.
