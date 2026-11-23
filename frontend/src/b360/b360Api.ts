@@ -2,8 +2,12 @@
 // GENERATED from the backend Pydantic models (npm run gen:types) - never hand-edit them here.
 
 import { getJson, postJson } from "../shared/api";
+import { ID_LIST_SEPARATORS, QUOTES, tokens, trimChars } from "../shared/text";
 import type {
   BusinessEntity,
+  FieldPath,
+  FieldVisibility,
+  PathKind,
   BusinessEntityList,
   BusinessEntitySummary,
   EntityCategory,
@@ -109,8 +113,8 @@ export const b360Api = {
 /** Business ids typed or pasted into the Merge box: split on spaces, commas, tabs, new lines. */
 export function parseBusinessIds(text: string): string[] {
   const out: string[] = [];
-  for (const part of text.split(/[\s,;]+/)) {
-    const id = part.trim().replace(/^["']|["']$/g, "");
+  for (const part of tokens(text, ID_LIST_SEPARATORS)) {
+    const id = trimChars(part, QUOTES);
     if (id !== "" && !out.includes(id)) out.push(id);
   }
   return out;
@@ -301,12 +305,35 @@ export function systemValue(values: readonly SystemValue[] | undefined, name: st
 }
 
 /** 0.10: hidden names from b360_entities.toml (fields = [...]); case-insensitive. */
-export function isShown(vis: { hidden?: string[] } | undefined, name: string): boolean {
-  const wanted = name.toLowerCase();
-  return !(vis?.hidden ?? []).some((h) => h.toLowerCase() === wanted);
+// 0.9.13: visibility by typed FieldPath from the backend, never dotted strings.
+type Vis = Pick<FieldVisibility, "hidden" | "meta_hidden" | "hidden_meta_keys"> | undefined;
+
+function hiddenHas(vis: Vis, kind: PathKind, group: string | null, field: string | null): boolean {
+  return (vis?.hidden ?? []).some((p) => p.kind === kind && (p.group ?? null) === group && (p.field ?? null) === field);
 }
 
-/** A record system column (a _meta key, maybe dotted) is shown unless _meta.<first part> is hidden. */
-export function isSystemColumnShown(vis: { hidden?: string[] } | undefined, column: string): boolean {
-  return isShown(vis, `_meta.${column.split(".")[0] ?? column}`) && isShown(vis, `_meta.${column}`);
+/** Words for a path (display only): group.field, group, or field. */
+export function pathLabel(p: FieldPath): string {
+  if (p.group !== null && p.group !== undefined && p.field !== null && p.field !== undefined) return `${p.group}.${p.field}`;
+  return p.group ?? p.field ?? "";
+}
+
+/** Root field shown on the records screens. */
+export function isFieldShown(vis: Vis, field: string): boolean {
+  return !hiddenHas(vis, "FIELD", null, field);
+}
+
+export function isGroupShown(vis: Vis, group: string): boolean {
+  return !hiddenHas(vis, "GROUP", group, null);
+}
+
+export function isGroupFieldShown(vis: Vis, group: string, field: string): boolean {
+  return isGroupShown(vis, group) && !hiddenHas(vis, "GROUP_FIELD", group, field);
+}
+
+/** A record system (_meta) value / column, by its typed key path. */
+export function isMetaShown(vis: Vis, path: readonly string[] | null | undefined): boolean {
+  if (vis?.meta_hidden === true) return false;
+  const top = path?.[0];
+  return top === undefined || !(vis?.hidden_meta_keys ?? []).includes(top);
 }

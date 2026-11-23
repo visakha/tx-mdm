@@ -586,3 +586,11 @@ the chip-row Listboxes instead.
   "max 3 (CONFIG)", "exactly 10 (CONFIG)", "max 12 (LONGEST_CODE)". Warnings above the root table
   (`b360-length-warning`) when a TOML length exceeds the metadata or names an unknown field.
 - Type it / Edit: text inputs get maxlength, integer inputs min / max from the same bound.
+
+## v0.9.13 (2026-11-23 ~03:10 CST): typed cleanup, no visible change intended
+- Records (M) / (S) / Edit hide fields, groups and system columns from typed FieldPath objects
+  (backend) instead of dotted strings; same screens, same labels.
+- "Hidden by b360_entities.toml: ..." line renders each FieldPath as group.field / group / field.
+- Merge box still accepts ids separated by spaces, commas, semicolons, tabs or new lines, quotes
+  stripped (now a character loop, shared/text.ts).
+

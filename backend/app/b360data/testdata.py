@@ -19,8 +19,9 @@ Rules (by field name, then by data type), one place:
 Rows go through the entity's dynamic Pydantic model (app.b360data.forms) before they are returned.
 """
 
-import re
+from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum
 
 import faker as faker_pkg
 from faker import Faker
@@ -38,9 +39,40 @@ from app.b360data.models import (
     NewRecord,
     PicklistSource,
 )
+from app.common.naming import MatchKind, NameRule, Transform, apply, first_match, strip_rule
 
-_NON_ALNUM = re.compile(r"[^A-Za-z0-9]")
-_DERIVED = (("clns_", "cleansed: upper-case, letters and digits only"),)
+
+class FieldRole(StrEnum):
+    """What a field-name prefix means for test data (his naming convention)."""
+
+    DERIVED = "DERIVED"  # computed from its base field (clns_first_name <- first_name)
+    FREEFORM_REASON = "FREEFORM_REASON"  # ffr_ = free text for a failed validation: never filled
+
+
+@dataclass(frozen=True)
+class FieldNameMeaning:
+    role: FieldRole
+    transform: Transform | None
+    words: str
+
+
+# 0.9.13: declarative table, first match wins. No regex.
+FIELD_NAME_RULES: tuple[NameRule[FieldNameMeaning], ...] = (
+    NameRule(
+        MatchKind.PREFIX,
+        "clns_",
+        FieldNameMeaning(
+            FieldRole.DERIVED,
+            Transform.UPPER_ALNUM,
+            "cleansed: upper-case, letters and digits only",
+        ),
+    ),
+    NameRule(
+        MatchKind.PREFIX,
+        "ffr_",
+        FieldNameMeaning(FieldRole.FREEFORM_REASON, None, "freeform reason"),
+    ),
+)
 FREEFORM_REASON_PREFIX = "ffr_"
 FREEFORM_REASON_RULE = (
     "left empty: ffr_ = freeform reason, free text for when validation of the field fails"
@@ -48,9 +80,8 @@ FREEFORM_REASON_RULE = (
 
 
 def _is_freeform_reason(name: str) -> bool:
-    return name.lower().startswith(FREEFORM_REASON_PREFIX) and len(name) > len(
-        FREEFORM_REASON_PREFIX
-    )
+    rule = first_match(FIELD_NAME_RULES, name)
+    return rule is not None and rule.meaning.role == FieldRole.FREEFORM_REASON
 
 
 # name hint (substring of the lower-cased field name) -> (Faker call, plain words)
@@ -85,11 +116,11 @@ def make_source_pkey(stamp: datetime, n: int) -> str:
 
 
 def _derived(name: str) -> tuple[str, str] | None:
-    lowered = name.lower()
-    for prefix, words in _DERIVED:
-        if lowered.startswith(prefix) and len(name) > len(prefix):
-            return name[len(prefix) :], words
-    return None
+    """(base field name, words) for a DERIVED field, else None."""
+    rule = first_match(FIELD_NAME_RULES, name)
+    if rule is None or rule.meaning.role != FieldRole.DERIVED:
+        return None
+    return strip_rule(rule, name), rule.meaning.words
 
 
 def _hint(name: str) -> tuple[str, str] | None:
@@ -180,9 +211,8 @@ def _fresh_unbounded(fake: Faker, field: EntityField, codes: list[str] | None) -
             return str(getattr(fake, hint[0])()) if hint is not None else str(fake.word())
 
 
-def _cleanse(value: FieldValue, upper: bool) -> str:
-    text = _NON_ALNUM.sub("", str(value))
-    return text.upper() if upper else text.lower()
+def _cleanse(value: FieldValue) -> str:
+    return apply(Transform.UPPER_ALNUM, str(value))
 
 
 def _row(
@@ -204,7 +234,7 @@ def _row(
         base = values.get(base_field.name) if base_field else None
         if base is None:
             base = _fresh(fake, field)
-        values[field.name] = _cleanse(base, upper=True)
+        values[field.name] = _cleanse(base)
     return values
 
 

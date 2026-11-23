@@ -90,6 +90,21 @@ behaviour - from real Cypress runs, not from memory.
   at the client boundary.
 - The frontend uses TypeScript types generated from the backend's openapi.json and committed;
   a test fails when they drift. Enums / unions for closed sets (e.g. FieldDataType), no `any`.
+- 0.9.13 (Vamsi 2026-11-23 02:35 CST, his words: "I do not want any parsing by strings ... regex
+  ... It has to be typed. It has to be clean. It has to be objects. It has to be hierarchical if
+  it needs to be. Directed graphs, declarative."):
+  - No regex in backend/app; no RegExp, regex literals or `.split(` in frontend/src (guard:
+    backend/tests/test_no_string_parsing.py; allowlist: shell/search.ts free-text words only).
+  - Name conventions are DATA: `app/common/naming.py` NameRule tables (MatchKind PREFIX | SUFFIX,
+    value, meaning; first match wins) and Transform rules (UPPER_ALNUM for clns_, SLUG, SCHEMA_KEY).
+    Taskflow / mapping-task domains (tf_Ldg_ / tf_Stg_ CDI first, then tf_MDM_, *_EGR, *_IGR) and
+    the clns_ / ffr_ field roles live in such tables.
+  - Hierarchies are typed trees (Entity -> FieldGroup -> Field, plus the system group), passed as
+    objects (FieldPath), never dotted strings.
+  - Identifiers in requests are `Identifier64` / `Identifier128` (Annotated + AfterValidator over a
+    character set), not `pattern=`.
+  - Text a person types or the browser URL is read with the character-set helpers in
+    frontend/src/shared/text.ts (tokens, trimChars, isDigits), at that boundary only.
 
 ### X. Public repository hygiene (NON-NEGOTIABLE)
 

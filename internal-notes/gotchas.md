@@ -189,3 +189,14 @@ documented beyond `c360person.firstName`; the backend reuses the prefix the last
   fields to text in the B360 portal; then the same config counts characters.
 - A lookup code's length (ph_typ) is not configured: declared length of the rdm entity's Code field
   if its metadata has one, else the longest live Code ("Contaminated" = 12 on his org, 02:27 CST).
+
+## No regex, no string parsing (0.9.13, 2026-11-23 02:35 CST standing rule)
+- The guard test fails on `import re` / `pattern=r` in backend/app and on RegExp, `.split(`,
+  `.match(`, `.replace(/`, `/.test(` in frontend/src (tests and shell/search.ts excepted).
+- Need a new name rule? Add a row to a NameRule table in app/common/naming.py (or the table next
+  to its use, e.g. TASKFLOW_RULES), do not write startswith chains. Need a new derivation? Add a
+  Transform member and its `match` arm.
+- Visibility: a TOML line like `x_phone.ph_num` is matched whole against the tree node
+  GROUP_FIELD(x_phone, ph_num); a system field whose own name has a dot
+  (`_indexValidationError.code`) is therefore no special case.
+

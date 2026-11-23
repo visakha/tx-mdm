@@ -11,7 +11,6 @@ fields, field groups) still comes from the B360 metadata APIs.
 """
 
 import os
-import re
 import tomllib
 from functools import lru_cache
 from pathlib import Path
@@ -23,13 +22,37 @@ from app.b360data.models import (
     EntityCategory,
     EntityField,
     FieldLength,
+    FieldPath,
     FieldVisibility,
     LengthOrigin,
+    PathKind,
 )
+from app.common.naming import is_identifier
 
 ENV_VAR = "B360_ENTITIES_FILE"
-_SOURCE_ID = re.compile(r"[A-Za-z0-9._-]{1,128}")
-_FIELD_NAME = re.compile(r"[A-Za-z0-9._-]{1,256}")
+
+
+class ListedName(BaseModel):
+    """0.9.13: one line of an entity's `fields = [...]` list, as he wrote it. It is never split:
+    it is matched whole (case-insensitive) against the TOML name of each node of the typed entity
+    tree (listed_name below), so a system field whose own name has a dot
+    (_indexValidationError.code) is no special case."""
+
+    model_config = ConfigDict(frozen=True)
+
+    line: str
+
+    @classmethod
+    def from_line(cls, line: str) -> "ListedName":
+        return cls(line=line)
+
+    def key(self) -> str:
+        return self.line.lower()
+
+    def as_line(self) -> str:
+        return self.line
+
+
 DEFAULT_FILE = Path(__file__).resolve().parents[2] / "b360_entities.toml"
 
 
@@ -62,7 +85,7 @@ class FocusEntity(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    name: str = Field(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9._-]+$")
+    name: str = Field(min_length=1, max_length=128)
     label: str | None = Field(default=None, min_length=1, max_length=128)
     fields: list[str] | None = Field(
         default=None,
@@ -80,7 +103,13 @@ class FocusEntity(BaseModel):
     @field_validator("name")
     @classmethod
     def _strip(cls, value: str) -> str:
-        return value.strip()
+        name = value.strip()
+        if not is_identifier(name, 128):
+            raise ValueError(f"bad entity name {name!r} (letters, digits, . _ - only)")
+        return name
+
+    def listed_names(self) -> list[ListedName] | None:
+        return None if self.fields is None else [ListedName.from_line(f) for f in self.fields]
 
     @field_validator("fields")
     @classmethod
@@ -89,7 +118,7 @@ class FocusEntity(BaseModel):
             return None
         out = [v.strip() for v in value]
         for item in out:
-            if not _FIELD_NAME.fullmatch(item):
+            if not is_identifier(item, 256):
                 raise ValueError(f"bad field name {item!r} (letters, digits, . _ - only)")
         if len({v.lower() for v in out}) != len(out):
             raise ValueError("a field is listed twice")
@@ -114,7 +143,7 @@ class SourcesConfig(BaseModel):
     @classmethod
     def _ids(cls, value: list[str]) -> list[str]:
         for item in value:
-            if not _SOURCE_ID.fullmatch(item):
+            if not is_identifier(item, 128):
                 raise ValueError(f"bad source system id {item!r} (letters, digits, . _ - only)")
         if len(set(value)) != len(value):
             raise ValueError("a source system is listed twice")
@@ -153,6 +182,10 @@ class FocusConfig(BaseModel):
             if e.name.lower() == wanted:
                 return e.fields
         return None
+
+    def listed_for(self, name: str) -> list[ListedName] | None:
+        config = self.entity_config(name)
+        return None if config is None else config.listed_names()
 
     def entity_config(self, name: str) -> FocusEntity | None:
         wanted = name.strip().lower()
@@ -230,45 +263,79 @@ def is_focus(name: str) -> bool:
     return focus_config().contains(name)
 
 
-def metadata_names(entity: BusinessEntity) -> list[str]:
-    """Every name a fields list may carry, in metadata order: root fields, groups and their
-    fields (group.field), system fields, system groups (_meta) and their fields (_meta.x)."""
-    names: list[str] = [f.name for f in entity.fields]
+def known_paths(entity: BusinessEntity) -> list[FieldPath]:
+    """Every node of the typed entity tree, in metadata order: root fields, groups and their
+    fields, system fields, system groups (_meta) and their fields."""
+    paths: list[FieldPath] = [FieldPath(kind=PathKind.FIELD, field=f.name) for f in entity.fields]
     for g in entity.field_groups:
-        names.append(g.name)
-        names.extend(f"{g.name}.{f.name}" for f in g.fields)
-    names.extend(f.name for f in entity.system_fields)
+        paths.append(FieldPath(kind=PathKind.GROUP, group=g.name))
+        paths.extend(
+            FieldPath(kind=PathKind.GROUP_FIELD, group=g.name, field=f.name) for f in g.fields
+        )
+    paths.extend(FieldPath(kind=PathKind.SYSTEM_FIELD, field=f.name) for f in entity.system_fields)
     for g in entity.system_field_groups:
-        names.append(g.name)
-        names.extend(f"{g.name}.{f.name}" for f in g.fields)
-    return names
+        paths.append(FieldPath(kind=PathKind.SYSTEM_GROUP, group=g.name))
+        paths.extend(
+            FieldPath(kind=PathKind.SYSTEM_GROUP_FIELD, group=g.name, field=f.name)
+            for f in g.fields
+        )
+    return paths
 
 
-def visibility_for(entity: BusinessEntity, listed: list[str] | None) -> FieldVisibility:
-    """Hidden = metadata names not in the list (a hidden group hides all its fields); TOML
-    names the metadata does not know become warnings. Compared case-insensitively."""
+def listed_name(path: FieldPath) -> ListedName:
+    """The TOML line for a tree node: field, group, or group.field (his format)."""
+    match path.kind:
+        case PathKind.FIELD | PathKind.SYSTEM_FIELD:
+            return ListedName(line=path.field or "")
+        case PathKind.GROUP | PathKind.SYSTEM_GROUP:
+            return ListedName(line=path.group or "")
+        case PathKind.GROUP_FIELD | PathKind.SYSTEM_GROUP_FIELD:
+            return ListedName(line=f"{path.group}.{path.field}")
+
+
+def metadata_names(entity: BusinessEntity) -> list[str]:
+    """Every TOML line the fields list may carry (for the repo TOML and tests)."""
+    return [listed_name(p).as_line() for p in known_paths(entity)]
+
+
+def visibility_for(entity: BusinessEntity, listed: list[ListedName] | None) -> FieldVisibility:
+    """Hidden = tree nodes not in the list (a hidden group hides all its fields); listed names the
+    metadata does not know become warnings. Compared case-insensitively."""
     if listed is None:
         return FieldVisibility()
-    known = metadata_names(entity)
-    keep = {n.lower() for n in listed}
-    groups = {g.name.lower() for g in [*entity.field_groups, *entity.system_field_groups]}
-    hidden: list[str] = []
-    for name in known:
-        head = name.split(".", 1)[0].lower() if "." in name else None
-        group_hidden = head is not None and head in groups and head not in keep
-        if name.lower() not in keep or group_hidden:
-            hidden.append(name)
-    known_lower = {n.lower() for n in known}
+    known = known_paths(entity)
+    keep = {n.key() for n in listed}
+    hidden: list[FieldPath] = []
+    for path in known:
+        own = listed_name(path).key()
+        group_hidden = (
+            path.group is not None and path.field is not None and path.group.lower() not in keep
+        )
+        if own not in keep or group_hidden:
+            hidden.append(path)
+    known_keys = {listed_name(p).key() for p in known}
     warnings = [
-        f"{entity.name}: '{n}' in b360_entities.toml is not in the metadata (ignored)"
+        f"{entity.name}: '{n.as_line()}' in b360_entities.toml is not in the metadata (ignored)"
         for n in listed
-        if n.lower() not in known_lower
+        if n.key() not in known_keys
     ]
-    return FieldVisibility(listed=True, hidden=hidden, warnings=warnings)
+    meta_hidden = any(p.kind == PathKind.SYSTEM_GROUP and p.group == "_meta" for p in hidden)
+    meta_keys = [
+        p.field
+        for p in hidden
+        if p.kind == PathKind.SYSTEM_GROUP_FIELD and p.group == "_meta" and p.field is not None
+    ]
+    return FieldVisibility(
+        listed=True,
+        hidden=hidden,
+        meta_hidden=meta_hidden,
+        hidden_meta_keys=meta_keys,
+        warnings=warnings,
+    )
 
 
 def field_visibility(entity: BusinessEntity) -> FieldVisibility:
-    return visibility_for(entity, focus_config().fields_for(entity.name))
+    return visibility_for(entity, focus_config().listed_for(entity.name))
 
 
 def apply_lengths(entity: BusinessEntity, config: FocusEntity | None) -> BusinessEntity:

@@ -23,8 +23,10 @@ import {
   cellText,
   cleanGroups,
   cleanValues,
-  isShown,
-  isSystemColumnShown,
+  isFieldShown,
+  isGroupFieldShown,
+  isGroupShown,
+  isMetaShown,
   systemValue,
   systemValueText,
   type CellValue,
@@ -150,7 +152,7 @@ function SourceDetail({
         <h4>Root fields</h4>
         <table className="monitor kv" aria-label={`Source ${key} root fields`}>
           <tbody>
-            {entity.fields.filter((f) => isShown(vis, f.name)).map((f) => (
+            {entity.fields.filter((f) => isFieldShown(vis, f.name)).map((f) => (
               <tr key={f.name}>
                 <th title={`${f.name} (${f.data_type})`}>{f.label}</th>
                 <td>{cellText(record.values[f.name], f.data_type)}</td>
@@ -159,8 +161,8 @@ function SourceDetail({
           </tbody>
         </table>
       </section>
-      {entity.field_groups.filter((g) => isShown(vis, g.name)).map((g0) => {
-        const g = { ...g0, fields: g0.fields.filter((f) => isShown(vis, `${g0.name}.${f.name}`)) };
+      {entity.field_groups.filter((g) => isGroupShown(vis, g.name)).map((g0) => {
+        const g = { ...g0, fields: g0.fields.filter((f) => isGroupFieldShown(vis, g0.name, f.name)) };
         const rows = record.groups.find((b) => b.group === g.name)?.rows ?? [];
         return (
           <section key={g.name} className="b360-group" data-testid={`b360-source-group-${g.name}`}>
@@ -203,7 +205,7 @@ function SourceDetail({
           </h4>
           <table className="monitor kv" aria-label={`Source ${key} system fields`}>
             <tbody>
-              {(record.system_values ?? []).filter((v) => isSystemColumnShown(vis, v.name)).map((v) => (
+              {(record.system_values ?? []).filter((v) => isMetaShown(vis, v.path)).map((v) => (
                 <tr key={v.name} className="system-row" data-origin="SYSTEM">
                   <th>
                     <code>{v.name}</code>
@@ -315,8 +317,8 @@ export function SourceRecordsView({
 
   const records: readonly SourceRecord[] = looked !== null ? [looked] : (list?.records ?? []);
   const vis = list?.visibility;
-  const sysCols: readonly EntityField[] = (list?.system_columns ?? []).filter((c) => isSystemColumnShown(vis, c.name));
-  const cols = entity.fields.filter((f) => isShown(vis, f.name));
+  const sysCols: readonly EntityField[] = (list?.system_columns ?? []).filter((c) => isMetaShown(vis, c.meta_path));
+  const cols = entity.fields.filter((f) => isFieldShown(vis, f.name));
   const current = records.find((r) => `${r.source_system}/${r.source_pkey}` === picked) ?? null;
   const totalPages = list?.total_pages ?? 1;
 

@@ -129,6 +129,8 @@ export interface EntityField {
   lookup?: FieldLookup | null;
   /** 0.9.12.2: length bound. */
   length?: FieldLength | null;
+  /** 0.9.13: system columns only - the _meta key path. */
+  meta_path?: string[] | null;
 }
 
 export interface EntityRecord {
@@ -193,11 +195,21 @@ export interface FieldLookup {
 export type FieldOrigin = "CONFIGURED" | "SYSTEM";
 export const FIELDORIGIN_VALUES: readonly FieldOrigin[] = ["CONFIGURED", "SYSTEM"];
 
+export interface FieldPath {
+  kind: PathKind;
+  group?: string | null;
+  field?: string | null;
+}
+
 export interface FieldVisibility {
   /** True when the TOML has a fields list (else everything shows). */
   listed?: boolean;
-  /** Metadata names hidden on the records screens. */
-  hidden?: string[];
+  /** Typed paths hidden on the records screens. */
+  hidden?: FieldPath[];
+  /** The whole record system metadata group (_meta) is hidden. */
+  meta_hidden?: boolean;
+  /** Top-level _meta keys hidden (e.g. lastUpdateDate). */
+  hidden_meta_keys?: string[];
   /** TOML names not in the metadata (ignored, not a crash). */
   warnings?: string[];
 }
@@ -455,6 +467,9 @@ export interface PatchOp {
 export type PatchOperation = "add" | "replace" | "remove";
 export const PATCHOPERATION_VALUES: readonly PatchOperation[] = ["add", "replace", "remove"];
 
+export type PathKind = "FIELD" | "GROUP" | "GROUP_FIELD" | "SYSTEM_FIELD" | "SYSTEM_GROUP" | "SYSTEM_GROUP_FIELD";
+export const PATHKIND_VALUES: readonly PathKind[] = ["FIELD", "GROUP", "GROUP_FIELD", "SYSTEM_FIELD", "SYSTEM_GROUP", "SYSTEM_GROUP_FIELD"];
+
 export interface PicklistOption {
   code: string;
   name: string;
@@ -605,8 +620,10 @@ export interface SourceSystemList {
 }
 
 export interface SystemValue {
-  /** _meta key, nested ones dotted (states.consolidation). */
+  /** Display name; nested keys shown dotted (states.consolidation). */
   name: string;
+  /** 0.9.13: the _meta key path, e.g. [states, base]. */
+  path?: string[];
   value: string | number | boolean | null;
   origin?: FieldOrigin;
 }

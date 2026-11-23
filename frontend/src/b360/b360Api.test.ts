@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { BusinessEntity, EntityRecord, FieldDataType } from "./api-types";
 import { FIELDDATATYPE_VALUES } from "./api-types";
-import { clampCount, cleanValues, isShown, isSystemColumnShown, missingRequired, parseBusinessIds, parseInput, winnersToSend } from "./b360Api";
+import { clampCount, cleanValues, isFieldShown, isGroupFieldShown, isGroupShown, isMetaShown, missingRequired, parseBusinessIds, parseInput, winnersToSend } from "./b360Api";
 import { cellText, focusNavItems, focusNavValue, groupByCategory, groupRows, recordColumns, SHOW_ALL_VALUE } from "./b360Api";
 
 const entity: BusinessEntity = {
@@ -84,14 +84,24 @@ describe("Add records helpers (0.9.8)", () => {
 
 
 describe("0.10 field visibility (b360_entities.toml fields list)", () => {
-  it("hides listed-out names case-insensitively; no list shows all", () => {
-    const vis = { hidden: ["first_name", "x_phone.ph_num", "_meta.lastUpdateDate"] };
-    expect(isShown(vis, "FIRST_NAME")).toBe(false);
-    expect(isShown(vis, "last_name")).toBe(true);
-    expect(isShown(vis, "x_phone.ph_num")).toBe(false);
-    expect(isShown(undefined, "first_name")).toBe(true);
-    expect(isSystemColumnShown(vis, "lastUpdateDate")).toBe(false);
-    expect(isSystemColumnShown(vis, "createdBy")).toBe(true);
+  it("0.9.13: typed FieldPath visibility; no list shows all", () => {
+    const vis = {
+      hidden: [
+        { kind: "FIELD" as const, field: "first_name" },
+        { kind: "GROUP_FIELD" as const, group: "x_phone", field: "ph_num" },
+      ],
+      meta_hidden: false,
+      hidden_meta_keys: ["lastUpdateDate"],
+    };
+    expect(isFieldShown(vis, "first_name")).toBe(false);
+    expect(isFieldShown(vis, "last_name")).toBe(true);
+    expect(isGroupFieldShown(vis, "x_phone", "ph_num")).toBe(false);
+    expect(isGroupFieldShown(vis, "x_phone", "ph_typ")).toBe(true);
+    expect(isGroupShown(vis, "x_phone")).toBe(true);
+    expect(isFieldShown(undefined, "first_name")).toBe(true);
+    expect(isMetaShown(vis, ["lastUpdateDate"])).toBe(false);
+    expect(isMetaShown(vis, ["states", "base"])).toBe(true);
+    expect(isMetaShown({ ...vis, meta_hidden: true }, ["createdBy"])).toBe(false);
   });
 });
 

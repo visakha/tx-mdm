@@ -738,29 +738,35 @@ def source_view(entity: BusinessEntity) -> BusinessEntity:
 
 
 def system_values(meta: JsonValue) -> list[SystemValue]:
-    """Every _meta value the reply carried, in reply order; nested objects dotted (states.base).
-    A {code, name} object (populationName) shows its name. Lists are summarised. Never invented."""
+    """Every _meta value the reply carried, in reply order; nested objects keep their key path
+    (path [states, base], shown dotted). A {code, name} object (populationName) shows its name.
+    Lists are summarised. Never invented."""
     out: list[SystemValue] = []
 
-    def walk(prefix: str, node: JsonValue) -> None:
+    def add(path: list[str], value: FieldValue) -> None:
+        out.append(SystemValue(name=".".join(path), path=path, value=value))
+
+    def walk(path: list[str], node: JsonValue) -> None:
         if isinstance(node, dict):
             option = _option(node)
             if option is not None and set(node) <= {"Code", "Name", "code", "name"}:
-                out.append(SystemValue(name=prefix, value=option.name))
+                add(path, option.name)
                 return
             for key, value in node.items():
-                walk(f"{prefix}.{key}" if prefix else key, value)
+                walk([*path, key], value)
         elif isinstance(node, list):
-            out.append(SystemValue(name=prefix, value=f"[{len(node)} items]"))
-        elif prefix.lower().endswith("date") and (
-            _is_number(node) or (isinstance(node, str) and node.isdigit())
+            add(path, f"[{len(node)} items]")
+        elif (
+            path
+            and path[-1].lower().endswith("date")
+            and (_is_number(node) or (isinstance(node, str) and node.isdigit()))
         ):
-            out.append(SystemValue(name=prefix, value=_epoch_or_iso(node)))
+            add(path, _epoch_or_iso(node))
         elif node is None or isinstance(node, (str, int, float, bool)):
-            out.append(SystemValue(name=prefix, value=node))
+            add(path, node)
 
     if isinstance(meta, dict):
-        walk("", meta)
+        walk([], meta)
     return out
 
 
@@ -778,6 +784,7 @@ def system_columns(rows: list[list[SystemValue]]) -> list[EntityField]:
                 seen[v.name] = EntityField(
                     name=v.name,
                     label=v.name,
+                    meta_path=v.path,
                     data_type=kind,
                     raw_type="_meta",
                     searchable=False,

@@ -192,6 +192,14 @@ Lengths (0.9.12.2, Vamsi 02:40-02:41 CST)
   Buttons: B360 Data (one per entity, newest call of any tab), Taskflows (CDI / B360), B360 jobs.
   Write screens show the curl of the write the backend actually sent (after the button); dry runs
   send nothing, so there is nothing to echo. `CODE`
+- **D34** Typed visibility tree (0.9.13, Vamsi 02:35 CST: "no parsing by strings ... regex ... It
+  has to be typed ... hierarchical ... declarative"). The entity is a typed tree of `FieldPath
+  {kind, group, field}` (PathKind FIELD | GROUP | GROUP_FIELD | SYSTEM_FIELD | SYSTEM_GROUP |
+  SYSTEM_GROUP_FIELD). `FieldVisibility.hidden` is a list of FieldPath; `meta_hidden` and
+  `hidden_meta_keys` cover the system (_meta) group; `SystemValue.path` and `EntityField.meta_path`
+  are key-path lists. Each TOML `fields` line is matched WHOLE (case-insensitive) against the TOML
+  name of a tree node, never split. The frontend uses isFieldShown / isGroupShown /
+  isGroupFieldShown / isMetaShown on those objects. `CODE`
 
 ## Out of scope
 

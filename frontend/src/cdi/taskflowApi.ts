@@ -3,6 +3,7 @@
 //   GET  /api/cdi/taskflows/runs/{runId}        -> TaskflowRunStatus (status + summary)
 //   GET  /api/cdi/taskflows/runs/{runId}/session-log?subtask=  -> plain text
 
+import { isDigits } from "../shared/text";
 import { getJson, getText, postJson } from "../shared/api";
 import type { RunStatus } from "../shared/run";
 
@@ -250,7 +251,7 @@ export const taskflowApi = {
 /** IDMC run ids are long digit strings; accept surrounding spaces, nothing else. */
 export function cleanRunId(text: string): string | null {
   const trimmed = text.trim();
-  return /^\d{1,30}$/.test(trimmed) ? trimmed : null;
+  return isDigits(trimmed, 30) ? trimmed : null;
 }
 
 /** "SUSPENDED" shows as STOPPED in our status; keep IDMC's word visible next to it. */

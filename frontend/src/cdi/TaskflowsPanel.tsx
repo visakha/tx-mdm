@@ -76,8 +76,14 @@ interface Props {
  * (tf_X -> mt_m_X), or null when no listed taskflow matches. A name guess, shown as such.
  */
 export function parentTaskflowOf(mappingTask: string, taskflows: readonly CdiTask[]): string | null {
+  // Declarative: tf_<X> <-> mt_m_<X> (his naming). Prefix swap by length, no regex.
+  const TF = "tf_";
+  const MT = "mt_m_";
   const lowered = mappingTask.toLowerCase();
-  const hit = taskflows.find((t) => t.name.toLowerCase().replace(/^tf_/, "mt_m_") === lowered);
+  const hit = taskflows.find((t) => {
+    const name = t.name.toLowerCase();
+    return name.startsWith(TF) && `${MT}${name.slice(TF.length)}` === lowered;
+  });
   return hit === undefined ? null : hit.name;
 }
 

@@ -9,7 +9,7 @@ DateTime from the search-term formats table pp. 113-114. UNKNOWN keeps the raw m
 from datetime import date, datetime
 from enum import StrEnum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class FieldDataType(StrEnum):
@@ -154,6 +154,9 @@ class EntityField(BaseModel):
         default=None, description="Picklist fields only: the Reference 360 list behind it."
     )
     length: FieldLength | None = Field(default=None, description="0.9.12.2: length bound.")
+    meta_path: list[str] | None = Field(
+        default=None, description="0.9.13: system columns only - the _meta key path."
+    )
 
 
 class FieldGroup(BaseModel):
@@ -192,7 +195,10 @@ class SystemValue(BaseModel):
     """0.9.10: one system value exactly as the reply's _meta carried it (flattened: states.base).
     Only keys IDMC actually returned; nothing is invented."""
 
-    name: str = Field(description="_meta key, nested ones dotted (states.consolidation).")
+    name: str = Field(description="Display name; nested keys shown dotted (states.consolidation).")
+    path: list[str] = Field(
+        default_factory=list, description="0.9.13: the _meta key path, e.g. [states, base]."
+    )
     value: FieldValue
     origin: FieldOrigin = FieldOrigin.SYSTEM
 
@@ -233,19 +239,47 @@ class LookupMode(StrEnum):
     BUSINESS_ID = "BUSINESS_ID"  # Read Master Record by Business ID (p. 56-58)
 
 
+class PathKind(StrEnum):
+    """0.9.13: where a field sits in the entity tree (Entity -> FieldGroup -> Field, plus the
+    system fields and the system groups such as _meta)."""
+
+    FIELD = "FIELD"
+    GROUP = "GROUP"
+    GROUP_FIELD = "GROUP_FIELD"
+    SYSTEM_FIELD = "SYSTEM_FIELD"
+    SYSTEM_GROUP = "SYSTEM_GROUP"
+    SYSTEM_GROUP_FIELD = "SYSTEM_GROUP_FIELD"
+
+
+class FieldPath(BaseModel):
+    """0.9.13: a typed address in the entity tree, never a dotted string. group is set for the
+    group kinds, field for the field kinds."""
+
+    model_config = ConfigDict(frozen=True)
+
+    kind: PathKind
+    group: str | None = None
+    field: str | None = None
+
+
 class FieldVisibility(BaseModel):
     """0.10 (Vamsi 02:01 CST): which fields the Records (M)/(S) columns and record detail show.
 
     From the entity's `fields = [...]` list in b360_entities.toml: a name commented out there is
-    hidden. Names: root field `first_name`, group `x_phone`, group field `x_phone.ph_num`, system
-    field `validationType`, record system metadata `_meta.lastUpdateDate`. The Metadata tab always
-    shows everything."""
+    hidden. The TOML keeps his one-name-per-line format (`x_phone.ph_num`); it is read ONCE at
+    startup into typed paths (0.9.13). The Metadata tab always shows everything."""
 
     listed: bool = Field(
         default=False, description="True when the TOML has a fields list (else everything shows)."
     )
-    hidden: list[str] = Field(
-        default_factory=list, description="Metadata names hidden on the records screens."
+    hidden: list[FieldPath] = Field(
+        default_factory=list, description="Typed paths hidden on the records screens."
+    )
+    meta_hidden: bool = Field(
+        default=False, description="The whole record system metadata group (_meta) is hidden."
+    )
+    hidden_meta_keys: list[str] = Field(
+        default_factory=list, description="Top-level _meta keys hidden (e.g. lastUpdateDate)."
     )
     warnings: list[str] = Field(
         default_factory=list, description="TOML names not in the metadata (ignored, not a crash)."

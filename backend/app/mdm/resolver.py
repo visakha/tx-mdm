@@ -9,12 +9,12 @@ To swap strategy (e.g. read the id from an export package once its format is con
 another class with the same `resolve` method and wire it in app/dependencies.py.
 """
 
-import re
 import threading
 import time
 from collections.abc import Callable
 from typing import Any, Protocol
 
+from app.common import naming
 from app.mdm import endpoints as ep
 from app.mdm.models import MdmJobAsset, MdmJobKind, ResolvedDefinition
 
@@ -37,7 +37,7 @@ def kind_from_job_type(job_type: str) -> MdmJobKind:
 
 
 def normalise(name: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
+    return naming.apply(naming.Transform.SLUG, name)
 
 
 def definitions_from_instances(instances: list[dict[str, Any]]) -> dict[str, ResolvedDefinition]:

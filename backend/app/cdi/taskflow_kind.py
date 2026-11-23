@@ -19,13 +19,9 @@ taskflow's jobInstanceId, so they are never started on their own ("runs via its 
 
 from enum import StrEnum
 
-JOB_INSTANCE_ID = "jobInstanceId"
+from app.common.naming import MatchKind, NameRule, first_match
 
-_CDI_PREFIXES = ("tf_ldg_", "tf_stg_")
-_MDM_PREFIXES = ("tf_mdm_",)
-_MDM_SUFFIXES = ("_egr", "_igr")
-_CDI_MTT_PREFIXES = ("mt_m_ldg_", "mt_m_stg_")
-_MDM_MTT_PREFIXES = ("mt_m_mdm_",)
+JOB_INSTANCE_ID = "jobInstanceId"
 
 
 class TaskDomain(StrEnum):
@@ -33,26 +29,40 @@ class TaskDomain(StrEnum):
     MDM = "mdm"
 
 
-def is_mdm_taskflow(name: str) -> bool:
-    lowered = name.strip().lower()
-    if lowered.startswith(_CDI_PREFIXES):
-        return False
-    return lowered.startswith(_MDM_PREFIXES) or lowered.endswith(_MDM_SUFFIXES)
+# 0.9.13: his naming rules as declarative tables. First match wins, so the CDI exclusions
+# (tf_Ldg_ / tf_Stg_, mt_m_Ldg_ / mt_m_Stg_) come first. No match -> CDI.
+TASKFLOW_RULES: tuple[NameRule[TaskDomain], ...] = (
+    NameRule(MatchKind.PREFIX, "tf_Ldg_", TaskDomain.CDI),
+    NameRule(MatchKind.PREFIX, "tf_Stg_", TaskDomain.CDI),
+    NameRule(MatchKind.PREFIX, "tf_MDM_", TaskDomain.MDM),
+    NameRule(MatchKind.SUFFIX, "_EGR", TaskDomain.MDM),
+    NameRule(MatchKind.SUFFIX, "_IGR", TaskDomain.MDM),
+)
+MAPPING_TASK_RULES: tuple[NameRule[TaskDomain], ...] = (
+    NameRule(MatchKind.PREFIX, "mt_m_Ldg_", TaskDomain.CDI),
+    NameRule(MatchKind.PREFIX, "mt_m_Stg_", TaskDomain.CDI),
+    NameRule(MatchKind.PREFIX, "mt_m_MDM_", TaskDomain.MDM),
+    NameRule(MatchKind.SUFFIX, "_EGR", TaskDomain.MDM),
+    NameRule(MatchKind.SUFFIX, "_IGR", TaskDomain.MDM),
+)
 
 
 def taskflow_domain(name: str) -> TaskDomain:
-    return TaskDomain.MDM if is_mdm_taskflow(name) else TaskDomain.CDI
+    rule = first_match(TASKFLOW_RULES, name)
+    return rule.meaning if rule is not None else TaskDomain.CDI
 
 
-def is_mdm_mapping_task(name: str) -> bool:
-    lowered = name.strip().lower()
-    if lowered.startswith(_CDI_MTT_PREFIXES):
-        return False
-    return lowered.startswith(_MDM_MTT_PREFIXES) or lowered.endswith(_MDM_SUFFIXES)
+def is_mdm_taskflow(name: str) -> bool:
+    return taskflow_domain(name) == TaskDomain.MDM
 
 
 def mapping_task_domain(name: str) -> TaskDomain:
-    return TaskDomain.MDM if is_mdm_mapping_task(name) else TaskDomain.CDI
+    rule = first_match(MAPPING_TASK_RULES, name)
+    return rule.meaning if rule is not None else TaskDomain.CDI
+
+
+def is_mdm_mapping_task(name: str) -> bool:
+    return mapping_task_domain(name) == TaskDomain.MDM
 
 
 def mapping_task_run_problem(name: str) -> str | None:

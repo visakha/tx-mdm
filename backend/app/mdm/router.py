@@ -4,6 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query
 
+from app.common.naming import Identifier64
 from app.common.runs import RunView
 from app.dependencies import get_mdm_monitor, get_mdm_service
 from app.mdm.models import MdmJob, MdmRunRequest
@@ -83,6 +84,6 @@ def mdm_monitor(
 )
 def lookup_job_instance(
     monitor: Monitor,
-    instance_id: Annotated[str, Path(pattern=r"^[A-Za-z0-9._-]{1,64}$")],
+    instance_id: Annotated[Identifier64, Path(min_length=1, max_length=64)],
 ) -> MdmJobInstanceView:
     return monitor.lookup(instance_id)

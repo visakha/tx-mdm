@@ -17,7 +17,6 @@ A failed metadata read never fails the spec: it is listed under x-typed-warnings
 """
 
 import copy
-import re
 
 from pydantic import JsonValue
 
@@ -30,15 +29,15 @@ from app.b360data.models import (
     FieldOrigin,
     PicklistSource,
 )
+from app.common import naming
 
 JsonObj = dict[str, JsonValue]
 
-_SAFE = re.compile(r"[^A-Za-z0-9_]")
 _PICKS = (FieldDataType.PICKLIST, FieldDataType.DEPENDENT_PICKLIST)
 
 
 def schema_key(entity: str) -> str:
-    return _SAFE.sub("_", entity)
+    return naming.apply(naming.Transform.SCHEMA_KEY, entity)
 
 
 def _ref(name: str) -> JsonObj:

@@ -18,6 +18,7 @@
 //   /b360, /b360/:entity    B360 Data notebook: business entities, first 10 records of one
 
 import { useCallback, useEffect, useState } from "react";
+import { SLASH, tokens } from "./text";
 
 export type Service = "mdm" | "cdi";
 
@@ -52,7 +53,8 @@ export const B360_ROUTE: Route = { screen: "b360", service: "mdm", entity: null 
 export const DEFAULT_ROUTE: Route = { screen: "jobs", service: "mdm" };
 
 export function parseRoute(pathname: string): Route {
-  const parts = pathname.split("/").filter((p) => p !== "").map(decodeURIComponent);
+  // URL path segments (browser boundary), read with the shared character-set helper.
+  const parts = tokens(pathname, SLASH).map(decodeURIComponent);
   const [service, kind, id] = parts;
   if (service === "monitor" && kind === undefined) return MONITOR_ROUTE;
   if (service === "taskflows" && kind === undefined) return TASKFLOWS_ROUTE;

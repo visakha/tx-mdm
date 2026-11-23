@@ -46,15 +46,16 @@ from app.b360data.service import (
     SourceRecordNotFoundError,
 )
 from app.b360data.testdata import GenerateBlockedError
+from app.common.naming import Identifier128
 from app.dependencies import get_b360_data_service
 
 router = APIRouter(prefix="/api/b360", tags=["b360"])
 
-SourceSystem = Annotated[str, Path(pattern=r"^[A-Za-z0-9._-]{1,128}$")]
+SourceSystem = Annotated[Identifier128, Path(min_length=1, max_length=128)]
 SourcePKey = Annotated[str, Path(min_length=1, max_length=255)]
 BusinessId = Annotated[str, Path(min_length=1, max_length=100)]
 Service = Annotated[B360DataService, Depends(get_b360_data_service)]
-EntityName = Annotated[str, Path(pattern=r"^[A-Za-z0-9._-]{1,128}$")]
+EntityName = Annotated[Identifier128, Path(min_length=1, max_length=128)]
 
 
 @router.get(
