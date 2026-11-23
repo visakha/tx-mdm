@@ -195,3 +195,20 @@ def test_second_start_allowed_once_first_run_is_seen_final(
     assert client.post(url).status_code == 409
     client.get(f"/api/cdi/taskflows/runs/{RUN}")
     assert client.post(url).status_code == 200
+    # same run id again (cached final status) must close the new local run too
+    client.get(f"/api/cdi/taskflows/runs/{RUN}")
+    assert client.post(url).status_code == 200
+
+
+def test_live_suspended_shape_no_end_time_and_json_error():
+    """Shape seen live 2026-11-22 for run 1309380263289049088."""
+    body = dict(SUSPENDED)
+    del body["endTime"]
+    body["updateTime"] = "2026-11-23T04:51:05Z"
+    body["errorMessage"] = (
+        '{"reason":"[FATAL] Invalid\\/Default JobInstanceId is passed as runtime parameter",'
+        '"code":"error","details":"011EWBC1"}'
+    )
+    status = status_from_body(RUN, body, NOW)
+    assert status.ended_at is not None and status.elapsed_minutes == 1.4
+    assert status.error == "[FATAL] Invalid/Default JobInstanceId is passed as runtime parameter"

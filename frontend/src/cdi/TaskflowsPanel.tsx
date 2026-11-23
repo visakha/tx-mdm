@@ -165,8 +165,9 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
           onValueChange={(value) => setPicked(value)}
         >
           {taskflows.map((t) => (
-            <ListboxItem key={t.id} value={t.name} data-testid={`tf-item-${t.name}`}>
-              <span className="item-name">{t.path}</span>
+            <ListboxItem key={t.id} value={t.name} data-testid={`tf-item-${t.name}`} title={t.path}>
+              <span className="tf-name">{t.name}</span>
+              <span className="tf-path">{t.path.slice(0, Math.max(0, t.path.length - t.name.length - 1))}</span>
             </ListboxItem>
           ))}
         </Listbox>

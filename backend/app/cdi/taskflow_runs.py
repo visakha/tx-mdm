@@ -27,6 +27,7 @@ Sources (all read-only):
 """
 
 import io
+import json
 import zipfile
 from datetime import datetime
 from typing import Any
@@ -174,7 +175,22 @@ def _subtask_rows(body: dict[str, Any]) -> list[dict[str, Any]]:
 
 def _error(entry: dict[str, Any], key: str) -> str:
     message = _text(entry, key)
-    return "" if message.lower() in {"", "no errors encountered."} else message
+    if message.lower() in {"", "no errors encountered."}:
+        return ""
+    return _reason_of(message)
+
+
+def _reason_of(message: str) -> str:
+    """Seen live 2026-11-22: a SUSPENDED taskflow's errorMessage is a JSON string
+    {"reason": "...", "code": "error", "details": "<packed ids>"}. Show only the reason."""
+    if not message.startswith("{"):
+        return message
+    try:
+        parsed = json.loads(message)
+    except ValueError:
+        return message
+    reason = parsed.get("reason") if isinstance(parsed, dict) else None
+    return reason if isinstance(reason, str) and reason != "" else message
 
 
 # ---- translation (pure, unit tested) ---------------------------------------------------------
@@ -215,7 +231,11 @@ def status_from_body(run_id: str, body: dict[str, Any], now: datetime) -> Taskfl
         )
     status = TASKFLOW_STATES.get(state, RunStatus.UNKNOWN)
     started = parse_time(body.get("startTime"))
+    updated = parse_time(body.get("updateTime"))
     ended = parse_time(body.get("endTime")) if status.is_terminal else None
+    if status.is_terminal and ended is None:
+        # Seen live 2026-11-22: a SUSPENDED run has no endTime; updateTime is when it stopped.
+        ended = updated
     subtasks = [subtask_from_status(t, now) for t in _subtask_rows(body)]
     return TaskflowRunStatus(
         run_id=_text(body, "runId") or run_id,
@@ -226,7 +246,7 @@ def status_from_body(run_id: str, body: dict[str, Any], now: datetime) -> Taskfl
         is_final=status.is_terminal,
         started_at=started,
         ended_at=ended,
-        updated_at=parse_time(body.get("updateTime")),
+        updated_at=updated,
         elapsed_minutes=minutes_between(started, ended or now),
         started_by=_text(body, "startedBy"),
         error=_error(body, "errorMessage"),

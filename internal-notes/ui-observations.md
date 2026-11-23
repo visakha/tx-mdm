@@ -79,6 +79,12 @@ plus the job / monitor / taskflow actions (`runTaskflowByName`, `trackTaskflowRu
 - Monitor table is wide; at 1280 px it scrolls horizontally (error column wraps at 280 px).
 - Fake IDMC: tf_demo_advanced always answers the same run id, so a second Run in one fake
   session goes straight to SUCCESS (no RUNNING phase). Restart the fake for a clean demo.
-- NOT YET OBSERVED LIVE: the Taskflows section against the real org (his backend was
-  unreachable over Tailscale at 23:05 CST on 2026-11-22). After he pulls and restarts: track
-  1309380263289049088 and check the child row, Session log button and the source/target split.
+- OBSERVED LIVE 2026-11-22 ~23:15 CST (read-only, Cypress via dev/forward_readonly.py, his
+  backend on the 5e973a5 code): CDI task list (15), Taskflows list (4: tf_Ldg_MDM_CDI_TTF,
+  tf_Stg_MDM_CDI_TTF, tf_MDM_ZLV_TTF_Guest_Basic, tf_MDM_ZLV_TTF_Guest_Basic_EGR), Monitor, and
+  run 1309380263289049088: STOPPED (SUSPENDED), child mt_m_MDM_ZLV_TTF_Guest_Basic FAILED
+  "[FATAL] Invalid/Default JobInstanceId ...", Session log button enabled, real log shown.
+- Fixed after that live look (needs his next pull + restart): the run-level error showed as a
+  raw JSON string and "ended -" with 25.2 min (SUSPENDED has no endTime); long names/paths
+  overflowed the taskflow list. Now: reason only, ended = updateTime, names wrap.
+- Not observed yet: a running taskflow ticking live, and a SUCCESS run with row counts.

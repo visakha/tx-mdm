@@ -203,6 +203,7 @@ class CdiService:
         """
         cached = self._final_status.get(run_id)
         if cached is not None and (cached.notes or not details or _has_details(cached)):
+            self._close_registry_run(cached)
             return cached
         status = status_from_body(run_id, self._client.taskflow_status(run_id), now_utc())
         if status.is_final and details and status.subtasks:

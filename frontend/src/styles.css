@@ -135,3 +135,9 @@ main { flex: 1; padding: 16px 20px; }
 [data-section="cdi-monitor"][data-view="history"] section[aria-label="Started from this app"],
 [data-section="cdi-monitor"][data-view="app"] section[aria-label="Running now"],
 [data-section="cdi-monitor"][data-view="app"] section[aria-label="Recent history"] { display: none; }
+
+/* live fixes 2026-11-22: long IDMC text must wrap, grid columns may shrink */
+.panel > *, .page > div { min-width: 0; }
+.warn-text, .errors-cell, .muted { overflow-wrap: anywhere; }
+.tf-name { display: block; font-weight: 600; overflow-wrap: anywhere; }
+.tf-path { display: block; font-size: 12px; color: #667; overflow-wrap: anywhere; }

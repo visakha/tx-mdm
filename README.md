@@ -132,6 +132,14 @@ npx cypress@16 run --browser electron
 
 (Cypress is not in package.json on purpose; npx downloads it once.)
 
+Live, read-only (never clicks Run; the forwarder refuses every POST):
+
+```
+python dev/forward_readonly.py http://<backend-host>:8000 [http://<proxy>:<port>]
+TXMDM_API_TARGET=http://127.0.0.1:8010 npx vite --port 5174
+npx cypress@16 run --browser electron --config-file cypress.config.cjs --config baseUrl=http://localhost:5174,specPattern=cypress/live/**/*.cy.js
+```
+
 ## Taskflows by name (Taskflows section)
 
 UI: left pane **Taskflows** (`/taskflows`). Pick a taskflow, check the input fields
@@ -175,10 +183,13 @@ the Allowed Users hint; already running from this backend -> 409. Starts are nev
   Input fields go as top-level JSON keys of the rt POST body (Informatica KB curl example).
 - **Verified live (2026-11-22):** the rt start call with INFA-SESSION-ID returns `RunId`;
   api name = task name; Allowed Users is case-sensitive.
-- **UNVERIFIED:** that a child's tf-status `runId` equals the activityLog `runId` of that
-  mapping task (used to find the log entry for source/target rows and the session log - when
-  no row matches, a note says so and the Session log button stays disabled); that the
-  activityLog entry `id` is the id the sessionLog call wants.
+- **Verified live (2026-11-22, run 1309380263289049088, read-only):** the child's tf-status
+  `runId` (6) matched its activityLog row, whose `id` (011EWBC100000000019F) is what the
+  sessionLog call wants - the real 10.9 KB session log came back with the FATAL line. A
+  SUSPENDED run has no `endTime` (we use `updateTime`) and its `errorMessage` is a JSON string
+  (we show its `reason`).
+- **UNVERIFIED:** a SUCCESS run with real row counts (none run yet with jobInstanceId); that
+  `{"jobInstanceId": ...}` in the rt body fixes the FATAL (shape is doc-based).
 - Fake IDMC (`dev/fake_idmc.py`): taskflow `tf_demo_advanced` -> run id 900000000000000001
   (RUNNING, then SUCCESS with 2 children); 900000000000000002 is a SUSPENDED run with a failed
   child.
