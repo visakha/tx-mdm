@@ -44,6 +44,7 @@ export interface ActionInfo {
 
 export const ACTIONS: readonly ActionInfo[] = [
   { name: "describe", args: "()", description: "List these actions.", sideEffect: false },
+  { name: "about", args: "()", description: "Backend version + its top three highlights (GET /api/about).", sideEffect: false },
   { name: "currentRoute", args: "()", description: "Current screen as a Route + its URL path.", sideEffect: false },
   { name: "openSection", args: "(service: 'mdm' | 'cdi')", description: "Show the job list of a section.", sideEffect: false },
   { name: "layout", args: "()", description: "OneNote layout: left-pane sections, the selected section, its ribbon tabs and the selected tab.", sideEffect: false },
@@ -114,6 +115,8 @@ async function terminateTaskflow(runId: string): Promise<TerminateResult> {
 
 export const txmdm = {
   describe: (): readonly ActionInfo[] => ACTIONS,
+  about: (): Promise<{ version: string; highlights: string[] }> =>
+    getJson<{ version: string; highlights: string[] }>("/api/about"),
   layout: (): {
     sections: { id: SectionId; notebook: string; label: string }[];
     section: SectionId;

@@ -51,3 +51,10 @@ git diff --cached | grep -niE 'password|passwd|sessionid|icsessionid|secret|toke
 # 3. After the push: verify on origin, then build from a clean clone
 git ls-remote origin main
 ```
+
+## Handshake after a pull + restart
+
+`GET /api/about` returns `{"version": "x.y.z", "highlights": [three plain-English bullets]}`.
+Both live in `backend/app/version.py`. After `git pull` + restart, call it and check the
+version is the one you expect; the UI title bar shows it too (`about-version`), and agents can
+call `txmdm.about()`.

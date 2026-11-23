@@ -34,6 +34,9 @@ fake IDMC (backend/dev/fake_idmc.py). Not yet observed against the live org - se
 - Ribbon tabs only show/hide parts of a page (CSS on `data-section` / `data-view` of the root
   `.onenote` element) - panels stay mounted, so lists and polling are not lost.
 
+- Title bar right: backend version label `about-version` (e.g. "v0.7.0", from GET /api/about;
+  empty if the backend is down). Agent: `txmdm.about()` -> version + three highlights.
+
 ## Sections, ribbon tabs, URLs
 
 | Section | URL | Ribbon tabs (first = default) | Notes |

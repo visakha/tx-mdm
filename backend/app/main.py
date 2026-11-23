@@ -10,6 +10,7 @@ from app.cdi.router import router as cdi_router
 from app.common.idmc_session import IdmcError, IdmcRateLimitedError
 from app.common.runs import JobAlreadyRunningError, RunNotFoundError
 from app.mdm.router import router as mdm_router
+from app.version import HIGHLIGHTS, VERSION
 
 
 def _force_ascii_console() -> None:
@@ -30,7 +31,7 @@ _force_ascii_console()
 def create_app(frontend_origin: str = "http://localhost:5173") -> FastAPI:
     app = FastAPI(
         title="TX MDM job runner",
-        version="0.1.0",
+        version=VERSION,
         description=(
             "Runs and monitors Informatica IDMC jobs. Two separate services: `cdi` (Data "
             "Integration tasks) and `mdm` (Business 360 ingress / egress / match-merge). "
@@ -56,6 +57,10 @@ def create_app(frontend_origin: str = "http://localhost:5173") -> FastAPI:
     @app.get("/api/health", tags=["meta"], operation_id="health", summary="Liveness check")
     def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.get("/api/about", tags=["meta"], operation_id="about", summary="Version + top 3")
+    def about() -> dict[str, str | list[str]]:
+        return {"version": VERSION, "highlights": list(HIGHLIGHTS)}
 
     @app.exception_handler(IdmcRateLimitedError)
     def rate_limited(_: Request, exc: IdmcRateLimitedError) -> JSONResponse:

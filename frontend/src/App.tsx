@@ -7,6 +7,7 @@
 // mounted so switching sections never drops a list already loaded.
 
 import { useEffect, useRef, useState } from "react";
+import { getJson } from "./shared/api";
 import { Input } from "@ui-sdk/react/input";
 import { Listbox, ListboxItem } from "@ui-sdk/react/listbox";
 import { Tabs, TabsList, TabsTab } from "@ui-sdk/react/tabs";
@@ -51,6 +52,12 @@ function hintOf(section: SectionId, tab: string): string {
 export function App(): React.JSX.Element {
   const [route, go] = useRoute();
   const [search, setSearch] = useState<string>("");
+  const [version, setVersion] = useState<string>("");
+  useEffect(() => {
+    getJson<{ version: string }>("/api/about")
+      .then((about) => setVersion(about.version))
+      .catch(() => setVersion(""));
+  }, []);
   const lastKind = useRef<MdmKindFilter | null>(null);
   if (route.screen === "kind") lastKind.current = route.kind;
   if (route.screen === "jobs" && route.service === "mdm") lastKind.current = null;
@@ -82,6 +89,9 @@ export function App(): React.JSX.Element {
         <span className="crumb" data-testid="crumb">
           {NOTEBOOK_TITLE[SECTIONS.find((s) => s.id === section)?.notebook ?? "CDI"]} -{" "}
           {SECTIONS.find((s) => s.id === section)?.label}
+        </span>
+        <span className="about-version" data-testid="about-version" title="Backend version (GET /api/about)">
+          {version === "" ? "" : `v${version}`}
         </span>
       </header>
 
