@@ -84,7 +84,6 @@ export const RIBBON: Record<SectionId, readonly RibbonTab[]> = {
   ],
   "cdi-taskflows": [
     { id: "run", label: "Run" },
-    { id: "track", label: "Track run id" },
     { id: "summary", label: "Summary" },
     { id: "log", label: "Session log" },
   ],

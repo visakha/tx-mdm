@@ -10,7 +10,9 @@ import { monitorApi, type MonitorSnapshot } from "./cdi/monitorApi";
 import {
   DEFAULT_PARAM_KEY,
   DEFAULT_PARAM_VALUE,
+  announceTaskflowStart,
   taskflowApi,
+  type TaskflowHistory,
   type TaskflowRunStatus,
   type TaskflowStartResult,
   type TerminateResult,
@@ -59,8 +61,10 @@ export const ACTIONS: readonly ActionInfo[] = [
   { name: "openRun", args: "(service, runKey)", description: "Open the results screen for a run (/<service>/runs/:runKey).", sideEffect: false },
   { name: "getRun", args: "(service, runKey)", description: "Read a run's current state (status, counts, errors, log).", sideEffect: false },
   { name: "openMonitor", args: "()", description: "Show the CDI Monitor tab (/monitor).", sideEffect: false },
-  { name: "runTaskflowByName", args: "(name, parameters = { jobInstanceId: 'ABC123' }, apiName?)", description: "Start an advanced taskflow by name with its input fields, after a person confirms; opens /taskflows/runs/:runId. Never retries.", sideEffect: true },
-  { name: "trackTaskflowRun", args: "(runId)", description: "Show one taskflow run by IDMC run id (/taskflows/runs/:runId).", sideEffect: false },
+  { name: "runTaskflowByName", args: "(name, parameters = { jobInstanceId: 'ABC123' }, apiName?)", description: "Start an advanced taskflow by name with its input fields, after a person confirms; stays on the Run tab and puts the run on top of the history (open it with openTaskflowSummary / openTaskflowLog). Parallel starts allowed. Never retries.", sideEffect: true },
+  { name: "getTaskflowHistory", args: "(name, rowLimit = 100)", description: "Run history of one taskflow (Run tab detail): running first, then recent; taskflow rows from this app are trackable, child task rows are not.", sideEffect: false },
+  { name: "openTaskflowSummary", args: "(runId)", description: "Open the Summary tab of one taskflow run by IDMC run id (/taskflows/runs/:runId): status, progress, child rows, Abort.", sideEffect: false },
+  { name: "openTaskflowLog", args: "(runId)", description: "Open the Session log tab of one taskflow run by IDMC run id.", sideEffect: false },
   { name: "getTaskflowRun", args: "(runId)", description: "Read a taskflow run by IDMC run id: status, times, per-child rows and errors, totals.", sideEffect: false },
   { name: "terminateTaskflow", args: "(runId)", description: "Terminate (abort) a running taskflow by IDMC run id, after a person confirms. Never retried.", sideEffect: true },
   { name: "getTaskflowSessionLog", args: "(runId, childTask?)", description: "Plain-text session log of one child task of a taskflow run.", sideEffect: false },
@@ -103,7 +107,9 @@ async function runTaskflowByName(
     throw new Error("Run not started: the person declined.");
   }
   const started = await taskflowApi.runByName(name, apiName ?? null, parameters);
-  navigate({ screen: "taskflows", service: "cdi", runId: started.run_id });
+  // 0.9.1: stay on the Run tab; the run shows on top of the history. Open it with
+  // openTaskflowSummary(runId) / openTaskflowLog(runId) (the history row links).
+  announceTaskflowStart(started);
   return started;
 }
 
@@ -158,9 +164,17 @@ export const txmdm = {
     getJson<RunView>(service === "mdm" ? mdmApi.runUrl(runKey) : cdiApi.runUrl(runKey)),
   openMonitor: (): void => navigate(MONITOR_ROUTE),
   runTaskflowByName,
-  trackTaskflowRun: (runId: string): void =>
-    navigate({ screen: "taskflows", service: "cdi", runId }),
+  openTaskflowSummary: (runId: string): void => {
+    navigate({ screen: "taskflows", service: "cdi", runId });
+    selectRibbonTab("cdi-taskflows", "summary");
+  },
+  openTaskflowLog: (runId: string): void => {
+    navigate({ screen: "taskflows", service: "cdi", runId });
+    selectRibbonTab("cdi-taskflows", "log");
+  },
   terminateTaskflow,
+  getTaskflowHistory: (name: string, rowLimit = 100): Promise<TaskflowHistory> =>
+    taskflowApi.history(name, rowLimit),
   getTaskflowRun: (runId: string): Promise<TaskflowRunStatus> => taskflowApi.status(runId),
   getTaskflowSessionLog: (runId: string, childTask?: string): Promise<string> =>
     taskflowApi.sessionLog(runId, childTask ?? null),

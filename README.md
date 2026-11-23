@@ -100,7 +100,8 @@ cd frontend && npm run typecheck && npm test && npm run lint && npm run build
 | POST | `/api/cdi/runs` | Start one CDI task `{task_id, task_type, task_name, api_name?}` |
 | GET | `/api/cdi/runs/{run_key}` | Refresh and return the run |
 | GET | `/api/cdi/monitor?only_my_tasks=true&row_limit=50` | Monitor tab: running jobs (activityMonitor, details=true) + recent history (activityLog) + runs started here. Read-only |
-| POST | `/api/cdi/taskflows/{name}/run` | Start an advanced taskflow BY NAME; body `{"parameters": {"jobInstanceId": "ABC123"}, "api_name": null}` (both optional). Returns IDMC's `run_id` |
+| POST | `/api/cdi/taskflows/{name}/run` | Start an advanced taskflow BY NAME; body `{"parameters": {"jobInstanceId": "ABC123"}, "api_name": null}` (both optional). Returns IDMC's `run_id`. Parallel starts of one taskflow are allowed (no 409) since 0.9.1 |
+| GET | `/api/cdi/taskflows/{name}/history?row_limit=100` | Run history of one taskflow (Run tab detail): runs started from this app + its child task rows from activityMonitor / activityLog (IDMC does not list the taskflow itself). Read-only |
 | GET | `/api/cdi/taskflows/runs/{run_id}?details=true` | Status + summary of ANY taskflow run by IDMC run id (works after a restart). Read-only |
 | GET | `/api/cdi/taskflows/runs/{run_id}/session-log?subtask=<child task>` | Session log of one child task, plain text. Read-only |
 | POST | `/api/cdi/taskflows/runs/{run_id}/terminate` | Abort a running taskflow (IDMC `PUT /active-bpel/services/tf/terminate {"runid": [...]}`, 204 = accepted). Optional `{"run_ids": [...]}`, max 200. SIDE EFFECT |

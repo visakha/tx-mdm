@@ -2,8 +2,55 @@
 
 Standing rule (Vamsi, 2026-11-22 23:04 CST): keep these notes current whenever the app changes:
 what each screen / element does, what to click for each workflow, intended vs actual behaviour.
-Last updated: 2026-11-22 ~23:55 CST, v0.8.0 redesign commit. Observed with Cypress (Electron) against the
+Last updated: 2026-11-23 ~00:28 CST, v0.9.1 (see the v0.9.1 section, which overrides older Taskflows notes).
+Older notes: 2026-11-22 ~23:55 CST, v0.8.0 redesign commit. Observed with Cypress (Electron) against the
 fake IDMC (backend/dev/fake_idmc.py). Not yet observed against the live org - see the end.
+
+## v0.9.1 CDI Taskflows (2026-11-23, Vamsi voice 00:15-00:19 CST) - overrides older Taskflows notes
+
+NOT OBSERVED: at his request ("skip the test", 00:24 CST) 0.9.1 was pushed with only typecheck,
+production build and the ASCII grep run. Nothing below has been seen in a browser yet.
+
+Ribbon tabs are now Run / Summary / Session log. Each shows ONLY its own part.
+The Track run id tab and its paste box were REMOVED at his request on 2026-11-23 ("Remove the
+track run ID. I don't think we need it.").
+
+- Run (stacked, both parts 100% width - he does not want it split side by side):
+  - MASTER `tf-run-box`: taskflow list `tf-list` / `tf-item-<name>` (one line per name, roomy for
+    20-30 names). Picking one shows its input fields (`tf-param-key-N` / `tf-param-value-N`,
+    `tf-param-add`) and the Run button `tf-run` (data-agent-confirm). Before a pick: a short
+    "Pick a taskflow" line. Start errors: `tf-start-error`.
+  - DETAIL `tf-history` below it: every run of the picked taskflow, running first, then newest.
+    Row columns: run id (full, one line), status, start, end, elapsed min, rows ok / failed,
+    error, Open. Taskflow rows `tf-history-row-<runId>` (data-trackable="true",
+    data-running) have two links: `tf-history-summary-<runId>` -> Summary tab,
+    `tf-history-log-<runId>` -> Session log tab, both for that run id.
+    Child task rows `tf-history-child-<i>` (data-trackable="false") have no links.
+    `tf-history-refresh` = "Last refresh ... (every 15 s, N checks)"; `tf-history-note` = plain notes;
+    `tf-history-error` on errors. Polls every 15 s (shared POLL_MS) only while Run is the open
+    tab and a taskflow is picked; a 429 stops auto-refresh. Read-only, never retried.
+  - After Run is accepted: stays on Run (no tab switch, no navigation); the new run is put on
+    top of the history at once, marked running. The Run button stays usable for parallel starts.
+- Summary (`tf-run-view`): what Track used to own for the selected run - `tf-run-id`, `tf-status`,
+  progress bar `run-progress`, poll clock, `tf-times`, `tf-last-refresh`, Abort `tf-abort`
+  (only while running, data-agent-confirm), `tf-error` / `tf-note`, then per child rows
+  `tf-subtasks` / `tf-child-<name>` / `tf-totals` with "Open log" buttons `tf-sum-log-<name>`.
+- Session log (`tf-log-pane`): child picker buttons `tf-log-<name>`, viewer `tf-log-viewer`.
+- No run selected: Summary and Session log show `tf-no-run` pointing to the Run tab history.
+- URL /taskflows/runs/:id (deep link) opens Summary for that id.
+- Backend: POST /api/cdi/taskflows/{name}/run no longer answers 409 for a second start of the
+  same taskflow - parallel starts go to IDMC, which decides. Whether IDMC accepts concurrent
+  instances of one taskflow is UNVERIFIED. Other CDI/MDM starts keep the one-at-a-time 409.
+- New read-only GET /api/cdi/taskflows/{name}/history?row_limit=1..1000 (default 100).
+- Data shape (live read-only check 2026-11-23 ~00:20 CST): activityMonitor / activityLog list
+  the taskflow's CHILD mapping tasks (MTT, e.g. mt_m_MDM_ZLV_TTF_Guest_Basic_EGR), never the
+  taskflow itself. So history = taskflow runs started from this app (trackable, kept in backend
+  memory - lost on a backend restart) + child task rows (mapping task run numbers, not taskflow
+  run ids, not trackable). Child name comes from a tracked run's subtasks; otherwise it is a
+  guess tf_X -> mt_m_X, and the pane says so.
+- Agent bridge: trackTaskflowRun REMOVED. New openTaskflowSummary(runId),
+  openTaskflowLog(runId), getTaskflowHistory(name, rowLimit). runTaskflowByName no longer
+  navigates. selectRibbonTab accepts run / summary / log.
 
 ## Layout (OneNote style)
 

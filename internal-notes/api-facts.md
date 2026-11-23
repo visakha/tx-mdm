@@ -79,3 +79,10 @@ Do it only with Vamsi's go-ahead and his credentials in `backend/.env`:
   vvamsi-idmcdev using the API." Rows: source_success 20, target_success 0 (7.6 min).
 - Since 0.8.0 the backend sets `aborted: true` on that code and strips the extra quotes; the UI
   shows "ABORTED (IDMC: FAILED)" in grey. An ordinary failure keeps `aborted: false`.
+
+## Taskflows in the activity monitor / log (live, read-only, 2026-11-23 ~00:20 CST)
+
+GET /api/v2/activity/activityMonitor and activityLog list a taskflow's child mapping tasks
+(type MTT, e.g. mt_m_MDM_ZLV_TTF_Guest_Basic_EGR, run_id = the mapping task's run number such as
+"9"), not the taskflow itself: no TASKFLOW-named rows in either list while
+tf_MDM_ZLV_TTF_Guest_Basic_EGR (run 1309401025769136128) was running.

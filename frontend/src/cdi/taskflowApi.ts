@@ -101,6 +101,76 @@ export interface TerminateResult {
 
 const enc = encodeURIComponent;
 
+/** One row of a taskflow's run history (GET /api/cdi/taskflows/{name}/history). */
+export interface HistoryRow {
+  run_id: string | null;
+  level: "taskflow" | "child";
+  task_name: string;
+  task_type: string;
+  source: "app" | "monitor";
+  /** True when run_id is a taskflow run id (click opens Track run id). */
+  trackable: boolean;
+  status: RunStatus;
+  state_text: string;
+  is_running: boolean;
+  started_at: string | null;
+  ended_at: string | null;
+  elapsed_minutes: number | null;
+  rows_ok: number | null;
+  rows_failed: number | null;
+  error: string;
+  started_by: string;
+}
+
+export interface TaskflowHistory {
+  taskflow_name: string;
+  as_of: string;
+  rows: HistoryRow[];
+  child_tasks: string[];
+  child_names_guessed: boolean;
+  taskflow_in_monitor: boolean;
+  notes: string[];
+}
+
+/** A just-accepted start as a history row, shown before the next 15 s refresh. */
+export function startedRow(started: TaskflowStartResult): HistoryRow {
+  return {
+    run_id: started.run_id,
+    level: "taskflow",
+    task_name: started.taskflow_name,
+    task_type: "TASKFLOW",
+    source: "app",
+    trackable: true,
+    status: "QUEUED",
+    state_text: "STARTED (accepted by IDMC)",
+    is_running: true,
+    started_at: started.requested_at ?? new Date().toISOString(),
+    ended_at: null,
+    elapsed_minutes: null,
+    rows_ok: null,
+    rows_failed: null,
+    error: "",
+    started_by: "",
+  };
+}
+
+/** Put fresh local starts on top of a fetched history, without duplicates. */
+export function mergeStarted(rows: readonly HistoryRow[], local: readonly HistoryRow[]): HistoryRow[] {
+  const known = new Set(rows.map((r) => r.run_id));
+  return [...local.filter((r) => !known.has(r.run_id)), ...rows];
+}
+
+// Starts made by the agent bridge also land in the Run tab's history at once.
+type StartListener = (started: TaskflowStartResult) => void;
+const startListeners = new Set<StartListener>();
+export function announceTaskflowStart(started: TaskflowStartResult): void {
+  for (const listener of startListeners) listener(started);
+}
+export function onTaskflowStart(listener: StartListener): () => void {
+  startListeners.add(listener);
+  return () => startListeners.delete(listener);
+}
+
 export const taskflowApi = {
   runByName: (
     name: string,
@@ -111,6 +181,8 @@ export const taskflowApi = {
       api_name: apiName,
       parameters,
     }),
+  history: (name: string, rowLimit = 100): Promise<TaskflowHistory> =>
+    getJson<TaskflowHistory>(`/api/cdi/taskflows/${enc(name)}/history?row_limit=${String(rowLimit)}`),
   status: (runId: string): Promise<TaskflowRunStatus> =>
     getJson<TaskflowRunStatus>(`/api/cdi/taskflows/runs/${enc(runId)}`),
   terminate: (runId: string): Promise<TerminateResult> =>

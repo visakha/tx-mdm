@@ -9,18 +9,18 @@ describe("OneNote layout (fake IDMC)", () => {
     cy.get('[data-testid="ribbon-tab-log"]').should("exist");
     cy.get('[data-testid="crumb"]').should("contain", "Taskflows");
     cy.get('[data-testid="tf-item-tf_demo_advanced"]').should("be.visible");
-    // 0.8.0: Track a run id is stacked below Run, both visible.
-    cy.get('[data-testid="tf-runid-input"]').should("be.visible");
-    cy.get('[data-testid="ribbon-tab-track"]').click();
-    cy.get('[data-testid="tf-runid-input"]').should("be.visible").type("900000000000000002");
-    cy.get('[data-testid="tf-track"]').click();
+    // 0.9.1: tabs are Run / Summary / Session log (Track run id removed 2026-11-23).
+    cy.get('[data-testid="ribbon-tab-track"]').should("not.exist");
+    cy.window().its("txmdm").then((t) => t.openTaskflowSummary("900000000000000002"));
+    cy.get('[data-testid="ribbon-tab-summary"]').should("have.attr", "aria-selected", "true");
     cy.get('[data-testid="tf-status"]').should("contain", "SUSPENDED");
     cy.get('[data-testid="ribbon-tab-log"]').click();
     cy.get('[data-testid="tf-log-mt_demo_load"]').click();
     cy.get('[data-testid="tf-log-viewer"]').should("be.visible").and("contain", "LOG13");
     cy.screenshot("onenote-taskflow-log");
     cy.get('[data-testid="ribbon-tab-summary"]').click();
-    cy.get('[data-testid="tf-log-viewer"]').should("not.be.visible");
+    cy.get('[data-testid="tf-log-viewer"]').should("not.exist");
+    cy.get('[data-testid="tf-subtasks"]').should("be.visible");
     cy.screenshot("onenote-taskflow-summary");
   });
   it("monitor ribbon filters sections; MDM ingress/egress filter jobs; search filters the pane", () => {
@@ -41,13 +41,13 @@ describe("OneNote layout (fake IDMC)", () => {
     cy.visit("/cdi/jobs");
     cy.window().its("txmdm").then((t) => {
       t.openNavSection("cdi-taskflows");
-      t.selectRibbonTab("track");
+      t.selectRibbonTab("summary");
       const l = t.layout();
       expect(l.section).to.eq("cdi-taskflows");
-      expect(l.tab).to.eq("track");
+      expect(l.tab).to.eq("summary");
       expect(() => t.selectRibbonTab("bogus")).to.throw();
     });
-    cy.get('[data-testid="tf-runid-input"]').should("be.visible");
+    cy.get('[data-testid="tf-no-run"]').should("be.visible");
   });
   it("CDI task run lands in Runs > Result", () => {
     cy.visit("/cdi/jobs");

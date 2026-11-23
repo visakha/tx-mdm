@@ -22,6 +22,6 @@ describe("OneNote shell model", () => {
     expect(ribbonTab("cdi-taskflows")).toBe("run");
     selectRibbonTab("cdi-taskflows", "summary");
     expect(ribbonTab("cdi-taskflows")).toBe("summary");
-    expect(() => selectRibbonTab("cdi-taskflows", "nope")).toThrow(/Tabs: run, track/);
+    expect(() => selectRibbonTab("cdi-taskflows", "nope")).toThrow(/Tabs: run, summary, log/);
   });
 });

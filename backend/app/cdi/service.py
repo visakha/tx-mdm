@@ -12,6 +12,7 @@ from app.cdi.monitor import (
     entry_from_monitor,
     keep,
 )
+from app.cdi.taskflow_history import TaskflowHistory, build_history
 from app.cdi.taskflow_runs import (
     SubtaskRun,
     TaskflowRunStatus,
@@ -176,7 +177,11 @@ class CdiService:
             known = ", ".join(sorted(t.name for t in taskflows)[:20])
             raise TaskflowNotFoundError(f"No taskflow named {name}.{hint} Known: {known}")
         api = api_name or task.name
-        run = self._registry.reserve(task.id, task.name, CdiTaskType.TASKFLOW.value)
+        # Not exclusive: several runs of one taskflow may be in flight (his parallel starts).
+        # If IDMC refuses a concurrent instance, its own status + text come back unchanged.
+        run = self._registry.reserve(
+            task.id, task.name, CdiTaskType.TASKFLOW.value, exclusive=False
+        )
         try:
             handle = self._client.start(task.id, CdiTaskType.TASKFLOW, api, parameters)
         except IdmcRateLimitedError:
@@ -203,6 +208,39 @@ class CdiService:
             status_path=f"/api/cdi/taskflows/runs/{handle.run_id}",
             parameters=dict(parameters or {}),
         )
+
+    def taskflow_history(self, name: str, row_limit: int) -> TaskflowHistory:
+        """Run history of one taskflow (Run tab detail pane). Read-only, never retried.
+
+        Rows: runs of this taskflow started from this backend (IDMC run id + live taskflow
+        status), plus activityMonitor / activityLog rows whose task name is the taskflow or
+        one of its child tasks. A 429 propagates as a hard stop.
+        """
+        notes: list[str] = []
+        app_runs: list[tuple[str, RunView, TaskflowRunStatus | None]] = []
+        for run in self._registry.list_runs():
+            if run.job_name != name or run.service != "cdi":
+                continue
+            handle = self._handles.get(run.run_key)
+            if handle is None:
+                continue
+            status: TaskflowRunStatus | None = None
+            try:
+                status = self.taskflow_run_status(handle.run_id, details=False)
+            except IdmcRateLimitedError:
+                raise
+            except IdmcError as exc:
+                notes.append(f"Status of run {handle.run_id} unavailable: {exc}")
+            app_runs.append((handle.run_id, run, status))
+        children: set[str] = set()
+        for _, _, status in app_runs:
+            if status is not None:
+                children.update(c.name for c in status.subtasks)
+        for cached in self._final_status.values():
+            if cached.taskflow_name == name:
+                children.update(c.name for c in cached.subtasks)
+        snapshot = self.monitor(row_limit, only_my_tasks=False)
+        return build_history(name, snapshot, app_runs, children, notes, now_utc())
 
     def taskflow_run_status(self, run_id: str, details: bool) -> TaskflowRunStatus:
         """Status of any taskflow run by IDMC run id (works after a backend restart too).

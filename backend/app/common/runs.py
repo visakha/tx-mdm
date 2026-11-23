@@ -69,7 +69,9 @@ def now_utc() -> datetime:
 class RunRegistry:
     """In-memory record of runs started from this backend.
 
-    Enforces one active run per job. Never retries a failed run.
+    Enforces one active run per job unless the caller asks for a non-exclusive start (taskflows
+    by name, 0.9.1: Vamsi starts several in parallel; IDMC decides whether it accepts them).
+    Never retries a failed run.
     """
 
     def __init__(self, service: str) -> None:
@@ -78,10 +80,11 @@ class RunRegistry:
         self._active_by_job: dict[str, str] = {}
         self._lock = threading.Lock()
 
-    def reserve(self, job_id: str, job_name: str, job_kind: str) -> RunView:
+    def reserve(self, job_id: str, job_name: str, job_kind: str, exclusive: bool = True) -> RunView:
         with self._lock:
             active_key = self._active_by_job.get(job_id)
-            if active_key is not None and not self._runs[active_key].status.is_terminal:
+            busy = active_key is not None and not self._runs[active_key].status.is_terminal
+            if exclusive and busy:
                 raise JobAlreadyRunningError(job_name)
             run = RunView(
                 run_key=uuid.uuid4().hex,
@@ -93,7 +96,8 @@ class RunRegistry:
             )
             run.log.append(LogLine(at=now_utc(), message=f"Starting {job_kind} job {job_name}"))
             self._runs[run.run_key] = run
-            self._active_by_job[job_id] = run.run_key
+            if exclusive or not busy:
+                self._active_by_job[job_id] = run.run_key
             return run
 
     def get(self, run_key: str) -> RunView:

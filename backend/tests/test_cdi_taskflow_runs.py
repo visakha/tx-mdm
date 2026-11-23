@@ -180,9 +180,7 @@ def test_status_and_session_log_by_run_id(idmc: respx.MockRouter, idmc_http: Idm
     assert missing.status_code == 404
 
 
-def test_second_start_allowed_once_first_run_is_seen_final(
-    idmc: respx.MockRouter, idmc_http: IdmcHttp
-):
+def test_parallel_starts_of_one_taskflow_are_allowed(idmc: respx.MockRouter, idmc_http: IdmcHttp):
     idmc.get(f"{PLATFORM}/public/core/v3/objects").respond(
         200, json={"objects": [{"id": "FED9", "path": "ZL_Vamsi/tf_MDM_ZLV_TTF_Guest_Basic"}]}
     )
@@ -192,7 +190,8 @@ def test_second_start_allowed_once_first_run_is_seen_final(
     client = _app(idmc_http)
     url = "/api/cdi/taskflows/tf_MDM_ZLV_TTF_Guest_Basic/run"
     assert client.post(url).status_code == 200
-    assert client.post(url).status_code == 409
+    # 0.9.1: he starts runs in parallel; this backend no longer answers 409 (IDMC decides).
+    assert client.post(url).status_code == 200
     client.get(f"/api/cdi/taskflows/runs/{RUN}")
     assert client.post(url).status_code == 200
     # same run id again (cached final status) must close the new local run too

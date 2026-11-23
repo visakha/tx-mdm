@@ -14,6 +14,7 @@ from app.cdi.service import (
     TaskflowStartError,
     TerminateError,
 )
+from app.cdi.taskflow_history import TaskflowHistory
 from app.cdi.taskflow_runs import (
     TaskflowRunRequest,
     TaskflowRunStatus,
@@ -99,8 +100,8 @@ def monitor(
     description="Looks the name up in the org task list (exact, case-sensitive), calls its "
     "published URL /active-bpel/rt/{api_name} (api_name defaults to the name) and returns "
     'IDMC\'s run id. Body (optional): {"parameters": {"jobInstanceId": "ABC123"}} - '
-    "Start-step input fields, exact names. 404 unknown name; 409 already running from this "
-    "backend; IDMC's own "
+    "Start-step input fields, exact names. 404 unknown name. Several runs of one taskflow "
+    "may be started in parallel (no 409 from this backend); IDMC's own "
     "status (e.g. 403 Allowed Users) on a refused start. Never retried.",
 )
 def run_taskflow_by_name(
@@ -117,6 +118,24 @@ def run_taskflow_by_name(
     except TaskflowStartError as exc:
         code = exc.status_code if 400 <= exc.status_code < 500 else 502
         raise HTTPException(status_code=code, detail=str(exc)) from exc
+
+
+@router.get(
+    "/taskflows/{name}/history",
+    operation_id="cdi_taskflow_history",
+    summary="Run history of one taskflow: running first, then recent finished",
+    description="Read-only, never retried. Rows: runs of this taskflow started from this "
+    "backend (IDMC run id, taskflow status), plus activityMonitor / activityLog rows named "
+    "after the taskflow or one of its child tasks. Seen live 2026-11-23: IDMC lists only the "
+    "child mapping tasks there, not the taskflow; child rows carry IDMC's per-task run number, "
+    "which is not a taskflow run id (trackable=false). Poll every 15 s; a 429 is a hard stop.",
+)
+def taskflow_history(
+    name: str,
+    service: Service,
+    row_limit: Annotated[int, Query(ge=1, le=1000)] = 100,
+) -> TaskflowHistory:
+    return service.taskflow_history(name, row_limit)
 
 
 @router.get(

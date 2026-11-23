@@ -1,7 +1,7 @@
 // App shell in the style of Microsoft OneNote:
 //   left pane  = search box + notebooks (CDI, MDM) with coloured sections
-//   top ribbon = contextual tabs for the selected section (e.g. Taskflows: Run / Track run id /
-//                Summary / Session log) plus a one-line hint of what to do on that tab
+//   top ribbon = contextual tabs for the selected section (e.g. Taskflows: Run / Summary /
+//                Session log) plus a one-line hint of what to do on that tab
 //   page area  = the section's content; the ribbon tab sets data-view, CSS shows the parts.
 // The URL still decides the section (deep links + agent bridge unchanged); every panel stays
 // mounted so switching sections never drops a list already loaded.
@@ -38,10 +38,9 @@ import {
 const HINTS: Record<string, string> = {
   "cdi-tasks/tasks": "Pick a CDI task on the left of the page, then press Run.",
   "cdi-tasks/run": "The selected task, full width. Press Run to start it (one run at a time).",
-  "cdi-taskflows/run": "Pick a taskflow, check its input fields (jobInstanceId), press Run. The run shows below.",
-  "cdi-taskflows/track": "Paste an IDMC run id in Track a run id (below Run) and press Track.",
-  "cdi-taskflows/summary": "Status, times and per child task rows ok / failed and errors.",
-  "cdi-taskflows/log": "Press Session log on a child task to read its log.",
+  "cdi-taskflows/run": "Pick a taskflow, check its input fields (jobInstanceId), press Run. Scroll down for its runs: Summary / Session log per run.",
+  "cdi-taskflows/summary": "The selected run: status, progress bar, Last refresh, Abort while running, per child task rows ok / failed and errors.",
+  "cdi-taskflows/log": "The selected run's session log. Pick a child task when there are several.",
   "cdi-monitor/all": "Running now, recent history and runs started here. Refreshes every 15 s.",
   "cdi-monitor/running": "Only what is running in CDI right now.",
   "cdi-monitor/history": "Only finished runs from the activity log.",

@@ -117,16 +117,13 @@ main { flex: 1; padding: 16px 20px; }
 /* ribbon tab -> which parts of a page show */
 [data-section="cdi-tasks"][data-view="run"] .picker,
 [data-section^="mdm-"][data-view="run"] .picker,
-[data-section$="-runs"][data-view="result"] .picker,
-[data-section="cdi-taskflows"][data-view="summary"] .picker,
-[data-section="cdi-taskflows"][data-view="log"] .picker { display: none; }
+[data-section$="-runs"][data-view="result"] .picker { display: none; }
 [data-section="cdi-tasks"][data-view="run"] .panel,
 [data-section^="mdm-"][data-view="run"] .panel,
-[data-section$="-runs"][data-view="result"] .panel,
-[data-section="cdi-taskflows"][data-view="summary"] .panel,
-[data-section="cdi-taskflows"][data-view="log"] .panel { grid-template-columns: 1fr; }
-[data-section="cdi-taskflows"][data-view="summary"] [data-testid="tf-log-viewer"] { display: none; }
-.tf-run-box, .tf-track-box { display: flex; flex-direction: column; gap: 8px; }
+[data-section$="-runs"][data-view="result"] .panel { grid-template-columns: 1fr; }
+/* 0.9.1: Taskflows tabs render only their own part in TaskflowsPanel.tsx (no CSS hiding). */
+.tf-log-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.tf-run-box { display: flex; flex-direction: column; gap: 8px; }
 [data-section="cdi-monitor"][data-view="running"] section[aria-label="Recent history"],
 [data-section="cdi-monitor"][data-view="running"] section[aria-label="Started from this app"],
 [data-section="cdi-monitor"][data-view="history"] section[aria-label="Running now"],
@@ -170,7 +167,7 @@ main { flex: 1; padding: 16px 20px; }
    and run ids stay on one line (no wrapping). */
 .panel.tf-panel { grid-template-columns: minmax(0, 1fr); }
 .tf-panel .picker { max-height: none; overflow: visible; background: none; border: none; padding: 0; gap: 12px; }
-.tf-panel .tf-run-box, .tf-panel .tf-track-box {
+.tf-panel .tf-run-box {
   width: 100%; box-sizing: border-box; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 12px;
 }
 .tf-panel [data-testid="tf-list"] {
@@ -181,8 +178,6 @@ main { flex: 1; padding: 16px 20px; }
 .tf-panel .tf-name, .tf-panel .tf-path { white-space: nowrap; overflow-wrap: normal; }
 .tf-panel .param-row { grid-template-columns: minmax(160px, 1fr) 2fr; }
 .tf-panel input { width: 100%; box-sizing: border-box; }
-.tf-track-row { display: flex; gap: 8px; align-items: center; width: 100%; }
-.tf-track-row input { flex: 1; min-width: 0; }
 .tf-panel [data-testid="tf-run"] { align-self: flex-start; }
 .tf-panel [data-testid="tf-list"] [role="option"] { padding: 4px 8px; border-radius: 4px; cursor: pointer; }
 .tf-panel [data-testid="tf-list"] [role="option"][aria-selected="true"] { background: var(--one-soft); outline: 1px solid var(--one); }
@@ -223,3 +218,9 @@ main { flex: 1; padding: 16px 20px; }
 .b360-monitor { min-width: 0; max-width: 100%; }
 .b360-monitor .detail { min-width: 0; overflow: hidden; }
 .b360-monitor .table-wrap { max-width: 100%; overflow-x: auto; }
+/* 0.9.1: Run tab = run form (100%) with the run history stacked below (100%). */
+.tf-panel .tf-history { width: 100%; box-sizing: border-box; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+.tf-history-table td.nowrap, .tf-history-table td.nowrap code { white-space: nowrap; }
+.tf-history-table tr.clickable { cursor: pointer; }
+.tf-history-table tr.clickable:hover { background: var(--hover, rgba(127, 127, 127, 0.12)); }
+.tf-history-table tr[data-running="true"] td:first-child { border-left: 3px solid var(--ok, #2e7d32); }
