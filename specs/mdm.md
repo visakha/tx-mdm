@@ -1,62 +1,46 @@
-# Spec - MDM (Business 360)
+# Spec - MDM (Business 360 jobs)
 
-**Version:** 1.0.0 (2026-11-22) - **State:** Reconciled. Status: CODE. The id resolution is
-UNVERIFIED.
+**As of:** 0.9.11 (2026-11-23). Replaces 1.0.0 (2026-11-22). B360 records: see `b360-data.md`.
 
 ## Why
 
-Vamsi wants to run Business 360 ingress, egress and match-merge jobs and see their counts and
-errors, without the console.
+Run Business 360 ingress / egress jobs and the MDM taskflows that wrap them, see every B360 job
+running in the org whoever started it, and look up any job instance by id.
 
 ## Requirements
 
-**FR-M01 Job definition list from metadata.** `CODE`
-- Given a valid session, when `GET /api/mdm/jobs` is called, then the backend queries
-  `{baseApiUrl}/public/core/v3/objects?q=type=='MDM_JOB_DEFINITION'`.
-- Each result is an `MdmJob` with `asset_id`, name and path.
-
-**FR-M02 Resolve the internal id and kind (pluggable, UNVERIFIED).** `CODE`
-- Given the metadata has no `jobDefinitionId` and no job type,
-- then `JobDefinitionResolver` fills them in.
-- The current `JobSearchResolver`:
-  - matches normalised definition names against recent B360 job search results
-    (`jobDefinition.id`, `jobType`)
-  - skips `internal.c360.ingress.fileImportJob` and training jobs
-  - recognises egress by the substring "egress", never by a hard-coded type
-  - caches results for `MDM_RESOLVER_CACHE_SECONDS`
-- An unresolved job is listed with `runnable=false` and a note.
-
-**FR-M03 Run.** `CODE`
-- Given a runnable job, when `POST /api/mdm/runs {asset_id}` is called, then the backend sends
-  `POST {mdm}/job/public/api/v1/jobInstance/{Ingress|Egress|MatchMerge} {jobDefinitionId}`
-  once and returns a QUEUED run.
-- Given the job is not runnable, the API returns 400.
-- Given the job is unknown, the API returns 400 (LookupError).
-
-**FR-M04 Monitor.** `CODE`
-- Given a run, when `GET /api/mdm/runs/{run_key}` is called, then the backend reads
-  `jobInstance/{id}?details=true`:
-  - `_meta.state` maps to the run status.
-  - `jobLevelMetrics` supplies the counts.
-  - Any `errorMessage`-style fields supply the errors.
-  - `_meta.startedAt` supplies `idmc_started_at`. It never overwrites `started_at`.
+- **M01** Job list from metadata: `GET /api/mdm/jobs` (v3 objects `MDM_JOB_DEFINITION`); internal
+  jobDefinitionId + kind resolved from job search; unresolved jobs listed `runnable=false` with a
+  note. `CODE` / `LIVE` (4 jobs: 2 Job Recovery not runnable, ingress + egress runnable)
+- **M02** Business 360 notebook sections: All jobs, Ingress jobs, Egress jobs, Taskflows
+  (jobInstanceId), Currently running, Runs. `CODE`
+- **M03** Run: `POST /api/mdm/runs {asset_id}` -> one `POST {mdm}/job/public/api/v1/jobInstance/
+  {Ingress|Egress|MatchMerge} {jobDefinitionId}`; not runnable -> 400; already running -> 409. `CODE` / `LIVE` (egress)
+- **M04** Refresh: `GET /api/mdm/runs/{run_key}` reads `jobInstance/{id}?details=true` (state, counts,
+  errors, `idmc_started_at`). `GET /api/mdm/runs` lists runs started here. `CODE` / `LIVE`
+- **M05** Currently running: `GET /api/mdm/monitor?row_limit=25` - every RUNNING/QUEUED job whose type
+  starts `b360.` or `c360.`, whoever started it (portal, app, other user), plus recently finished;
+  other types counted, not listed. Tabs Everything / Running now / Recently finished / Look up id;
+  elapsed ticks each second; 15 s refresh. Read-only. `CODE`
+- **M06** Look up any instance: `GET /api/mdm/job-instances/{instance_id}` (spaces, quotes, trailing dot
+  trimmed; unknown -> 404). Read-only. `CODE`
+- **M07** MDM taskflows (`tf_MDM_*`, `*_EGR`, `*_IGR`) live here, section "Taskflows (jobInstanceId)"
+  (`/mdm/taskflows`, run deep link `/mdm/taskflows/runs/:id`): same Run / Summary / Session log tabs,
+  history, Clear and Abort as cdi.md C08-C14, served by the same `/api/cdi/taskflows/...` routes. `CODE` / `LIVE`
+- **M08** jobInstanceId field starts EMPTY (no placeholder); Run is disabled until a value is typed;
+  backend enforces it (cdi.md C06). `CODE`
+- **M09** MDM child mapping tasks (`mt_m_MDM_*`) shown read-only under the run box with "runs via its
+  taskflow"; never startable alone. `CODE`
 
 ## Out of scope
 
-- Editing job definitions.
-- Ingress file upload.
-- Purge.
-- Delete/restore of records.
+Editing job definitions; ingress file upload; purge; match-merge model choice in the UI.
 
-## Open (needs a live probe)
+## Known gaps / UNVERIFIED
 
-- The authoritative source of `jobDefinitionId` and job type: job search, the export package,
-  or FRS documents.
-- The egress `jobType` string.
-- The exact error payload fields.
-
-## Success criteria
-
-- SC-M01: the MDM tests in `backend/tests/` pass.
-- SC-M02 (LIVE, pending): every job definition Vamsi names as in use resolves, with 0 wrong
-  mappings.
+- Monitor status-filter spelling, sort order of the unfiltered page, and whether the search is
+  org-wide or own-jobs only: UNVERIFIED (portal job 1309395637279657984 is the live test case).
+- A fully successful MDM taskflow run needs a REAL jobInstanceId from Vamsi; ABC123 got past the
+  parameter error but wrote 0 rows (LIVE, 2026-11-22).
+- Both ZLV taskflows need `VVamsi-idmcdev` (exact case) in Allowed Users, else 403 (LIVE).
+- Oracle-bound mappings fail with socket-closed errors when his laptop is off the VPN (LIVE, his diagnosis).

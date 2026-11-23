@@ -1,13 +1,29 @@
-# specs/ - current state
+# specs/ - what tx-mdm does today (as of 0.9.11, commit 68aa953)
 
-This folder describes what tx-mdm does **today**. It changes only when a change proposal
-under `../changes/` is archived. In each file, every requirement has an id (`FR-...`), at least
-one scenario, and a status: `CODE` (implemented and tested offline) or `LIVE` (also seen
-against the real org).
+These files describe CURRENT behaviour, short and checkable. One line per requirement where
+possible; each requirement names the backend route that serves it (API-first: no UI feature
+without a typed endpoint in Swagger).
+
+Status tags:
+- `CODE` - built and covered by tests against the fake IDMC (`backend/dev/fake_idmc.py`).
+- `LIVE` - also seen working against Vamsi's real org.
+- `UNVERIFIED` - shape taken from the docs or a guess; not yet proven live.
 
 | File | Area |
 |---|---|
-| [`cdi.md`](cdi.md) | Data Integration: task list, run, monitor |
-| [`mdm.md`](mdm.md) | Business 360: job definition list, id resolution, run, monitor |
-| [`shared.md`](shared.md) | Session, run rules, results screen (common to both) |
-| [`agent-interface.md`](agent-interface.md) | Routes, `window.txmdm` actions, test ids, OpenAPI contract |
+| [`shared.md`](shared.md) | Shell, run rules, polling, typed contract, no pop-ups, about, start-up |
+| [`cdi.md`](cdi.md) | Data Integration: tasks, taskflows, monitor, naming rule |
+| [`mdm.md`](mdm.md) | Business 360 jobs: runs, Currently running, MDM taskflows |
+| [`b360-data.md`](b360-data.md) | B360 Data notebook: master vs source records, metadata, add, edit |
+| [`agent-interface.md`](agent-interface.md) | window.agent, window.txmdm, labels, what agents cannot do |
+
+How these relate to the rest of the repo:
+- `methodology/constitution.md` - the rules every spec must obey (backend owns IDMC, typed,
+  ASCII, public-repo hygiene). Specs never override it.
+- `internal-notes/collaboration-spine.md` - HOW we work (voice ask -> read-back -> brief ->
+  small version -> his screen). Specs are WHAT the result does.
+- `internal-notes/api-facts.md` - which IDMC calls are documented / LIVE / UNVERIFIED. Specs
+  point there instead of repeating proofs.
+- `internal-notes/ui-observations.md` - per-version screen detail (test ids, click order).
+- `changes/` - proposal folders. NOTE: 0.8.0-0.9.11 were built from voice briefs without change
+  folders; these specs were brought up to date afterwards (2026-11-23) to close that gap.
