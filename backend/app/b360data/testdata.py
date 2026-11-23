@@ -143,16 +143,29 @@ def rule_for(
 
 
 def _fresh(fake: Faker, field: EntityField, codes: list[str] | None = None) -> FieldValue:
+    value = _fresh_unbounded(fake, field, codes)
+    if isinstance(value, str) and field.length is not None:
+        return value[: field.length.max]
+    return value
+
+
+def _fresh_unbounded(fake: Faker, field: EntityField, codes: list[str] | None) -> FieldValue:
     hint = _hint(field.name)
+    limit = field.length
     match field.data_type:
         case FieldDataType.PICKLIST | FieldDataType.DEPENDENT_PICKLIST:
-            return str(fake.random_element(codes)) if codes else None
+            fitting = [c for c in codes or [] if limit is None or len(c) <= limit.max]
+            return str(fake.random_element(fitting)) if fitting else None
         case FieldDataType.INTEGER if _is_country_code(field.name):
             return 1
+        case FieldDataType.INTEGER if limit is not None and limit.exact:
+            return int(fake.random_int(10 ** (limit.max - 1), 10**limit.max - 1))
         case FieldDataType.INTEGER if _is_phone_number(field.name):
-            return int(fake.random_int(2_000_000_000, 9_999_999_999))
+            top = 9_999_999_999 if limit is None else min(9_999_999_999, 10**limit.max - 1)
+            return int(fake.random_int(min(2_000_000_000, top), top))
         case FieldDataType.INTEGER:
-            return int(fake.random_int(1, 1000))
+            top = 1000 if limit is None else min(1000, 10**limit.max - 1)
+            return int(fake.random_int(1, top))
         case FieldDataType.DOUBLE | FieldDataType.DECIMAL:
             return float(fake.pyfloat(right_digits=2, min_value=0, max_value=1000))
         case FieldDataType.BOOLEAN:

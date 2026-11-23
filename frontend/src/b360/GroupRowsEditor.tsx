@@ -76,6 +76,10 @@ export function FieldInput({
       data-testid={testId}
       value={value === null || value === undefined ? "" : String(value)}
       step={field.input === "DECIMAL" ? "any" : undefined}
+      // 0.9.12.2: length bound from the backend (config / metadata / Reference 360).
+      maxLength={kind === "text" && field.length ? field.length.max : undefined}
+      max={field.input === "INTEGER" && field.length ? 10 ** field.length.max - 1 : undefined}
+      min={field.input === "INTEGER" && field.length ? (field.length.exact ? 10 ** (field.length.max - 1) : 0) : undefined}
       placeholder={pickNote}
       title={pickNote}
       onValueChange={(v: string) => onChange(parseInput(v, field.input))}

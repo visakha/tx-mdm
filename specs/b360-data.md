@@ -138,6 +138,20 @@ Typed API docs (0.9.12, Vamsi 02:32 CST: "create another OpenAPI hyphen typed JS
   metadata read -> base spec + `x-typed-warnings`, never 500. `GET /docs-typed` = Swagger on it;
   title-bar link "API docs (typed)"; `backend/dev/write_openapi_typed.py` saves it to a file. `CODE`
 
+Lengths (0.9.12.2, Vamsi 02:40-02:41 CST)
+- **D28** `EntityField.length` = `{max, exact, origin METADATA|CONFIG|DECLARED|LONGEST_CODE,
+  metadata_max}`. METADATA from a raw `maxLength` / `length` attribute; CONFIG from
+  `b360_entities.toml` `[entity.lengths]` / `[entity.groups.<group>.lengths]` (`field = 3` or
+  `{ max = 10, exact = true }`; wins over metadata; larger than metadata or unknown field ->
+  `length_warnings` shown on Metadata (M)). His config: x_phone.cntry_cd 3 digits, x_phone.ph_num
+  exactly 10 digits. Picklists: DECLARED (rdm entity's Code field length) else LONGEST_CODE of the live
+  list, recomputed with the 5-minute caches. `CODE`
+- **D29** Enforced in the dynamic Pydantic models (text max_length / min_length; integers le
+  10**n-1, ge 0 or 10**(n-1) when exact), in `/openapi-typed.json` (maxLength / minimum / maximum /
+  x-length-origin), in Type-it / Edit inputs (maxlength, min / max), and in Generate (cntry_cd 1,
+  ph_num 10 digits not starting with 0, ph_typ a real Code that fits). Generate fills root fields and
+  every field group in one go. `CODE`
+
 ## Out of scope
 
 Master-record create / edit (except Merge winners, D22); delete / restore; picklist management;

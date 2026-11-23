@@ -549,3 +549,9 @@ the chip-row Listboxes instead.
   sourcePKey lookup on Records (S) - they are inputs, not copies of the table.
 - Agent Cypress (`agent_b360_fake.cy.js`) updated: looks for a label starting "Open master record ",
   waits on `b360-meta-fields` instead of "Root field list". Not re-run on this VM.
+
+## v0.9.12.2 (2026-11-23 ~02:50 CST): lengths
+- Metadata (M) / (S) field tables: new "Length" column (`b360-meta-length-<field>`), e.g.
+  "max 3 (CONFIG)", "exactly 10 (CONFIG)", "max 12 (LONGEST_CODE)". Warnings above the root table
+  (`b360-length-warning`) when a TOML length exceeds the metadata or names an unknown field.
+- Type it / Edit: text inputs get maxlength, integer inputs min / max from the same bound.

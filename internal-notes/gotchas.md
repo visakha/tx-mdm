@@ -181,3 +181,11 @@ documented beyond `c360person.firstName`; the backend reuses the prefix the last
 - Catch-all handler in app/main.py: any unhandled error returns JSON detail
   "Backend error on <METHOD> <path>: <Type>: <message>" (UI already shows detail inline);
   the traceback still prints in the backend window. Never a bare 500 again.
+
+## Lengths (0.9.12.2, 2026-11-23 02:40 CST)
+- x_phone.cntry_cd and x_phone.ph_num are INTEGER fields in his zlv_guest metadata, so a leading
+  zero can never survive (country code 044, a phone starting 0). The bound is in DIGITS: cntry_cd
+  <= 999, ph_num exactly 10 digits (1000000000-9999999999). If leading zeros matter, change the
+  fields to text in the B360 portal; then the same config counts characters.
+- A lookup code's length (ph_typ) is not configured: declared length of the rdm entity's Code field
+  if its metadata has one, else the longest live Code ("Contaminated" = 12 on his org, 02:27 CST).

@@ -21,6 +21,8 @@ export interface BusinessEntity {
   system_fields?: EntityField[];
   /** SYSTEM field groups, e.g. _meta (Metadata tab only). */
   system_field_groups?: FieldGroup[];
+  /** 0.9.12.2: config length larger than the metadata allows, or for a field the metadata does not have. */
+  length_warnings?: string[];
 }
 
 export interface BusinessEntityList {
@@ -99,6 +101,8 @@ export interface EntityField {
   origin_source?: OriginSource;
   /** Picklist fields only: the Reference 360 list behind it. */
   lookup?: FieldLookup | null;
+  /** 0.9.12.2: length bound. */
+  length?: FieldLength | null;
 }
 
 export interface EntityRecord {
@@ -134,6 +138,16 @@ export interface FieldGroupRows {
   group: string;
   /** One map per row, keyed by field name. */
   rows: (Record<string, string | number | boolean | null>)[];
+}
+
+export interface FieldLength {
+  /** Most characters (text) or digits (integer). */
+  max: number;
+  /** True: exactly max digits / characters. */
+  exact?: boolean;
+  origin: LengthOrigin;
+  /** What the field's own metadata declared, if anything. */
+  metadata_max?: number | null;
 }
 
 export interface FieldLookup {
@@ -182,6 +196,8 @@ export interface FormField {
   options?: PicklistOption[];
   /** PICKLIST only: where options came from (NONE = left empty). */
   options_source?: PicklistSource | null;
+  /** 0.9.12.2: input bound. */
+  length?: FieldLength | null;
 }
 
 export interface FormGroup {
@@ -230,6 +246,9 @@ export interface GeneratedRows {
   faker_version: string;
   note: string;
 }
+
+export type LengthOrigin = "METADATA" | "CONFIG" | "DECLARED" | "LONGEST_CODE";
+export const LENGTHORIGIN_VALUES: readonly LengthOrigin[] = ["METADATA", "CONFIG", "DECLARED", "LONGEST_CODE"];
 
 export type LookupMode = "SEARCH" | "BUSINESS_ID";
 export const LOOKUPMODE_VALUES: readonly LookupMode[] = ["SEARCH", "BUSINESS_ID"];

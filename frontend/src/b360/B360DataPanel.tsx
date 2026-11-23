@@ -163,6 +163,7 @@ function FieldTable({ fields, testId, title }: { fields: BusinessEntity["fields"
             <th>Type</th>
             <th>Mandatory</th>
             <th>Searchable</th>
+            <th>Length</th>
             <th>Lookup list (Reference 360)</th>
           </tr>
         </thead>
@@ -179,6 +180,7 @@ function FieldTable({ fields, testId, title }: { fields: BusinessEntity["fields"
               <td title={f.raw_type}>{f.data_type}</td>
               <td>{f.mandatory ? "yes" : "-"}</td>
               <td>{f.searchable ? "yes" : "-"}</td>
+              <td data-testid={`b360-meta-length-${f.name}`}>{lengthText(f.length)}</td>
               <td data-testid={`b360-meta-lookup-${f.name}`}>{lookupText(f.lookup)}</td>
             </tr>
           ))}
@@ -186,6 +188,14 @@ function FieldTable({ fields, testId, title }: { fields: BusinessEntity["fields"
       </table>
     </div>
   );
+}
+
+// 0.9.12.2: length bound and where it came from.
+function lengthText(length: BusinessEntity["fields"][number]["length"]): string {
+  if (length === undefined || length === null) return "-";
+  const how = length.exact ? `exactly ${length.max}` : `max ${length.max}`;
+  const meta = length.metadata_max !== null && length.metadata_max !== undefined && length.origin !== "METADATA" ? `, metadata ${length.metadata_max}` : "";
+  return `${how} (${length.origin}${meta})`;
 }
 
 // 0.9.12: where a picklist's allowed values come from, as the metadata states it.
@@ -245,6 +255,11 @@ function MetadataView({ entity, source = false }: { entity: BusinessEntity; sour
         with a system label: added by Business 360 itself. &quot;documented&quot; means the org metadata reply did not list it and it
         comes from the B360 REST API Reference.
       </p>
+      {(entity.length_warnings ?? []).map((w) => (
+        <p key={w} className="small visibility-warn" data-testid="b360-length-warning">
+          Warning: {w}
+        </p>
+      ))}
       <section className="b360-group">
         <h4>
           Root fields <span className="count">{entity.fields.length}</span>

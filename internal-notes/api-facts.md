@@ -312,3 +312,8 @@ Reference: internal-docs/B360_October2026_Business360_REST-API_Reference_en.pdf.
   a dependent picklist) and `beReferenceEntity` for Customer 360 custom field designators (pp.
   148-150). The businessEntity metadata reply itself is not printed, so the attribute his LookupField
   carries is UNVERIFIED; tx-mdm keeps every raw attribute name (`lookup.raw_keys`) to find out.
+
+## Field lengths (0.9.12.2)
+- The reference prints `length`, `minLength`, `maxLength`, `precision`, `scale` for Customer 360 custom
+  field designators (pp. 148-150). Whether businessEntity metadata fields carry `maxLength` / `length`
+  is UNVERIFIED; tx-mdm reads either if present (origin METADATA). Our earlier wire model dropped them.

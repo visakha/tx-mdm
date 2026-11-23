@@ -60,6 +60,17 @@ fields = [
   "_meta.lastUpdateDate",
   "_meta.changeList",
 ]
+# Lengths (0.9.12.2, Vamsi 02:40-02:41 CST: "country code is like three digits... phone is like ten
+# digits"). Integer fields count DIGITS, text fields count characters. Config wins over metadata;
+# a config value larger than the metadata declares shows a warning on Metadata (M).
+#   field = 3                         -> at most 3
+#   field = { max = 10, exact = true } -> exactly 10 (integers: no leading 0)
+# Root fields go in [entity.lengths]; field-group fields in [entity.groups.<group>.lengths].
+# Picklist (lookup code) lengths are NOT set here: they come from the Reference 360 list
+# (declared length of its Code field, else the longest Code).
+[entity.groups.x_phone.lengths]
+cntry_cd = 3
+ph_num = { max = 10, exact = true }
 
 # Source systems the "Add records" tab may send new records to (Create Master Record API).
 #   - allowed = the source system ids EXACTLY as IDMC knows them. Case matters: zlv_ttf, not ZLV_TTF.

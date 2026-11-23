@@ -121,6 +121,26 @@ class FieldLookup(BaseModel):
     )
 
 
+class LengthOrigin(StrEnum):
+    """0.9.12.2: where a field's length bound came from."""
+
+    METADATA = "METADATA"  # the field's own raw metadata (maxLength / length attribute)
+    CONFIG = "CONFIG"  # b360_entities.toml lengths table (wins over metadata)
+    DECLARED = "DECLARED"  # picklist: declared length of the Code field of its rdm entity
+    LONGEST_CODE = "LONGEST_CODE"  # picklist: longest Code in the live Reference 360 list
+
+
+class FieldLength(BaseModel):
+    """Length bound of one field. STRING / PICKLIST: characters. INTEGER: digits."""
+
+    max: int = Field(ge=1, description="Most characters (text) or digits (integer).")
+    exact: bool = Field(default=False, description="True: exactly max digits / characters.")
+    origin: LengthOrigin
+    metadata_max: int | None = Field(
+        default=None, description="What the field's own metadata declared, if anything."
+    )
+
+
 class EntityField(BaseModel):
     name: str
     label: str
@@ -133,6 +153,7 @@ class EntityField(BaseModel):
     lookup: FieldLookup | None = Field(
         default=None, description="Picklist fields only: the Reference 360 list behind it."
     )
+    length: FieldLength | None = Field(default=None, description="0.9.12.2: length bound.")
 
 
 class FieldGroup(BaseModel):
@@ -154,6 +175,11 @@ class BusinessEntity(BaseModel):
     )
     system_field_groups: list[FieldGroup] = Field(
         default_factory=list, description="SYSTEM field groups, e.g. _meta (Metadata tab only)."
+    )
+    length_warnings: list[str] = Field(
+        default_factory=list,
+        description="0.9.12.2: config length larger than the metadata allows, or for a field the "
+        "metadata does not have.",
     )
 
 
@@ -312,6 +338,7 @@ class FormField(BaseModel):
     options_source: PicklistSource | None = Field(
         default=None, description="PICKLIST only: where options came from (NONE = left empty)."
     )
+    length: FieldLength | None = Field(default=None, description="0.9.12.2: input bound.")
 
 
 class FormGroup(BaseModel):

@@ -65,6 +65,17 @@ def field_schema(f: EntityField, lists: forms.Picklists, group: str = "") -> Jso
             out = _picklist(f, lists, group)
         case _:
             out = {"description": f"type not known ({f.raw_type})"}
+    limits = forms.bounds(f)
+    for key, number in (
+        ("maxLength", limits.max_length),
+        ("minLength", limits.min_length),
+        ("maximum", limits.le),
+        ("minimum", limits.ge),
+    ):
+        if number is not None:
+            out[key] = number
+    if f.length is not None:
+        out["x-length-origin"] = f.length.origin.value
     out["title"] = f.label
     out["x-idmc-type"] = f.raw_type
     if f.origin is FieldOrigin.SYSTEM:

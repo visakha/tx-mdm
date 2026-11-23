@@ -31,9 +31,11 @@ from app.b360data.models import (
     FieldDataType,
     FieldGroup,
     FieldGroupRows,
+    FieldLength,
     FieldLookup,
     FieldOrigin,
     FieldValue,
+    LengthOrigin,
     LookupStatus,
     NewGroupRow,
     NewGroupRows,
@@ -230,6 +232,20 @@ def _lookup_text(value: object) -> str | None:
     return None
 
 
+# Raw attributes that may declare a field's length. maxLength / length are the names the
+# reference prints for custom field designators (pp. 148-150); UNVERIFIED on businessEntity.
+LENGTH_ATTRS: tuple[str, ...] = ("maxLength", "length")
+
+
+def length_from_node(node: WireNode) -> FieldLength | None:
+    extra: dict[str, object] = dict(node.model_extra or {})
+    for attr in LENGTH_ATTRS:
+        value = extra.get(attr)
+        if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+            return FieldLength(max=value, origin=LengthOrigin.METADATA, metadata_max=value)
+    return None
+
+
 def lookup_from_node(node: WireNode) -> FieldLookup:
     """What the raw metadata says about a picklist's list: code list and/or rdm entity."""
     extra: dict[str, object] = dict(node.model_extra or {})
@@ -270,6 +286,7 @@ def _field(node: WireNode, parent_system: bool = False) -> EntityField:
     picks = (FieldDataType.PICKLIST, FieldDataType.DEPENDENT_PICKLIST)
     return EntityField(
         lookup=lookup_from_node(node) if data_type in picks else None,
+        length=length_from_node(node),
         name=node.name,
         label=node.text,
         data_type=ECLASS_TYPES.get(raw_type, FieldDataType.UNKNOWN),

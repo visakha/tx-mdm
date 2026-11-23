@@ -27,10 +27,12 @@ from app.b360data.models import (
     EntityRecord,
     EntityScope,
     FieldDataType,
+    FieldLength,
     FocusEntityStatus,
     FormSchema,
     GeneratedRows,
     GenerateRequest,
+    LengthOrigin,
     LookupMode,
     LookupStatus,
     MergeFieldRow,
@@ -134,6 +136,7 @@ class B360DataService:
             "GET", self._mdm_url + ep.BUSINESS_ENTITY.format(guid=guid), ep.MDM_HEADERS
         )
         entity = wire.business_entity_from_metadata(body, guid)
+        entity = entity_scope.apply_lengths(entity, entity_scope.focus_config().entity_config(guid))
         self._meta_cache[guid] = (time.monotonic(), entity)
         return entity
 
@@ -143,7 +146,48 @@ class B360DataService:
         entity = self.metadata(guid)
         if any(f.lookup is not None for f in _all_fields(entity)):
             entity = wire.with_lookups(entity, self._rdm_entities())
+            entity = self._with_picklist_lengths(entity)
         return entity
+
+    def _picklist_length(self, f: EntityField) -> FieldLength | None:
+        """0.9.12.2 (Vamsi 02:41 CST): a lookup code's length is DERIVED, never configured:
+        the declared length of the rdm entity's Code field if its metadata has one, else the
+        longest Code in the live list (both follow the 5-minute caches)."""
+        if f.length is not None and f.length.origin is LengthOrigin.CONFIG:
+            return f.length
+        rdm = f.lookup.rdm_entity if f.lookup else None
+        if not rdm:
+            return f.length
+        try:
+            code = next((c for c in self.metadata(rdm).fields if c.name == "Code"), None)
+        except IdmcRateLimitedError:
+            raise
+        except IdmcError:
+            code = None
+        own = f.length.max if f.length else None
+        if code is not None and code.length is not None:
+            return FieldLength(max=code.length.max, origin=LengthOrigin.DECLARED, metadata_max=own)
+        codes = self._rdm_allowed(rdm)
+        if not codes:
+            return f.length
+        longest = max(len(o.code) for o in codes)
+        return FieldLength(max=longest, origin=LengthOrigin.LONGEST_CODE, metadata_max=own)
+
+    def _with_picklist_lengths(self, entity: BusinessEntity) -> BusinessEntity:
+        def fix(f: EntityField) -> EntityField:
+            if f.data_type not in _PICKS:
+                return f
+            return f.model_copy(update={"length": self._picklist_length(f)})
+
+        return entity.model_copy(
+            update={
+                "fields": [fix(f) for f in entity.fields],
+                "field_groups": [
+                    g.model_copy(update={"fields": [fix(f) for f in g.fields]})
+                    for g in entity.field_groups
+                ],
+            }
+        )
 
     def _rdm_entities(self) -> list[BusinessEntitySummary]:
         """rdm.* entities from the datamodel (cached 5 min). Error -> [] (lookups stay

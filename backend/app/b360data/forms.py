@@ -87,12 +87,56 @@ def _model_name(entity: BusinessEntity) -> str:
     return f"Record_{cleaned}"
 
 
+@dataclasses.dataclass(frozen=True)
+class Bounds:
+    """0.9.12.2: Pydantic constraints from a field's length. Text: max_length (min_length when
+    exact). Integer: digits -> le 10**n - 1, ge 0 (ge 10**(n-1) when exact, so no leading 0)."""
+
+    max_length: int | None = None
+    min_length: int | None = None
+    le: int | None = None
+    ge: int | None = None
+
+
+def bounds(field: EntityField) -> Bounds:
+    rule = field.length
+    if rule is None:
+        return Bounds()
+    if _PY_TYPE[field.data_type] is str:
+        return Bounds(max_length=rule.max, min_length=rule.max if rule.exact else None)
+    if field.data_type is FieldDataType.INTEGER:
+        return Bounds(le=10**rule.max - 1, ge=10 ** (rule.max - 1) if rule.exact else 0)
+    return Bounds()
+
+
 def _definition(field: EntityField) -> tuple[Any, Any]:
     py_type = _PY_TYPE[field.data_type]
+    b = bounds(field)
     if field.mandatory:
-        min_length = 1 if py_type is str else None
-        return (py_type, Field(alias=field.name, title=field.label, min_length=min_length))
-    return (py_type | None, Field(default=None, alias=field.name, title=field.label))
+        min_length = b.min_length if b.min_length is not None else (1 if py_type is str else None)
+        return (
+            py_type,
+            Field(
+                alias=field.name,
+                title=field.label,
+                min_length=min_length,
+                max_length=b.max_length,
+                le=b.le,
+                ge=b.ge,
+            ),
+        )
+    return (
+        py_type | None,
+        Field(
+            default=None,
+            alias=field.name,
+            title=field.label,
+            min_length=b.min_length,
+            max_length=b.max_length,
+            le=b.le,
+            ge=b.ge,
+        ),
+    )
 
 
 def record_model(entity: BusinessEntity) -> type[BaseModel]:
@@ -130,6 +174,7 @@ def _form_field(group: str, f: EntityField, lists: Picklists) -> FormField:
         required=f.mandatory,
         options=found,
         options_source=source,
+        length=f.length,
     )
 
 

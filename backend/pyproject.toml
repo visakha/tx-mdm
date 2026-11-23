@@ -1,6 +1,6 @@
 [project]
 name = "tx-mdm-backend"
-version = "0.9.12.1"
+version = "0.9.12.2"
 description = "FastAPI backend that owns every Informatica IDMC call for the TX MDM job runner (CDI + Business 360)."
 requires-python = ">=3.12"
 dependencies = [

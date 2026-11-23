@@ -18,12 +18,43 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
-from app.b360data.models import BusinessEntity, EntityCategory, FieldVisibility
+from app.b360data.models import (
+    BusinessEntity,
+    EntityCategory,
+    EntityField,
+    FieldLength,
+    FieldVisibility,
+    LengthOrigin,
+)
 
 ENV_VAR = "B360_ENTITIES_FILE"
 _SOURCE_ID = re.compile(r"[A-Za-z0-9._-]{1,128}")
 _FIELD_NAME = re.compile(r"[A-Za-z0-9._-]{1,256}")
 DEFAULT_FILE = Path(__file__).resolve().parents[2] / "b360_entities.toml"
+
+
+class LengthRule(BaseModel):
+    """0.9.12.2: one length bound in b360_entities.toml, e.g. { max = 10, exact = true }."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    max: int = Field(ge=1, le=4000)
+    exact: bool = False
+
+
+LengthTable = dict[str, LengthRule | int]
+
+
+class GroupConfig(BaseModel):
+    """[entity.groups.<group>] table: per-group settings."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    lengths: LengthTable = Field(default_factory=dict)
+
+
+def as_rule(value: LengthRule | int) -> LengthRule:
+    return value if isinstance(value, LengthRule) else LengthRule(max=value)
 
 
 class FocusEntity(BaseModel):
@@ -37,6 +68,13 @@ class FocusEntity(BaseModel):
         default=None,
         description="0.10: every field / group / system name, one per line; comment one out with "
         "# to hide it on the records screens. Missing list = show all.",
+    )
+
+    lengths: LengthTable = Field(
+        default_factory=dict, description="0.9.12.2: [entity.lengths] root field -> max length."
+    )
+    groups: dict[str, GroupConfig] = Field(
+        default_factory=dict, description="0.9.12.2: [entity.groups.<group>.lengths] tables."
     )
 
     @field_validator("name")
@@ -115,6 +153,10 @@ class FocusConfig(BaseModel):
             if e.name.lower() == wanted:
                 return e.fields
         return None
+
+    def entity_config(self, name: str) -> FocusEntity | None:
+        wanted = name.strip().lower()
+        return next((e for e in self.entity if e.name.lower() == wanted), None)
 
     def contains(self, name: str) -> bool:
         wanted = name.strip().lower()
@@ -227,3 +269,61 @@ def visibility_for(entity: BusinessEntity, listed: list[str] | None) -> FieldVis
 
 def field_visibility(entity: BusinessEntity) -> FieldVisibility:
     return visibility_for(entity, focus_config().fields_for(entity.name))
+
+
+def apply_lengths(entity: BusinessEntity, config: FocusEntity | None) -> BusinessEntity:
+    """0.9.12.2: config lengths win over metadata; a config bound larger than the metadata's,
+    or one for a field the metadata does not have, is a warning (shown on Metadata (M))."""
+    if config is None or not (config.lengths or config.groups):
+        return entity
+    warnings: list[str] = []
+
+    def fix(fields: list[EntityField], table: LengthTable, where: str) -> list[EntityField]:
+        known = {f.name for f in fields}
+        warnings.extend(
+            f"length for {where}{name}: no such field in the metadata"
+            for name in table
+            if name not in known
+        )
+        out: list[EntityField] = []
+        for f in fields:
+            raw = table.get(f.name)
+            if raw is None:
+                out.append(f)
+                continue
+            rule = as_rule(raw)
+            declared = f.length.max if f.length else None
+            if declared is not None and declared < rule.max:
+                warnings.append(
+                    f"length for {where}{f.name}: config {rule.max} > metadata {declared}"
+                )
+            bound = FieldLength(
+                max=rule.max, exact=rule.exact, origin=LengthOrigin.CONFIG, metadata_max=declared
+            )
+            out.append(f.model_copy(update={"length": bound}))
+        return out
+
+    groups = {g.name for g in entity.field_groups}
+    warnings.extend(
+        f"lengths for group {name}: no such field group in the metadata"
+        for name in config.groups
+        if name not in groups
+    )
+    return entity.model_copy(
+        update={
+            "fields": fix(entity.fields, config.lengths, ""),
+            "field_groups": [
+                g.model_copy(
+                    update={
+                        "fields": fix(
+                            g.fields, config.groups[g.name].lengths, f"group {g.name} field "
+                        )
+                    }
+                )
+                if g.name in config.groups
+                else g
+                for g in entity.field_groups
+            ],
+            "length_warnings": entity.length_warnings + warnings,
+        }
+    )
