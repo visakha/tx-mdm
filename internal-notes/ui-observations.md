@@ -226,3 +226,41 @@ His request (00:36 CST): "taskflow on top, child indented, in the next row". Cor
 - Unchanged: full width, full ids on one line, Summary / Session log links on taskflow rows only,
   15 s refresh with Last refresh, auto-refresh stops on 429, read-only.
 - NOT yet checked in a browser or Cypress (he asked for speed). Seen live only by him on his screen.
+
+## v0.9.3 (2026-11-23) - visible run links and Clear buttons
+
+Why (his words, 00:38 CST): "I do not see how I can navigate to the summary from the run tab.
+I don't see any of those hyperlinks."
+
+Root cause, checked against his live 0.9.1 backend (read-only GET of
+/api/cdi/taskflows/tf_MDM_ZLV_TTF_Guest_Basic_EGR/history): the data was right. His taskflow
+run 1309406930795532288 came back as a trackable taskflow row, so its links rendered. But
+they sat in the LAST column ("Open"), after the long nowrap name, the times and the error
+text, inside a horizontally scrolling table, so they were off screen to the right. The row he
+was looking at, child mapping task run 10 (RUNNING, sorted first in 0.9.1), had no links at
+all, only a muted "see its taskflow run" text.
+
+What changed:
+- The Open column is now the SECOND column, right after Run id. The links are plain
+  underlined text, "Summary | Session log", and never hidden behind hover.
+- Taskflow rows link to themselves: data-testid tf-history-summary-<runId> and
+  tf-history-log-<runId>.
+- Child mapping-task rows matched to a parent link to the PARENT run. Summary opens the
+  parent's Summary. Session log opens the parent's Session log with that child pre-selected,
+  once the status shows the child with a log id. Test ids: tf-history-summary-child-<i> and
+  tf-history-log-child-<i>.
+- Unmatched children get no links. They show "no link: not matched to a taskflow run started
+  from this app" (tf-history-nolink-<i>). Monitor-only children usually end up here after a
+  backend restart, because app-started runs are held only in backend memory.
+- Clear buttons are VIEW-ONLY. Nothing in IDMC or the backend is deleted or stopped.
+  - Run history Clear (tf-history-clear) hides every row present now except still-running
+    ones. Rows that start later still show. "Cleared at <time>. Show all"
+    (tf-history-cleared / tf-history-show-all) undoes it. Changing the picked taskflow resets
+    the Clear.
+  - Summary Clear (tf-summary-clear) and Session log Clear (tf-log-clear) drop the selected
+    run, so the route goes back to /taskflows and the pane shows its "No run selected yet"
+    state.
+
+Not tested in a browser. Cypress specs that may now be stale: taskflows_fake.cy.js,
+taskflows_layout.cy.js and onenote.cy.js. The Open column moved and the Track wording was
+removed.

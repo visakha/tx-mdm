@@ -58,6 +58,10 @@ function okFailed(ok: number | null, failed: number | null): string {
   return `${num(ok)} ok / ${num(failed)} failed`;
 }
 
+function rowKey(r: HistoryRow): string {
+  return `${r.level}|${r.task_name}|${r.run_id ?? "none"}|${r.started_at ?? ""}`;
+}
+
 interface Props {
   route: Route;
   go: (route: Route) => void;
@@ -178,23 +182,52 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
   );
   // 0.9.2 (Vamsi 00:36-00:37 CST): taskflow run on top, its child mapping tasks on the next
   // rows, indented. Indentation only - no colour coding (his correction).
+  // 0.9.3 (Vamsi 00:39 CST): Clear on the run history is VIEW-ONLY. It hides the rows that
+  // exist now (still-running rows stay); runs that start later appear again. Nothing in IDMC
+  // or the backend is deleted or stopped. "Show all" undoes it.
+  const [clearedAt, setClearedAt] = useState<Date | null>(null);
+  const [hiddenKeys, setHiddenKeys] = useState<ReadonlySet<string>>(() => new Set());
+  useEffect(() => {
+    setClearedAt(null);
+    setHiddenKeys(new Set());
+  }, [picked]);
+  const visibleRows = useMemo(
+    () => historyRows.filter((r) => r.is_running || !hiddenKeys.has(rowKey(r))),
+    [historyRows, hiddenKeys],
+  );
+  const clearHistory = useCallback((): void => {
+    setHiddenKeys(new Set(historyRows.map(rowKey)));
+    setClearedAt(new Date());
+  }, [historyRows]);
+  const showAllHistory = useCallback((): void => {
+    setHiddenKeys(new Set());
+    setClearedAt(null);
+  }, []);
+
   const historyLines = useMemo(
     () =>
-      groupHistory(historyRows).flatMap((g) => [
-        ...(g.parent !== null ? [{ row: g.parent, indent: false, loose: false }] : []),
-        ...g.children.map((c) => ({ row: c, indent: g.parent !== null, loose: g.parent === null })),
+      groupHistory(visibleRows).flatMap((g) => [
+        ...(g.parent !== null ? [{ row: g.parent, parent: null, indent: false, loose: false }] : []),
+        ...g.children.map((c) => ({ row: c, parent: g.parent, indent: g.parent !== null, loose: g.parent === null })),
       ]),
-    [historyRows],
+    [visibleRows],
   );
 
+  // A child row's links open its PARENT taskflow run; "Session log" pre-selects that child.
+  const [pendingLogChild, setPendingLogChild] = useState<string | null>(null);
   const openRun = useCallback(
-    (row: HistoryRow, where: "summary" | "log"): void => {
+    (row: HistoryRow, where: "summary" | "log", childName: string | null = null): void => {
       if (!row.trackable || row.run_id === null) return;
+      setPendingLogChild(where === "log" ? childName : null);
       go({ screen: "taskflows", service: "cdi", runId: row.run_id });
       selectRibbonTab("cdi-taskflows", where);
     },
     [go],
   );
+  const clearSelected = useCallback((): void => {
+    setPendingLogChild(null);
+    go({ screen: "taskflows", service: "cdi", runId: null });
+  }, [go]);
 
   // ---- tracking one run id ----
   const [status, setStatus] = useState<TaskflowRunStatus | null>(null);
@@ -270,6 +303,17 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
     [runId],
   );
 
+  useEffect(() => {
+    if (pendingLogChild === null || status === null) return;
+    const child = status.subtasks.find((c) => c.name === pendingLogChild);
+    if (child !== undefined && child.log_entry_id !== null) {
+      openLog(child);
+      setPendingLogChild(null);
+    } else if (status.is_final) {
+      setPendingLogChild(null);
+    }
+  }, [pendingLogChild, status, openLog]);
+
   const [aborting, setAborting] = useState<boolean>(false);
   const [abortNote, setAbortNote] = useState<string | null>(null);
   const abortRun = useCallback((): void => {
@@ -319,6 +363,17 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
       )}
     </>
   );
+
+  const clearPane = (where: "summary" | "log") =>
+    runId === null ? null : (
+      <Button
+        aria-label={where === "summary" ? "Clear the Summary pane" : "Clear the Session log pane"}
+        data-testid={where === "summary" ? "tf-summary-clear" : "tf-log-clear"}
+        onClick={clearSelected}
+      >
+        Clear
+      </Button>
+    );
 
   const noRun = (
     <p className="muted" data-testid="tf-no-run">
@@ -400,7 +455,7 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
             )}
             <p className="muted">
               Runs can be started in parallel. Each accepted run appears on top of the history below;
-              click a taskflow row to follow it on Track run id.
+              use its Summary or Session log link to follow it.
             </p>
           </div>
         </section>
@@ -415,6 +470,33 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
               Last refresh: {histRefreshAt === null ? "-" : histRefreshAt.toLocaleTimeString()}
               {histStopped ? " (auto-refresh stopped: rate limited)" : ` (every ${String(POLL_SECONDS)} s, ${String(histPolls)} checks)`}
             </p>
+          )}
+          {picked !== null && (
+            <div className="tf-clear-row">
+              <Button
+                aria-label="Clear the run history view (view only, nothing is deleted)"
+                data-testid="tf-history-clear"
+                disabled={historyRows.length === 0}
+                onClick={clearHistory}
+              >
+                Clear
+              </Button>
+              {clearedAt !== null && (
+                <span className="muted" data-testid="tf-history-cleared">
+                  Cleared at {clearedAt.toLocaleTimeString()}.{" "}
+                  <a
+                    href="#show-all"
+                    data-testid="tf-history-show-all"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      showAllHistory();
+                    }}
+                  >
+                    Show all
+                  </a>
+                </span>
+              )}
+            </div>
           )}
           {histError !== null && (
             <p className="warn-text" data-testid="tf-history-error">
@@ -434,6 +516,7 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
               <thead>
                 <tr>
                   <th>Run id</th>
+                  <th>Open</th>
                   <th>What</th>
                   <th>Status</th>
                   <th>Started</th>
@@ -441,11 +524,10 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
                   <th>Minutes</th>
                   <th>Rows ok / failed</th>
                   <th>Error</th>
-                  <th>Open</th>
                 </tr>
               </thead>
               <tbody>
-                {historyLines.map(({ row, indent, loose }, index) => (
+                {historyLines.map(({ row, parent, indent, loose }, index) => (
                   <tr
                     key={`${row.level}-${row.task_name}-${row.run_id ?? "none"}-${String(index)}`}
                     className={indent ? "tf-child-row" : row.level === "taskflow" ? "tf-parent-row" : "tf-loose-row"}
@@ -457,6 +539,50 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
                     title={row.trackable ? "Taskflow run id" : "Child task run number - not a taskflow run id"}
                   >
                     <td className="nowrap tf-id-cell"><code>{row.run_id ?? "-"}</code></td>
+                    <td className="nowrap tf-open-cell">
+                      {(() => {
+                        // Taskflow rows link to themselves; child rows to their parent run.
+                        const target = row.trackable && row.run_id !== null ? row : parent;
+                        const child = row.trackable ? null : row.task_name;
+                        if (target === null || !target.trackable || target.run_id === null) {
+                          return (
+                            <span className="muted" data-testid={`tf-history-nolink-${String(index)}`}>
+                              no link: not matched to a taskflow run started from this app
+                            </span>
+                          );
+                        }
+                        const tid = row.trackable ? (row.run_id ?? "") : `child-${String(index)}`;
+                        return (
+                          <>
+                            <a
+                              className="tf-link"
+                              href={`/taskflows/runs/${target.run_id}`}
+                              data-testid={`tf-history-summary-${tid}`}
+                              title={row.trackable ? "Open this run's Summary" : `Opens the Summary of taskflow run ${target.run_id}`}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                openRun(target, "summary");
+                              }}
+                            >
+                              Summary
+                            </a>
+                            {" | "}
+                            <a
+                              className="tf-link"
+                              href={`/taskflows/runs/${target.run_id}`}
+                              data-testid={`tf-history-log-${tid}`}
+                              title={row.trackable ? "Open this run's Session log" : `Opens the Session log of taskflow run ${target.run_id} at ${row.task_name}`}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                openRun(target, "log", child);
+                              }}
+                            >
+                              Session log
+                            </a>
+                          </>
+                        );
+                      })()}
+                    </td>
                     <td className="nowrap">
                       <span className="tf-kind">{row.level === "taskflow" ? "taskflow" : "mapping task"}</span>{" "}
                       {row.task_name}
@@ -473,42 +599,11 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
                     <td className="num">{minutesText(row.elapsed_minutes)}</td>
                     <td className="num">{okFailed(row.rows_ok, row.rows_failed)}</td>
                     <td className="errors-cell">{row.error || "-"}</td>
-                    <td className="nowrap">
-                      {row.trackable && row.run_id !== null ? (
-                        <>
-                          <a
-                            href={`/taskflows/runs/${row.run_id}`}
-                            data-testid={`tf-history-summary-${row.run_id}`}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              openRun(row, "summary");
-                            }}
-                          >
-                            Summary
-                          </a>
-                          {" | "}
-                          <a
-                            href={`/taskflows/runs/${row.run_id}`}
-                            data-testid={`tf-history-log-${row.run_id}`}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              openRun(row, "log");
-                            }}
-                          >
-                            Session log
-                          </a>
-                        </>
-                      ) : (
-                        <span className="muted" title="IDMC lists this child task run without its taskflow run id">
-                          see its taskflow run
-                        </span>
-                      )}
-                    </td>
                   </tr>
                 ))}
-                {historyRows.length === 0 && history !== null && (
+                {visibleRows.length === 0 && history !== null && (
                   <tr>
-                    <td colSpan={9} className="muted">No runs of this taskflow or its child tasks in the recent history.</td>
+                    <td colSpan={9} className="muted">{clearedAt !== null ? "Cleared. New runs will appear here. " : ""}No runs of this taskflow or its child tasks in the recent history.</td>
                   </tr>
                 )}
               </tbody>
@@ -519,6 +614,7 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
 
       {tab === "summary" && (
         <section className="detail" aria-label="Taskflow run">
+          {clearPane("summary")}
           {runId === null && noRun}
           {loadingOrError}
           {status !== null && (
@@ -652,6 +748,7 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
 
       {tab === "log" && (
         <section className="detail" aria-label="Taskflow session log">
+          {clearPane("log")}
           {runId === null && noRun}
           {loadingOrError}
           {status !== null && (
