@@ -1,5 +1,5 @@
 // App shell in the style of Microsoft OneNote:
-//   left pane  = search box + notebooks (CDI, MDM) with coloured sections
+//   left pane  = search box + notebooks (CDI, MDM, B360 Data) with coloured sections
 //   top ribbon = contextual tabs for the selected section (e.g. Taskflows: Run / Summary /
 //                Session log) plus a one-line hint of what to do on that tab
 //   page area  = the section's content; the ribbon tab sets data-view, CSS shows the parts.
@@ -17,7 +17,8 @@ import { MonitorPanel } from "./cdi/MonitorPanel";
 import { TaskflowsPanel } from "./cdi/TaskflowsPanel";
 import { MdmPanel } from "./mdm/MdmPanel";
 import { MdmMonitorPanel } from "./mdm/MdmMonitorPanel";
-import { MDM_TASKFLOWS_ROUTE, TASKFLOWS_ROUTE, useRoute, type MdmKindFilter, type Route } from "./shared/routes";
+import { B360DataPanel } from "./b360/B360DataPanel";
+import { B360_ROUTE, MDM_TASKFLOWS_ROUTE, TASKFLOWS_ROUTE, useRoute, type MdmKindFilter, type Route } from "./shared/routes";
 import type { CdiTask } from "./cdi/cdiApi";
 import type { MdmJob } from "./mdm/mdmApi";
 import { catalog } from "./shared/catalog";
@@ -56,6 +57,7 @@ const HINTS: Record<string, string> = {
   "mdm-running/lookup": "Paste any full job instance id and press Look up.",
   "mdm-runs/list": "Runs started from this backend. Pick one to see its result.",
   "mdm-runs/result": "Result of the selected run.",
+  "b360-data/entities": "Business entities found by the metadata APIs. Click one for its first 10 records, click a record for its field groups. Read-only; press Refresh to reload.",
 };
 
 function hintOf(section: SectionId, tab: string): string {
@@ -109,9 +111,10 @@ export function App(): React.JSX.Element {
   const isCdiList = section === "cdi-tasks";
   const isMdmList = section === "mdm-all" || section === "mdm-ingress" || section === "mdm-egress";
   const cdiRoute: Route = route.service === "cdi" && (route.screen === "jobs" || route.screen === "job" || route.screen === "run") ? route : { screen: "jobs", service: "cdi" };
-  const mdmRoute: Route = route.service === "mdm" && route.screen !== "runs" && route.screen !== "mdm-monitor" ? route : { screen: "jobs", service: "mdm" };
+  const mdmRoute: Route = route.service === "mdm" && route.screen !== "runs" && route.screen !== "mdm-monitor" && route.screen !== "b360" ? route : { screen: "jobs", service: "mdm" };
   const tfRoute: Route = route.screen === "taskflows" && route.service === "cdi" ? route : TASKFLOWS_ROUTE;
   const mdmTfRoute: Route = route.screen === "taskflows" && route.service === "mdm" ? route : MDM_TASKFLOWS_ROUTE;
+  const b360Route: Route = route.screen === "b360" ? route : B360_ROUTE;
   const mdmKind: MdmKindFilter | null =
     section === "mdm-ingress" ? "Ingress" : section === "mdm-egress" ? "Egress" : null;
   const visibleSections = matchSections(search);
@@ -186,7 +189,7 @@ export function App(): React.JSX.Element {
             <Separator />
           </div>
         )}
-        {(["CDI", "MDM"] as const).map((notebook) => {
+        {(["CDI", "MDM", "B360"] as const).map((notebook) => {
           const items = visibleSections.filter((s) => s.notebook === notebook);
           if (items.length === 0) return null;
           return (
@@ -259,6 +262,9 @@ export function App(): React.JSX.Element {
         </div>
         <div hidden={section !== "mdm-taskflows"}>
           <TaskflowsPanel route={mdmTfRoute} go={go} active={section === "mdm-taskflows"} domain="mdm" />
+        </div>
+        <div hidden={section !== "b360-data"}>
+          <B360DataPanel route={b360Route} go={go} active={section === "b360-data"} />
         </div>
         <div hidden={!(section === "cdi-runs" && tab === "list")}>
           <RunsPanel service="cdi" active={section === "cdi-runs" && tab === "list"} go={go} />

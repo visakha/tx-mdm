@@ -83,6 +83,14 @@ Every session that touches the UI reads internal-notes/ui-observations.md first 
 The notes say what each screen does, what to click per workflow, and intended vs observed
 behaviour - from real Cypress runs, not from memory.
 
+### IX-b. Typed models end to end (standing rule, 2026-11-23)
+
+- No stringly-typed or loose dict/Any representations. Pydantic v2 models in FastAPI, with
+  response_model on every route so Swagger shows them; raw IDMC JSON is parsed into models once,
+  at the client boundary.
+- The frontend uses TypeScript types generated from the backend's openapi.json and committed;
+  a test fails when they drift. Enums / unions for closed sets (e.g. FieldDataType), no `any`.
+
 ### X. Public repository hygiene (NON-NEGOTIABLE)
 
 This repo is public:

@@ -240,3 +240,16 @@ main { flex: 1; padding: 16px 20px; }
 .tf-history-table td.tf-open-cell { white-space: nowrap; }
 .tf-history-table a.tf-link { text-decoration: underline; cursor: pointer; }
 .tf-clear-row { display: flex; gap: 10px; align-items: center; margin: 6px 0; flex-wrap: wrap; }
+
+/* B360 Data notebook (0.9.5): everything full width, one block under the other, no tabs. */
+.b360-data .toolbar { align-items: center; }
+.b360-data .small { font-size: 0.85em; }
+.b360-entities { list-style: none; margin: 8px 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.b360-entity { width: 100%; text-align: left; padding: 6px 10px; border: 1px solid var(--border, rgba(127, 127, 127, 0.35)); border-radius: 6px; background: transparent; color: inherit; cursor: pointer; font: inherit; }
+.b360-entity:hover { background: var(--hover, rgba(127, 127, 127, 0.12)); }
+.b360-entity.selected { border-color: currentColor; font-weight: 600; }
+.b360-records, .b360-detail, .b360-group { width: 100%; margin-top: 12px; }
+.b360-records tr.clickable { cursor: pointer; }
+.b360-records tr.clickable:hover, .b360-records tr.selected { background: var(--hover, rgba(127, 127, 127, 0.12)); }
+.b360-group h4 { margin: 8px 0 4px; }
+.b360-group table.kv th { text-align: left; width: 30%; }

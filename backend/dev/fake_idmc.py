@@ -13,6 +13,8 @@ The Monitor tab calls (activityMonitor?details=true, activityLog?rowLimit=N) get
 demo set: one running taskflow with two child steps, plus a few finished runs.
 B360 job search returns a fixed set incl. 800000000000007984, RUNNING, started from the
 portal by another user (for the Business 360 Currently running view); status filters apply.
+B360 Data: metadata tenantModel/datamodel lists c360.person, c360.organization, zlv.guest;
+objects/businessEntity/<guid> gives fields + field groups; search returns 12 records each.
 """
 
 import json
@@ -422,3 +424,162 @@ def terminate(body: dict[str, Any] = Body(...)) -> Response:  # noqa: B008
         return JSONResponse({"error": "Invalid run id(s): " + ", ".join(ids)}, status_code=500)
     TERMINATED.update(ids)
     return Response(status_code=204)
+
+
+# ---- B360 Data notebook: metadata + search (documented JSON style, see app/b360data) --------
+
+_CORE = "http://informatica.com/mdm/v2/Core#//"
+
+
+def _f(name: str, label: str, kind: str = "TextField", searchable: bool = False) -> dict[str, Any]:
+    return {
+        "eClass": _CORE + kind,
+        "name": name,
+        "label": {"eClass": _CORE + "LocalizedText", "en": label},
+        "allowMany": False,
+        "options": {"eClass": _CORE + "FieldOptions", "searchable": searchable},
+    }
+
+
+def _fg(name: str, label: str, fields: list[dict[str, Any]]) -> dict[str, Any]:
+    return {
+        "eClass": _CORE + "FieldGroup",
+        "name": name,
+        "label": {"eClass": _CORE + "LocalizedText", "en": label},
+        "allowMany": True,
+        "field": fields,
+    }
+
+
+_B360_ENTITIES: dict[str, dict[str, Any]] = {
+    "c360.person": {
+        "eClass": _CORE + "BusinessEntity",
+        "guid": "c360.person",
+        "name": "Person",
+        "label": {"eClass": _CORE + "LocalizedText", "en": "Person"},
+        "field": [
+            _f("firstName", "First Name", searchable=True),
+            _f("lastName", "Last Name", searchable=True),
+            _f("gender", "Gender", "LookupField"),
+            _f("designation", "Designation"),
+            _fg(
+                "PostalAddress",
+                "Postal Address",
+                [
+                    _f("addressLine1", "Address Line 1"),
+                    _f("city", "City"),
+                    _f("state", "State", "LookupField"),
+                    _f("postalCode", "Postal Code"),
+                ],
+            ),
+            _fg("Phone", "Phone", [_f("phoneNumber", "Phone Number")]),
+            _fg("Email", "Email", [_f("emailAddress", "Email Address")]),
+        ],
+    },
+    "c360.organization": {
+        "eClass": _CORE + "BusinessEntity",
+        "guid": "c360.organization",
+        "name": "Organization",
+        "label": {"eClass": _CORE + "LocalizedText", "en": "Organization"},
+        "field": [
+            _f("organizationName", "Organization Name", searchable=True),
+            _f("companyType", "Company Type", "LookupField"),
+            _fg(
+                "PostalAddress",
+                "Postal Address",
+                [_f("city", "City"), _f("postalCode", "Postal Code")],
+            ),
+        ],
+    },
+    "zlv.guest": {
+        "eClass": _CORE + "BusinessEntity",
+        "guid": "zlv.guest",
+        "name": "Guest",
+        "label": {"eClass": _CORE + "LocalizedText", "en": "ZLV Guest"},
+        "field": [
+            _f("guestId", "Guest Id", searchable=True),
+            _f("fullName", "Full Name", searchable=True),
+            _fg("Stay", "Stays", [_f("hotel", "Hotel"), _f("nights", "Nights", "IntegerField")]),
+        ],
+    },
+}
+
+
+def _fake_records(guid: str) -> list[dict[str, Any]]:
+    prefix = guid.replace(".", "")
+    rows: list[dict[str, Any]] = []
+    for i in range(1, 13):
+        meta = {
+            "businessId": f"3000000000000000000000{i:05d}",
+            "businessEntity": guid,
+            "status": "ACTIVE",
+        }
+        if guid == "c360.person":
+            rows.append(
+                {
+                    "_meta": meta,
+                    f"{prefix}.firstName": f"First{i}",
+                    f"{prefix}.lastName": f"Last{i}",
+                    f"{prefix}.gender": {"Name": "Female" if i % 2 else "Male"},
+                    f"{prefix}.designation": "Analyst",
+                    f"{prefix}.PostalAddress": [
+                        {
+                            "addressLine1": f"{i} Main St",
+                            "city": "Austin",
+                            "state": {"Name": "Texas"},
+                            "postalCode": "78701",
+                        }
+                    ],
+                    f"{prefix}.Phone": [
+                        {"phoneNumber": f"512-555-{i:04d}"},
+                        {"phoneNumber": f"737-555-{i:04d}"},
+                    ],
+                    f"{prefix}.Email": [{"emailAddress": f"p{i}@example.com"}],
+                }
+            )
+        elif guid == "c360.organization":
+            rows.append(
+                {
+                    "_meta": meta,
+                    f"{prefix}.organizationName": f"Org {i}",
+                    f"{prefix}.companyType": {"Name": "Chartered"},
+                    f"{prefix}.PostalAddress": [{"city": "Dallas", "postalCode": "75201"}],
+                }
+            )
+        else:
+            rows.append(
+                {
+                    "_meta": meta,
+                    f"{prefix}.guestId": f"G{i:03d}",
+                    f"{prefix}.fullName": f"Guest {i}",
+                    f"{prefix}.Stay": [{"hotel": "Leander Inn", "nights": i}],
+                }
+            )
+    return rows
+
+
+@app.get("/metadata/api/v2/objects/tenantModel/datamodel")
+def datamodel() -> dict[str, Any]:
+    return {"eClass": _CORE + "TenantModel", "businessEntity": list(_B360_ENTITIES.values())}
+
+
+@app.get("/metadata/api/v2/objects/businessEntity/{guid}", response_model=None)
+def business_entity(guid: str) -> dict[str, Any] | JSONResponse:
+    if guid not in _B360_ENTITIES:
+        return JSONResponse(status_code=404, content={"message": f"unknown entity {guid}"})
+    return _B360_ENTITIES[guid]
+
+
+@app.post("/search/public/api/v1/search")
+def be_search(body: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:  # noqa: B008
+    guid = str(body.get("entityType") or "")
+    records = _fake_records(guid) if guid in _B360_ENTITIES else []
+    size = int(body.get("recordsToReturn") or body.get("pageSize") or 25)
+    return {
+        "searchResult": {
+            "hits": len(records),
+            "pageSize": size,
+            "pageOffset": 0,
+            "records": records[:size],
+        }
+    }

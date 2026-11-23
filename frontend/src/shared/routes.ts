@@ -15,6 +15,7 @@
 //   /mdm/taskflows          Business 360 taskflows (tf_MDM_*, *_EGR, *_IGR; need jobInstanceId)
 //   /mdm/taskflows/runs/:runId  one B360 taskflow run
 //   /mdm/running            Business 360 Currently running (any starter) + lookup by id
+//   /b360, /b360/:entity    B360 Data notebook: business entities, first 10 records of one
 
 import { useCallback, useEffect, useState } from "react";
 
@@ -34,7 +35,9 @@ export type Route =
   // service tells which notebook: cdi taskflows or Business 360 (MDM) taskflows (0.9.4).
   | { screen: "taskflows"; service: Service; runId: string | null }
   // Business 360 Currently running: every b360.* / c360.* job in the org.
-  | { screen: "mdm-monitor"; service: "mdm" };
+  | { screen: "mdm-monitor"; service: "mdm" }
+  // B360 Data notebook (0.9.5): entity = business entity internal id (null = none picked).
+  | { screen: "b360"; service: "mdm"; entity: string | null };
 
 export const MONITOR_ROUTE: Route = { screen: "monitor", service: "cdi" };
 
@@ -43,6 +46,8 @@ export const TASKFLOWS_ROUTE: Route = { screen: "taskflows", service: "cdi", run
 export const MDM_TASKFLOWS_ROUTE: Route = { screen: "taskflows", service: "mdm", runId: null };
 
 export const MDM_MONITOR_ROUTE: Route = { screen: "mdm-monitor", service: "mdm" };
+
+export const B360_ROUTE: Route = { screen: "b360", service: "mdm", entity: null };
 
 export const DEFAULT_ROUTE: Route = { screen: "jobs", service: "mdm" };
 
@@ -58,6 +63,9 @@ export function parseRoute(pathname: string): Route {
   if (service === "mdm" && kind === "taskflows" && id === undefined) return MDM_TASKFLOWS_ROUTE;
   if (service === "mdm" && kind === "taskflows" && id === "runs" && parts[3] !== undefined) {
     return { screen: "taskflows", service: "mdm", runId: parts[3] };
+  }
+  if (service === "b360" && id === undefined) {
+    return kind === undefined ? B360_ROUTE : { screen: "b360", service: "mdm", entity: kind };
   }
   if (service === "mdm" && kind === "ingress" && id === undefined) {
     return { screen: "kind", service: "mdm", kind: "Ingress" };
@@ -89,6 +97,8 @@ export function formatRoute(route: Route): string {
       return "/monitor";
     case "mdm-monitor":
       return "/mdm/running";
+    case "b360":
+      return route.entity === null ? "/b360" : `/b360/${encodeURIComponent(route.entity)}`;
     case "taskflows":
     {
       const base = route.service === "mdm" ? "/mdm/taskflows" : "/taskflows";

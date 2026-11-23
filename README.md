@@ -110,6 +110,9 @@ cd frontend && npm run typecheck && npm test && npm run lint && npm run build
 | GET | `/api/mdm/runs/{run_key}` | Refresh and return the run |
 | GET | `/api/mdm/monitor?row_limit=25` | Business 360 Currently running: every running `b360.*` / `c360.*` job in the org, whoever started it (portal, other machine, other user), plus recent finished ones. B360 job search; status-filter value spelling and sort order UNVERIFIED (see `app/mdm/monitor.py`). Read-only |
 | GET | `/api/mdm/job-instances/{instance_id}` | Look up ANY B360 job instance by full id (`jobInstance/{id}?details=true`). Read-only |
+| GET | `/api/b360/entities` | B360 Data: business entities DERIVED from the metadata API (`GET {mdm}/metadata/api/v2/objects/tenantModel/datamodel`). Typed `BusinessEntityList`. Read-only |
+| GET | `/api/b360/entities/{name}/metadata` | One entity's typed fields (data type, searchable, mandatory) and field groups (`GET {mdm}/metadata/api/v2/objects/businessEntity/{name}`, cached 5 min). Read-only |
+| GET | `/api/b360/entities/{name}/records?limit=10` | First N records (1..50) via the Search API; columns and field groups chosen from the metadata, values typed by data type. Typed `RecordPage`. Read-only |
 | GET | `/api/health` | Liveness |
 
 Rules built in: one active run per job (a second start gets HTTP 409); a failed run is

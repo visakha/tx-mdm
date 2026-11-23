@@ -101,3 +101,79 @@ tf_MDM_ZLV_TTF_Guest_Basic_EGR (run 1309401025769136128) was running.
   tasks and linear taskflows are always "cdi".
 - Guard: `POST /api/cdi/taskflows/{name}/run` and `POST /api/cdi/runs` answer 400 without
   calling IDMC when an mdm taskflow lacks `jobInstanceId`, or a cdi taskflow carries it.
+
+## B360 Data notebook: deriving business entities from metadata (0.9.5, 2026-11-23)
+
+Vamsi (00:47 CST): "as a thought experiment, see if you can derive it by making those API calls."
+Nothing about his org is hardcoded. Three calls, each derived from the one before. All are
+read-only, go to the MDM pod host (`IDMC_MDM_URL`, default https://usw1-mdm.dm1-us.informaticacloud.com)
+with header `IDS-SESSION-ID`, are never retried, and a 429 is passed through as HTTP 429.
+Reference = internal-docs/B360_October2026_Business360_REST-API_Reference_en.pdf (page numbers
+are the PDF's printed page numbers). Code: backend/app/b360data/ (wire.py is the only place raw
+JSON is read; everything after it is typed Pydantic models, see models.py).
+
+Step 1 - which business entities exist
+- Call: `GET {mdm}/metadata/api/v2/objects/tenantModel/datamodel`.
+- Source of the PATH: Postman "Meta Data API 3" in internal-docs/B360_API_collection.postman.json
+  (no saved response), and the MuleSoftForge Informatica MDM connector "Metadata Read" docs
+  (https://docs.mulesoftforge.com/connectors/mule-infa-mdm-connector/operations/metadata-read):
+  DATAMODEL = "full schema for the organization: all business entities, relationships, field
+  groups, lookup types"; a 401 there means the user lacks the Metadata / System Administrator
+  scope. The reference PDF does NOT print this call.
+- How we read it: every JSON object anywhere in the response whose `eClass` ends with
+  `#//BusinessEntity`, or that is listed under a `businessEntity` key, with a `guid` (else
+  `name`) -> one entity {name = guid, label = label.en}. Sorted by label.
+- UNVERIFIED: the response shape. The eClass/guid/label style is copied from the documented
+  Relationship Metadata API (step 2). Tested only against backend/dev/fake_idmc.py.
+- Endpoint: `GET /api/b360/entities` -> BusinessEntityList.
+
+Step 2 - what one entity looks like (fields, field groups, types)
+- Call: `GET {mdm}/metadata/api/v2/objects/businessEntity/{guid}` with guid from step 1
+  (e.g. `c360.person`).
+- Sources: MuleSoftForge "Metadata Read" (BUSINESS_ENTITY = `/metadata/api/v2/objects/businessEntity/{objectInternalId}`;
+  on 404 use DATAMODEL to find the id) and Informatica KB "HOW TO: Get a list of all the search
+  and facetable attributes in C360 SaaS?"
+  (https://knowledge.informatica.com/s/article/How-can-I-get-a-list-of-all-the-search-and-facetable-attributes?language=en_US):
+  look for `"searchable": true` / `"facetable": true` in this response.
+- Shape we expect, from the documented sibling call `GET {mdm}/metadata/api/v2/objects/relationship/?name=`
+  (Relationship Metadata API, pp. 94-96): paged `{content: [...]}` or one object; each object has
+  `eClass "http://informatica.com/mdm/v2/Core#//<Type>"`, `guid`, `name`, `label {en}` and a
+  `field` list; each field has eClass `...#//TextField` / `...#//IntegerField`, `name`,
+  `mandatory`, `allowMany`, `options`, `label {en}`.
+- How we read it: a `field` entry that has its own `field` list (or an eClass ending in
+  FieldGroup) is a FIELD GROUP; everything else is a top-level FIELD. Field data type = eClass
+  suffix mapped to FieldDataType (TextField -> STRING, IntegerField -> INTEGER documented p. 95;
+  DateField, BooleanField, LookupField, DecimalField ... same naming, UNVERIFIED; anything else ->
+  UNKNOWN with raw_type kept). allowMany false -> cardinality ONE, else MANY. searchable from
+  `searchable` or `options.searchable`.
+- Data types modelled (FieldDataType): String, Picklist, Dependent Picklist, Date, Double,
+  Boolean, Integer ("data types of business entity fields", p. 150) plus Decimal and DateTime
+  (search-term formats table, pp. 113-114), plus UNKNOWN.
+- Cache: the reference says model metadata "is refreshed and cached every five minutes" (p. 16);
+  the backend caches each entity's metadata for 300 s too.
+- UNVERIFIED: how this response nests field groups, the eClass names other than
+  TextField/IntegerField, and where `searchable` sits. Tested only against the fake.
+- Endpoint: `GET /api/b360/entities/{name}/metadata` -> BusinessEntity (call this first on the
+  real org to see what it really returns).
+
+Step 3 - the first 10 records
+- Call: `POST {mdm}/search/public/api/v1/search` body
+  `{"entityType": "<guid>", "search": "*", "pageSize": 10, "recordsToReturn": 10}`.
+- Source: Search API, pp. 20-36 (request parameters pp. 25-26: entityType, search, fields,
+  filters, pageSize, pageOffset, recordsToReturn, recordOffset, maxRecords, sort; response
+  pp. 26-27: `searchResult {hits, records[]}`, each record has `_meta {businessId, ...}`;
+  sample pp. 33-34: keys prefixed with the entity without dots (`c360person.firstName`), field
+  groups are arrays of objects (`c360person.Phone: [{phoneNumber}]`), picklists are
+  `{"Name": ...}`). Also Postman "Search Business Entity" and his idmc_collection.http.
+- How the metadata drives it: columns = step 2's top-level fields (in order); field groups =
+  step 2's field groups, each row typed by the group's fields. Record keys the metadata did not
+  describe are returned in `unknown_keys` and NOT shown as columns (never guessed).
+- Values are typed by the declared data type: INTEGER -> int, DOUBLE/DECIMAL -> float,
+  BOOLEAN -> bool, DATE -> date, DATETIME -> datetime (epoch ms or ISO), picklist object ->
+  its Name, anything else -> str.
+- UNVERIFIED: whether `search: "*"` returns all records (the reference's samples search a real
+  term); limit stays 1..50.
+- Endpoint: `GET /api/b360/entities/{name}/records?limit=10` -> RecordPage.
+- Confidence: search HIGH (documented); businessEntity metadata MEDIUM (path from two outside
+  sources, shape guessed from the documented sibling); tenantModel/datamodel MEDIUM-LOW (path
+  known, shape not printed anywhere we have).

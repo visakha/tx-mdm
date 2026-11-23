@@ -17,11 +17,12 @@ export type SectionId =
   | "mdm-egress"
   | "mdm-taskflows"
   | "mdm-running"
-  | "mdm-runs";
+  | "mdm-runs"
+  | "b360-data";
 
 export interface Section {
   id: SectionId;
-  notebook: "CDI" | "MDM";
+  notebook: "CDI" | "MDM" | "B360";
   label: string;
   /** Where the left-pane item navigates to. */
   route: Route;
@@ -42,11 +43,13 @@ export const SECTIONS: readonly Section[] = [
   { id: "mdm-taskflows", notebook: "MDM", label: "Taskflows (jobInstanceId)", route: { screen: "taskflows", service: "mdm", runId: null }, legacyTestId: null, color: "purple" },
   { id: "mdm-running", notebook: "MDM", label: "Currently running", route: { screen: "mdm-monitor", service: "mdm" }, legacyTestId: null, color: "green" },
   { id: "mdm-runs", notebook: "MDM", label: "Runs", route: { screen: "runs", service: "mdm" }, legacyTestId: null, color: "gray" },
+  { id: "b360-data", notebook: "B360", label: "Business entities", route: { screen: "b360", service: "mdm", entity: null }, legacyTestId: null, color: "purple" },
 ];
 
 export const NOTEBOOK_TITLE: Record<Section["notebook"], string> = {
   CDI: "Data Integration (CDI)",
   MDM: "Business 360 (MDM)",
+  B360: "B360 Data",
 };
 
 /** Which left-pane section a route belongs to. lastMdmKind keeps Ingress/Egress lit on a job page. */
@@ -56,6 +59,8 @@ export function sectionOf(route: Route, lastMdmKind: MdmKindFilter | null): Sect
       return "cdi-monitor";
     case "mdm-monitor":
       return "mdm-running";
+    case "b360":
+      return "b360-data";
     case "taskflows":
       return route.service === "mdm" ? "mdm-taskflows" : "cdi-taskflows";
     case "runs":
@@ -126,6 +131,7 @@ export const RIBBON: Record<SectionId, readonly RibbonTab[]> = {
     { id: "list", label: "Runs" },
     { id: "result", label: "Result" },
   ],
+  "b360-data": [{ id: "entities", label: "Entities" }],
 };
 
 /** Left-pane search: sections whose label or notebook matches the text. */

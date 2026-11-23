@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "typecheck": "tsc -b",
     "test": "vitest run",
-    "lint": "oxlint src"
+    "lint": "oxlint src",
+    "gen:types": "cd ../backend && python dev/gen_ts_types.py"
   },
   "dependencies": {
     "@ui-sdk/core": "0.1.0-beta.13",

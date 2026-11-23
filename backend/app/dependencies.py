@@ -7,6 +7,7 @@ from functools import lru_cache
 
 import httpx
 
+from app.b360data.service import B360DataService
 from app.cdi.client import CdiClient
 from app.cdi.service import CdiService
 from app.common.idmc_session import IdmcHttp, IdmcSession
@@ -71,3 +72,11 @@ def get_mdm_monitor() -> MdmMonitor:
     settings = get_settings()
     http = IdmcHttp(get_http_client(), _new_session(settings))
     return MdmMonitor(MdmClient(http, settings.idmc_mdm_url, settings.idmc_platform_url))
+
+
+@lru_cache
+def get_b360_data_service() -> B360DataService:
+    """Read-only B360 Data notebook: metadata + search on the MDM host, its own session."""
+    settings = get_settings()
+    http = IdmcHttp(get_http_client(), _new_session(settings))
+    return B360DataService(http, settings.idmc_mdm_url)

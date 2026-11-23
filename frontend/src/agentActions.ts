@@ -17,6 +17,8 @@ import {
 } from "./cdi/taskflowApi";
 import { mdmApi, type MdmJob } from "./mdm/mdmApi";
 import { mdmMonitorApi, type MdmJobInstance, type MdmMonitorSnapshot } from "./mdm/mdmMonitorApi";
+import { b360Api, type BusinessEntity, type BusinessEntityList, type RecordPage } from "./b360/b360Api";
+import { openB360Record } from "./b360/B360DataPanel";
 import { getJson } from "./shared/api";
 import type { RunView } from "./shared/run";
 import {
@@ -28,6 +30,7 @@ import {
   type SectionId,
 } from "./shell/sections";
 import {
+  B360_ROUTE,
   currentRoute,
   formatRoute,
   MDM_MONITOR_ROUTE,
@@ -50,7 +53,7 @@ export const ACTIONS: readonly ActionInfo[] = [
   { name: "currentRoute", args: "()", description: "Current screen as a Route + its URL path.", sideEffect: false },
   { name: "openSection", args: "(service: 'mdm' | 'cdi')", description: "Show the job list of a section.", sideEffect: false },
   { name: "layout", args: "()", description: "OneNote layout: left-pane sections, the selected section, its ribbon tabs and the selected tab.", sideEffect: false },
-  { name: "openNavSection", args: "(sectionId)", description: "Select a left-pane section (cdi-tasks, cdi-taskflows, cdi-monitor, cdi-runs, mdm-all, mdm-ingress, mdm-egress, mdm-taskflows, mdm-running, mdm-runs).", sideEffect: false },
+  { name: "openNavSection", args: "(sectionId)", description: "Select a left-pane section (cdi-tasks, cdi-taskflows, cdi-monitor, cdi-runs, mdm-all, mdm-ingress, mdm-egress, mdm-taskflows, mdm-running, mdm-runs, b360-data).", sideEffect: false },
   { name: "selectRibbonTab", args: "(tabId)", description: "Select a ribbon tab of the current section (see layout()).", sideEffect: false },
   { name: "listMdmJobs", args: "()", description: "MDM job definitions from the metadata API (with runnable flag).", sideEffect: false },
   { name: "listCdiTasks", args: "()", description: "CDI tasks from the metadata API.", sideEffect: false },
@@ -69,6 +72,10 @@ export const ACTIONS: readonly ActionInfo[] = [
   { name: "getMonitor", args: "(onlyMyTasks = true, rowLimit = 50)", description: "Read running CDI jobs (elapsed minutes) + recent history (status, rows, errors, taskflow steps).", sideEffect: false },
   { name: "openMdmMonitor", args: "()", description: "Show Business 360 Currently running (/mdm/running).", sideEffect: false },
   { name: "getMdmMonitor", args: "(rowLimit = 25)", description: "Read every running B360 job (b360.* / c360.*) in the org, whoever started it, plus recently finished ones.", sideEffect: false },
+  { name: "listB360Entities", args: "()", description: "B360 Data: business entities derived from the metadata APIs (GET /api/b360/entities); also opens the notebook.", sideEffect: false },
+  { name: "getB360Metadata", args: "(name)", description: "B360 Data: one entity's typed fields + field groups from its metadata.", sideEffect: false },
+  { name: "getB360Records", args: "(name)", description: "B360 Data: open an entity and read its first 10 records (top-level values + field group rows).", sideEffect: false },
+  { name: "openB360Record", args: "(businessId)", description: "B360 Data: open one record of the open entity; its field groups show stacked below.", sideEffect: false },
   { name: "lookupMdmJob", args: "(instanceId)", description: "Read any B360 job instance by its full id (status, times, started by, counts, errors).", sideEffect: false },
 ];
 
@@ -178,6 +185,16 @@ export const txmdm = {
     taskflowApi.sessionLog(runId, childTask ?? null),
   openMdmMonitor: (): void => navigate(MDM_MONITOR_ROUTE),
   getMdmMonitor: (rowLimit = 25): Promise<MdmMonitorSnapshot> => mdmMonitorApi.get(rowLimit),
+  listB360Entities: (): Promise<BusinessEntityList> => {
+    navigate(B360_ROUTE);
+    return b360Api.entities();
+  },
+  getB360Metadata: (name: string): Promise<BusinessEntity> => b360Api.metadata(name),
+  getB360Records: (name: string): Promise<RecordPage> => {
+    navigate({ screen: "b360", service: "mdm", entity: name });
+    return b360Api.records(name);
+  },
+  openB360Record,
   lookupMdmJob: (instanceId: string): Promise<MdmJobInstance> => mdmMonitorApi.lookup(instanceId),
   getMonitor: (onlyMyTasks = true, rowLimit = 50): Promise<MonitorSnapshot> =>
     monitorApi.get(onlyMyTasks, rowLimit),

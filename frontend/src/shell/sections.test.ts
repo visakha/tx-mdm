@@ -15,7 +15,9 @@ describe("OneNote shell model", () => {
   it("search filters sections by label or notebook", () => {
     expect(matchSections("egress").map((s) => s.id)).toEqual(["mdm-egress"]);
     expect(matchSections("cdi").length).toBe(4);
-    expect(matchSections("").length).toBe(10);
+    expect(matchSections("").length).toBe(11);
+    expect(matchSections("b360 data").map((s) => s.id)).toEqual(["b360-data"]);
+    expect(sectionOf({ screen: "b360", service: "mdm", entity: "c360.person" }, null)).toBe("b360-data");
     expect(sectionOf({ screen: "mdm-monitor", service: "mdm" }, null)).toBe("mdm-running");
   });
 

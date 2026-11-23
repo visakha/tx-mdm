@@ -295,3 +295,38 @@ are separate from the B360 ingress / egress jobs.
 Not tested in a browser. Cypress specs likely stale: taskflows_fake.cy.js,
 taskflows_layout.cy.js and onenote.cy.js (they expect the MDM taskflow in the CDI list and an
 ABC123 pre-fill). search_items.cy.js may be stale too.
+
+## v0.9.5 (2026-11-23) - B360 Data notebook
+
+Why (his words, 00:44-00:49 CST): "put one more notebook... called B360 data... it should show
+the business entity, a list of business entity... when I click on a certain business entity it
+should show the data, the first ten rows". Then: field groups STACKED, not tabbed; the entity
+list DERIVED from the metadata APIs, not hardcoded; strongly typed end to end.
+
+Where: left pane, third notebook "B360 Data" (data-testid notebook-B360), one section
+"Business entities" (nav-b360-data, URL /b360 and /b360/<entity id>). Ribbon: one tab
+"Entities" (ribbon-tab-entities).
+
+What is on the page, top to bottom, all full width, no tabs:
+- Refresh button (b360-refresh): reloads the entity list and the open entity's records. No
+  polling. "From GET /metadata/api/v2/objects/tenantModel/datamodel" says where the list came from.
+- Entity list (b360-entities), one per line: label + internal id, button
+  b360-entity-<id> (e.g. b360-entity-c360.person). The open one is bold (aria-pressed).
+- Records (b360-records, data-entity=<id>): "<label>: first 10 of <hits> records" and a table
+  (b360-records-table); first column Business id, then one column per top-level field from the
+  entity's metadata. Rows b360-record-<businessId>, click to open.
+- Keys the metadata did not describe are listed in one muted line (b360-unknown-keys), never
+  shown as columns.
+- Record detail (b360-detail, data-record=<businessId>) under the table: "Fields" block
+  (b360-group-fields, label/value table), then one block per field group in metadata order
+  (b360-group-<GroupName>, heading + row count + small table, or "No <group> rows.").
+- Errors in b360-error; a 429 says "IDMC rate limit (429): stopped, nothing retried."
+
+Agent bridge (window.txmdm): listB360Entities() (also opens the notebook),
+getB360Metadata(name), getB360Records(name) (opens the entity and returns its RecordPage),
+openB360Record(businessId) (needs the entity open). Note: getB360Records fetches once for the
+agent and the panel fetches once for the screen (two read-only searches).
+
+Observed: only against the fake IDMC (unit tests + typecheck + build). Not yet run in a real
+browser or Cypress; not yet seen against his org (the metadata shapes are UNVERIFIED, see
+api-facts.md "B360 Data notebook").

@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.b360data.router import router as b360_router
 from app.cdi.router import router as cdi_router
 from app.common.idmc_session import IdmcError, IdmcRateLimitedError
 from app.common.runs import JobAlreadyRunningError, RunNotFoundError
@@ -42,6 +43,10 @@ def create_app(frontend_origin: str = "http://localhost:5173") -> FastAPI:
         openapi_tags=[
             {"name": "cdi", "description": "Data Integration (CDI) tasks and runs."},
             {"name": "mdm", "description": "Business 360 (MDM) job definitions and runs."},
+            {
+                "name": "b360",
+                "description": "Business 360 data: entities, metadata, first records (read-only).",
+            },
             {"name": "meta", "description": "Health."},
         ],
     )
@@ -53,6 +58,7 @@ def create_app(frontend_origin: str = "http://localhost:5173") -> FastAPI:
     )
     app.include_router(cdi_router)
     app.include_router(mdm_router)
+    app.include_router(b360_router)
 
     @app.get("/api/health", tags=["meta"], operation_id="health", summary="Liveness check")
     def health() -> dict[str, str]:

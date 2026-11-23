@@ -123,3 +123,15 @@ this; `app/main.py` forces stdout/stderr to ASCII with backslash escapes at runt
   tasks and linear taskflows are always "cdi".
 - Guard: `POST /api/cdi/taskflows/{name}/run` and `POST /api/cdi/runs` answer 400 without
   calling IDMC when an mdm taskflow lacks `jobInstanceId`, or a cdi taskflow carries it.
+
+## Typed models end to end (standing rule, Vamsi 2026-11-23 00:49 CST)
+- Every API path is strongly typed, never "stringy" dict/Any. Backend: Pydantic v2 models,
+  every route has response_model so Swagger (/docs) shows the full schema. IDMC JSON is parsed
+  into models ONCE at the client boundary (e.g. app/b360data/wire.py); past it, no raw dict
+  access. Field values use a typed union driven by the declared data type.
+- Frontend: TypeScript types for the same models, generated from the backend OpenAPI schema
+  (`npm run gen:types` -> frontend/src/b360/api-types.ts) and committed. backend/tests/
+  test_b360_types.py fails when the committed file drifts. No `any`.
+- openapi-typescript does not install next to TypeScript 7 (npm ERESOLVE peer range), so the
+  generator is a small script: backend/dev/gen_ts_types.py. Older modules (cdi, mdm, taskflows)
+  still have hand-written TS types; move them under the generator when they are next touched.
