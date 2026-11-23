@@ -28,6 +28,7 @@ import type { CdiTask } from "./cdiApi";
 import { elapsedText, minutesText } from "./monitorApi";
 import {
   announceTaskflowStart,
+  groupHistory,
   mergeStarted,
   onTaskflowStart,
   startedRow,
@@ -174,6 +175,16 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
         localStarts.filter((r) => r.task_name === picked),
       ),
     [history, localStarts, picked],
+  );
+  // 0.9.2 (Vamsi 00:36-00:37 CST): taskflow run on top, its child mapping tasks on the next
+  // rows, indented. Indentation only - no colour coding (his correction).
+  const historyLines = useMemo(
+    () =>
+      groupHistory(historyRows).flatMap((g) => [
+        ...(g.parent !== null ? [{ row: g.parent, indent: false, loose: false }] : []),
+        ...g.children.map((c) => ({ row: c, indent: g.parent !== null, loose: g.parent === null })),
+      ]),
+    [historyRows],
   );
 
   const openRun = useCallback(
@@ -434,18 +445,23 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
                 </tr>
               </thead>
               <tbody>
-                {historyRows.map((row, index) => (
+                {historyLines.map(({ row, indent, loose }, index) => (
                   <tr
                     key={`${row.level}-${row.task_name}-${row.run_id ?? "none"}-${String(index)}`}
+                    className={indent ? "tf-child-row" : row.level === "taskflow" ? "tf-parent-row" : "tf-loose-row"}
+                    data-level={row.level}
+                    data-indented={indent ? "true" : "false"}
                     data-testid={row.trackable ? `tf-history-row-${row.run_id ?? ""}` : `tf-history-child-${String(index)}`}
                     data-running={row.is_running ? "true" : "false"}
                     data-trackable={row.trackable ? "true" : "false"}
                     title={row.trackable ? "Taskflow run id" : "Child task run number - not a taskflow run id"}
                   >
-                    <td className="nowrap"><code>{row.run_id ?? "-"}</code></td>
+                    <td className="nowrap tf-id-cell"><code>{row.run_id ?? "-"}</code></td>
                     <td className="nowrap">
-                      {row.level === "taskflow" ? "Taskflow" : `Child ${row.task_name}`}
+                      <span className="tf-kind">{row.level === "taskflow" ? "taskflow" : "mapping task"}</span>{" "}
+                      {row.task_name}
                       {row.source === "app" ? " (started here)" : ""}
+                      {loose && <span className="muted"> - not matched to a taskflow run</span>}
                     </td>
                     <td>
                       <span className={`status ${statusTone(row.status)}`} title={row.state_text}>

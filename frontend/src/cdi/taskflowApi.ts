@@ -160,6 +160,58 @@ export function mergeStarted(rows: readonly HistoryRow[], local: readonly Histor
   return [...local.filter((r) => !known.has(r.run_id)), ...rows];
 }
 
+/** 0.9.2: one taskflow run with its child mapping-task runs directly beneath it. */
+export interface HistoryGroup {
+  parent: HistoryRow | null;
+  children: HistoryRow[];
+}
+
+const ms = (iso: string | null): number | null => {
+  if (iso === null) return null;
+  const t = Date.parse(iso);
+  return Number.isNaN(t) ? null : t;
+};
+
+/**
+ * Group history rows: each taskflow run on top, its child mapping tasks under it.
+ * Child run ids are small mapping-task numbers (e.g. 10), never taskflow ids, so a child is
+ * matched by time only: its start falls inside the parent's start..end window (end = now while
+ * running; 60 s slack before start). The latest-starting matching parent wins. Children with no
+ * matching parent stay as standalone groups (parent null). Running groups first, then newest.
+ */
+export function groupHistory(rows: readonly HistoryRow[], nowMs: number = Date.now()): HistoryGroup[] {
+  const parents = rows.filter((r) => r.level === "taskflow");
+  const groups: HistoryGroup[] = parents.map((p) => ({ parent: p, children: [] }));
+  const loose: HistoryGroup[] = [];
+  for (const child of rows.filter((r) => r.level !== "taskflow")) {
+    const cs = ms(child.started_at);
+    let best: HistoryGroup | null = null;
+    let bestStart = -Infinity;
+    if (cs !== null) {
+      for (const g of groups) {
+        const p = g.parent;
+        const ps = p === null ? null : ms(p.started_at);
+        if (p === null || ps === null) continue;
+        const pe = ms(p.ended_at) ?? (p.is_running ? nowMs : null);
+        if (pe === null) continue;
+        if (cs >= ps - 60_000 && cs <= pe + 60_000 && ps > bestStart) {
+          best = g;
+          bestStart = ps;
+        }
+      }
+    }
+    if (best !== null) best.children.push(child);
+    else loose.push({ parent: null, children: [child] });
+  }
+  const running = (g: HistoryGroup): boolean =>
+    (g.parent?.is_running ?? false) || g.children.some((c) => c.is_running);
+  const start = (g: HistoryGroup): number => ms((g.parent ?? g.children[0])?.started_at ?? null) ?? 0;
+  for (const g of groups) g.children.sort((a, b) => (ms(a.started_at) ?? 0) - (ms(b.started_at) ?? 0));
+  return [...groups, ...loose].sort(
+    (a, b) => Number(running(b)) - Number(running(a)) || start(b) - start(a),
+  );
+}
+
 // Starts made by the agent bridge also land in the Run tab's history at once.
 type StartListener = (started: TaskflowStartResult) => void;
 const startListeners = new Set<StartListener>();

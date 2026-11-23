@@ -204,3 +204,25 @@ Observed with Cypress vs the fake IDMC (spec `cypress/e2e/mdm_running.cy.js`).
   (data-testid `tf-last-refresh`). The run results "Last refresh" row is the 2026-11-23 hotfix one.
 - Not yet seen live: his backend needs `git pull` + restart for `/api/mdm/monitor` to exist. Real
   case to check after pickup: 1309395637279657984 (b360.ingress.load, portal, 23:50:47 CST).
+
+## v0.9.2 (2026-11-23) - grouped run history on the Taskflows Run tab
+
+His request (00:36 CST): "taskflow on top, child indented, in the next row". Correction (00:37 CST):
+"don't worry about the color. I don't want the color." So indentation only - no tint, no colour coding.
+
+- The Run history table under the Run form is grouped: each taskflow run row (bold, `tr.tf-parent-row`,
+  `data-level="taskflow"`) is followed directly by its child mapping-task rows (`tr.tf-child-row`,
+  `data-indented="true"`), whose run id cell is indented about 32px with a thin neutral connector line
+  in the border colour.
+- Each row carries a small outlined label: "taskflow" or "mapping task" (`.tf-kind`).
+- Matching (frontend `groupHistory` in `cdi/taskflowApi.ts`): child run ids are small mapping-task
+  numbers (live example: taskflow run ...2288, child run id 10), never taskflow ids, so children are
+  matched by TIME only - the child's start must fall inside the parent's start..end window (end = now
+  while running, 60 s slack). The backend already restricts children to this taskflow's own child
+  task names. Latest-starting matching parent wins.
+- A child with no matching parent run stays as its own row (`tr.tf-loose-row`, not indented) with the
+  text "not matched to a taskflow run".
+- Groups: running first, then newest start first. Children inside a group: oldest start first.
+- Unchanged: full width, full ids on one line, Summary / Session log links on taskflow rows only,
+  15 s refresh with Last refresh, auto-refresh stops on 429, read-only.
+- NOT yet checked in a browser or Cypress (he asked for speed). Seen live only by him on his screen.

@@ -1,9 +1,9 @@
 """App version and the top three things in it. GET /api/about returns exactly this."""
 
-VERSION = "0.9.1"
+VERSION = "0.9.2"
 
 HIGHLIGHTS: tuple[str, str, str] = (
-    "Taskflows Run tab: pick and run a taskflow, then scroll down for all its runs, running first.",
-    "Each run in the history has Summary and Session log links; the Track run id tab is gone.",
-    "Start several runs of one taskflow in parallel; a new run shows at the top straight away.",
+    "Run history groups each taskflow run with its child mapping tasks on the rows right under it.",
+    "Child mapping-task rows are indented under their taskflow run; no colour coding.",
+    "Each row is labelled taskflow or mapping task; a child with no matching run says so.",
 )

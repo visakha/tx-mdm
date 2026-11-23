@@ -224,3 +224,15 @@ main { flex: 1; padding: 16px 20px; }
 .tf-history-table tr.clickable { cursor: pointer; }
 .tf-history-table tr.clickable:hover { background: var(--hover, rgba(127, 127, 127, 0.12)); }
 .tf-history-table tr[data-running="true"] td:first-child { border-left: 3px solid var(--ok, #2e7d32); }
+
+/* 0.9.2: taskflow run on top, its child mapping tasks on the next rows, indented. No colour. */
+.tf-history-table tr.tf-child-row td.tf-id-cell { padding-left: 32px; position: relative; }
+.tf-history-table tr.tf-child-row td.tf-id-cell::before {
+  content: ""; position: absolute; left: 14px; top: 0; bottom: 50%; width: 10px;
+  border-left: 1px solid var(--line); border-bottom: 1px solid var(--line);
+}
+.tf-history-table tr.tf-parent-row td { font-weight: 600; }
+.tf-history-table .tf-kind {
+  display: inline-block; font-size: 11px; font-weight: 500; padding: 0 6px; margin-right: 4px;
+  border: 1px solid var(--line); border-radius: 8px;
+}
