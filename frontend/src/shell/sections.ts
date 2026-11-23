@@ -139,6 +139,8 @@ export const RIBBON: Record<SectionId, readonly RibbonTab[]> = {
     { id: "source-metadata", label: "Metadata (S)" },
     { id: "add", label: "Add records (S)" },
     { id: "edit", label: "Edit records (S)" },
+    // 0.9.12: merge master records, per-field winners applied on the survivor.
+    { id: "merge", label: "Merge (M)" },
   ],
 };
 

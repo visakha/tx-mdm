@@ -97,6 +97,8 @@ export interface EntityField {
   mandatory: boolean;
   origin?: FieldOrigin;
   origin_source?: OriginSource;
+  /** Picklist fields only: the Reference 360 list behind it. */
+  lookup?: FieldLookup | null;
 }
 
 export interface EntityRecord {
@@ -132,6 +134,20 @@ export interface FieldGroupRows {
   group: string;
   /** One map per row, keyed by field name. */
   rows: (Record<string, string | number | boolean | null>)[];
+}
+
+export interface FieldLookup {
+  /** Code list name the metadata gives. */
+  code_list?: string | null;
+  /** Parent code list of a dependent picklist, if given. */
+  master_code_list?: string | null;
+  /** Searchable B360 entity holding the values (rdm.value.be.*). */
+  rdm_entity?: string | null;
+  status?: LookupStatus;
+  /** Raw metadata attribute the list was read from (UNVERIFIED). */
+  found_in?: string | null;
+  /** Every attribute NAME on the raw metadata field (values not kept), to learn what IDMC calls the reference. */
+  raw_keys?: string[];
 }
 
 export type FieldOrigin = "CONFIGURED" | "SYSTEM";
@@ -218,6 +234,84 @@ export interface GeneratedRows {
 export type LookupMode = "SEARCH" | "BUSINESS_ID";
 export const LOOKUPMODE_VALUES: readonly LookupMode[] = ["SEARCH", "BUSINESS_ID"];
 
+export type LookupStatus = "DECLARED" | "LABEL_MATCH" | "GUESSED" | "NOT_FOUND";
+export const LOOKUPSTATUS_VALUES: readonly LookupStatus[] = ["DECLARED", "LABEL_MATCH", "GUESSED", "NOT_FOUND"];
+
+export interface MergeFieldRow {
+  field: string;
+  label: string;
+  /** Current value keyed by business id. */
+  values: Record<string, string | number | boolean | null>;
+  /** True when the records do not all hold the same value. */
+  differs: boolean;
+  /** clns_<x> rows: the field whose winner they follow (x); not picked alone. */
+  follows?: string | null;
+}
+
+export interface MergeOverride {
+  field: string;
+  winner_business_id: string;
+  value: string | number | boolean | null;
+  /** Set for clns_<x>: carried because x was picked. */
+  carried_with?: string | null;
+  /** Value read back after the merge. */
+  final_value?: string | number | boolean | null;
+  /** True when the read-back value equals the winner's value. */
+  stuck?: boolean | null;
+}
+
+export interface MergePreview {
+  entity: string;
+  business_ids: string[];
+  records: EntityRecord[];
+  rows: MergeFieldRow[];
+  /** Ids with no active master record (merge refused). */
+  missing?: string[];
+  note?: string;
+}
+
+export interface MergePreviewRequest {
+  /** 2-10 distinct master business ids. */
+  business_ids: string[];
+}
+
+export interface MergeRequest {
+  /** 2-10 distinct master business ids to merge. */
+  business_ids: string[];
+  /** Root field name -> business id whose value wins on the surviving master. Only fields named here are overridden; clns_<field> follows its field's winner. */
+  winners?: Record<string, string>;
+  /** sourceSystem query parameter of the override PATCH; must be in [sources] allowed (default: [sources] default). */
+  override_source_system?: string | null;
+}
+
+export interface MergeResponse {
+  entity: string;
+  business_ids: string[];
+  surviving_business_id: string | null;
+  /** Merge API approvalRequired; true -> overrides not applied. */
+  approval_required?: boolean | null;
+  override_source_system: string | null;
+  overrides: MergeOverride[];
+  steps: MergeStep[];
+  /** Each record as read before the merge. */
+  before: EntityRecord[];
+  /** The survivor, read back. */
+  after?: EntityRecord | null;
+  note: string;
+}
+
+export interface MergeStep {
+  step: MergeStepName;
+  status: MergeStepStatus;
+  detail: string;
+}
+
+export type MergeStepName = "READ" | "MERGE" | "OVERRIDE" | "READ_BACK";
+export const MERGESTEPNAME_VALUES: readonly MergeStepName[] = ["READ", "MERGE", "OVERRIDE", "READ_BACK"];
+
+export type MergeStepStatus = "OK" | "FAILED" | "SKIPPED";
+export const MERGESTEPSTATUS_VALUES: readonly MergeStepStatus[] = ["OK", "FAILED", "SKIPPED"];
+
 export type NameFilterComparator = "STARTS_WITH";
 export const NAMEFILTERCOMPARATOR_VALUES: readonly NameFilterComparator[] = ["STARTS_WITH"];
 
@@ -266,8 +360,8 @@ export interface PicklistOption {
   name: string;
 }
 
-export type PicklistSource = "OBSERVED_IN_RECORDS" | "NONE";
-export const PICKLISTSOURCE_VALUES: readonly PicklistSource[] = ["OBSERVED_IN_RECORDS", "NONE"];
+export type PicklistSource = "REFERENCE_360" | "REFERENCE_360_GUESSED" | "OBSERVED_IN_RECORDS" | "NONE";
+export const PICKLISTSOURCE_VALUES: readonly PicklistSource[] = ["REFERENCE_360", "REFERENCE_360_GUESSED", "OBSERVED_IN_RECORDS", "NONE"];
 
 export interface RecordPage {
   entity: BusinessEntity;
@@ -357,6 +451,21 @@ export interface SystemValue {
   name: string;
   value: string | number | boolean | null;
   origin?: FieldOrigin;
+}
+
+export interface UnmergeRequest {
+  /** Source records to take out (Records (S)). */
+  sources: SourceKey[];
+  /** false -> NEVER_MERGE (the API default); true -> MAY_MERGE. */
+  allow_merge_back?: boolean;
+}
+
+export interface UnmergeResponse {
+  entity: string;
+  business_id: string;
+  sources: SourceKey[];
+  approval_required?: boolean | null;
+  note: string;
 }
 
 export interface UpdateSourceRequest {

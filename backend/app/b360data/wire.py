@@ -31,8 +31,10 @@ from app.b360data.models import (
     FieldDataType,
     FieldGroup,
     FieldGroupRows,
+    FieldLookup,
     FieldOrigin,
     FieldValue,
+    LookupStatus,
     NewGroupRow,
     NewGroupRows,
     OriginSource,
@@ -77,7 +79,14 @@ class WireOptions(_Wire):
 
 
 class WireNode(_Wire):
-    """One metadata object: business entity, field group or field."""
+    """One metadata object: business entity, field group or field.
+
+    extra="allow" (0.9.12) so the attributes this model does not name stay readable: the
+    reference does not print the businessEntity reply, so where a LookupField names its
+    Reference 360 code list is learned from the raw keys (see lookup_from_node).
+    """
+
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
 
     e_class: str = Field(default="", alias="eClass")
     guid: str | None = None
@@ -187,10 +196,80 @@ def _origin(node: WireNode, parent_system: bool = False) -> FieldOrigin:
     return FieldOrigin.SYSTEM if parent_system or node.is_system_object else FieldOrigin.CONFIGURED
 
 
+# Attribute names that may carry a picklist's Reference 360 list. lookupCodeList / masterCodeList /
+# beReferenceEntity are the names the reference prints for custom picklist fields (Customer 360
+# field designator, pp. 148-150); the others are UNVERIFIED alternatives. Order = preference.
+LOOKUP_ATTRS: tuple[str, ...] = (
+    "lookupCodeList",
+    "codeList",
+    "lookup",
+    "lookupEntity",
+    "referenceEntity",
+    "beReferenceEntity",
+    "reference",
+)
+_LOOKUP_INNER = (
+    "guid",
+    "name",
+    "codeList",
+    "lookupCodeList",
+    "entity",
+    "object",
+    "referenceEntity",
+)
+
+
+def _lookup_text(value: object) -> str | None:
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    if isinstance(value, dict):
+        for key in _LOOKUP_INNER:
+            inner = value.get(key)
+            if isinstance(inner, str) and inner.strip():
+                return inner.strip()
+    return None
+
+
+def lookup_from_node(node: WireNode) -> FieldLookup:
+    """What the raw metadata says about a picklist's list: code list and/or rdm entity."""
+    extra: dict[str, object] = dict(node.model_extra or {})
+    raw_keys = sorted({*extra, *node.model_fields_set})
+    code_list: str | None = None
+    rdm_entity: str | None = None
+    found_in: str | None = None
+    for attr in LOOKUP_ATTRS:
+        text = _lookup_text(extra.get(attr))
+        if text is None:
+            continue
+        if text.startswith("rdm."):
+            rdm_entity = rdm_entity or text
+        else:
+            code_list = code_list or text
+        found_in = found_in or attr
+    if rdm_entity is None:  # any attribute pointing straight at an rdm entity
+        for attr, value in extra.items():
+            text = _lookup_text(value)
+            if text is not None and text.startswith("rdm.value.be."):
+                rdm_entity, found_in = text, found_in or attr
+                break
+    master = _lookup_text(extra.get("masterCodeList"))
+    return FieldLookup(
+        code_list=code_list,
+        master_code_list=master,
+        rdm_entity=rdm_entity,
+        status=LookupStatus.DECLARED if (code_list or rdm_entity) else LookupStatus.NOT_FOUND,
+        found_in=found_in,
+        raw_keys=raw_keys,
+    )
+
+
 def _field(node: WireNode, parent_system: bool = False) -> EntityField:
     raw_type = node.type_name
     searchable = bool(node.searchable or (node.options and node.options.searchable))
+    data_type = ECLASS_TYPES.get(raw_type, FieldDataType.UNKNOWN)
+    picks = (FieldDataType.PICKLIST, FieldDataType.DEPENDENT_PICKLIST)
     return EntityField(
+        lookup=lookup_from_node(node) if data_type in picks else None,
         name=node.name,
         label=node.text,
         data_type=ECLASS_TYPES.get(raw_type, FieldDataType.UNKNOWN),
@@ -690,3 +769,92 @@ def system_columns(rows: list[list[SystemValue]]) -> list[EntityField]:
                     origin_source=OriginSource.METADATA,
                 )
     return list(seen.values())
+
+
+# ---- 0.9.12 Reference 360 picklist lists ------------------------------------------------------
+# His org (read 2026-11-23 02:27 CST): rdm.value.be._ent_phonetype, label "RDM values of list
+# Enterprise PhoneType", searchable with the Search API, fields Name / Code.
+
+RDM_VALUE_PREFIX = "rdm.value.be."
+RDM_LABEL_PREFIX = "RDM values of list "
+
+
+def _norm(text: str) -> str:
+    return "".join(ch for ch in text.lower() if ch.isalnum())
+
+
+def _rdm_list_name(entity: BusinessEntitySummary) -> str:
+    label = entity.label
+    return label[len(RDM_LABEL_PREFIX) :] if label.startswith(RDM_LABEL_PREFIX) else label
+
+
+def resolve_lookup(field: EntityField, rdm: list[BusinessEntitySummary]) -> FieldLookup | None:
+    """Find the rdm.value.be.* entity holding this picklist's values. Never invents one.
+
+    1. the metadata names an rdm entity -> kept (DECLARED);
+    2. the metadata names a code list -> the rdm entity whose name or "RDM values of list <x>"
+       label matches it (LABEL_MATCH);
+    3. the metadata names nothing -> exactly one rdm entity whose list name ends with the
+       field's label or name, letters only (GUESSED, shown as a guess);
+    otherwise NOT_FOUND.
+    """
+    lookup = field.lookup
+    if lookup is None:
+        return None
+    values = [e for e in rdm if e.name.startswith(RDM_VALUE_PREFIX)]
+    if lookup.rdm_entity:
+        return lookup
+    if lookup.code_list:
+        wanted = _norm(lookup.code_list)
+        hit = next(
+            (
+                e
+                for e in values
+                if wanted in (_norm(e.name), _norm(e.name[len(RDM_VALUE_PREFIX) :]))
+                or wanted == _norm(_rdm_list_name(e))
+            ),
+            None,
+        )
+        if hit is None:
+            return lookup.model_copy(update={"status": LookupStatus.NOT_FOUND})
+        return lookup.model_copy(
+            update={"rdm_entity": hit.name, "status": LookupStatus.LABEL_MATCH}
+        )
+    keys = {k for k in (_norm(field.label), _norm(field.name)) if len(k) >= 4}
+    hits = [
+        e
+        for e in values
+        if any(_norm(_rdm_list_name(e)).endswith(k) or _norm(e.name).endswith(k) for k in keys)
+    ]
+    if len(hits) != 1:
+        return lookup.model_copy(update={"status": LookupStatus.NOT_FOUND})
+    return lookup.model_copy(update={"rdm_entity": hits[0].name, "status": LookupStatus.GUESSED})
+
+
+def with_lookups(entity: BusinessEntity, rdm: list[BusinessEntitySummary]) -> BusinessEntity:
+    def fix(f: EntityField) -> EntityField:
+        found = resolve_lookup(f, rdm)
+        return f if found is None else f.model_copy(update={"lookup": found})
+
+    return entity.model_copy(
+        update={
+            "fields": [fix(f) for f in entity.fields],
+            "field_groups": [
+                g.model_copy(update={"fields": [fix(f) for f in g.fields]})
+                for g in entity.field_groups
+            ],
+        }
+    )
+
+
+def rdm_options(records: list[dict[str, JsonValue]]) -> list[PicklistOption]:
+    """{Code, Name} of each rdm value record (keys may be prefixed: last segment is used)."""
+    out: dict[str, PicklistOption] = {}
+    for record in records:
+        by_last = {k.rsplit(".", 1)[-1]: v for k, v in record.items() if not k.startswith("_")}
+        code = by_last.get("Code", by_last.get("code"))
+        name = by_last.get("Name", by_last.get("name"))
+        if isinstance(code, (str, int)) and not isinstance(code, bool) and str(code):
+            text = str(name) if isinstance(name, (str, int)) and str(name) else str(code)
+            out.setdefault(str(code), PicklistOption(code=str(code), name=text))
+    return list(out.values())

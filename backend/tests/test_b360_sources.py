@@ -50,22 +50,25 @@ def api(idmc: respx.MockRouter, idmc_http: IdmcHttp) -> Iterator[tuple[TestClien
     yield TestClient(app), calls
 
 
-def test_form_schema_has_groups_and_observed_picklist(api: tuple[TestClient, list[str]]) -> None:
+def test_form_schema_has_groups_and_reference_360_picklist(
+    api: tuple[TestClient, list[str]],
+) -> None:
     client, calls = api
     schema = client.get(f"{BASE}/form-schema").json()
     assert schema["skipped_groups"] == []
     phone = next(g for g in schema["groups"] if g["name"] == "x_phone")
     assert phone["cardinality"] == "MANY"
     typ = next(f for f in phone["fields"] if f["name"] == "ph_typ")
-    assert [o["code"] for o in typ["options"]] == ["MOB", "HOME"]  # as the records returned them
-    assert typ["options_source"] == "OBSERVED_IN_RECORDS"
+    # 0.9.12: from the Reference 360 entity the metadata points to, not from records
+    assert [o["code"] for o in typ["options"]] == fake_idmc._RDM_PHONETYPE_CODES
+    assert typ["options_source"] == "REFERENCE_360"
     assert next(f for f in phone["fields"] if f["name"] == "no_mrkt_calls")["input"] == "CHECKBOX"
     assert any(c.startswith("POST /search") for c in calls)
 
 
 def test_picklist_without_observations_is_left_empty() -> None:
     entity = business_entity_from_metadata(fake_idmc._B360_ENTITIES["zlv_guest"], "zlv_guest")
-    schema = forms.form_schema(entity, {})
+    schema = forms.form_schema(entity)
     phone = next(g for g in schema.groups if g.name == "x_phone")
     typ = next(f for f in phone.fields if f.name == "ph_typ")
     assert typ.options == [] and typ.options_source is not None
@@ -81,7 +84,7 @@ def test_generate_fills_every_group(api: tuple[TestClient, list[str]]) -> None:
         for r in phone["rows"]:
             assert r["values"]["cntry_cd"] == 1
             assert len(str(r["values"]["ph_num"])) == 10
-            assert r["values"]["ph_typ"] in ("MOB", "HOME")
+            assert r["values"]["ph_typ"] in fake_idmc._RDM_PHONETYPE_CODES
             assert isinstance(r["values"]["no_mrkt_calls"], bool)
         assert len(next(g for g in row["groups"] if g["group"] == "Stay")["rows"]) in (1, 2)
     assert any(r["field"] == "x_phone.ph_typ" for r in rows["rules"])

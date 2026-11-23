@@ -11,6 +11,7 @@ dynamic model the same way, rows are validated with it, and the create / update 
 in the reference's shape (list of rows with "_id", picklists as {"Code": ...}, pp. 53-54, 86-87).
 """
 
+import dataclasses
 import json
 import uuid
 from datetime import date, datetime
@@ -39,6 +40,17 @@ from app.b360data.models import (
 
 # (group name or "" for root, field name) -> options IDMC returned
 PicklistOptions = dict[tuple[str, str], list[PicklistOption]]
+PicklistSources = dict[tuple[str, str], PicklistSource]
+
+
+@dataclasses.dataclass(frozen=True)
+class Picklists:
+    """0.9.12: allowed values per (group, field) and where each list came from."""
+
+    options: PicklistOptions = dataclasses.field(default_factory=dict)
+    sources: PicklistSources = dataclasses.field(default_factory=dict)
+
+
 _PICKLISTS = (FieldDataType.PICKLIST, FieldDataType.DEPENDENT_PICKLIST)
 Scalar = str | int | float | bool | None
 WireCell = Scalar | dict[str, Scalar]
@@ -103,12 +115,13 @@ def _fields_model(name: str, fields: list[EntityField]) -> type[BaseModel]:
     return model
 
 
-def _form_field(group: str, f: EntityField, options: PicklistOptions) -> FormField:
+def _form_field(group: str, f: EntityField, lists: Picklists) -> FormField:
     is_pick = f.data_type in _PICKLISTS
-    found = options.get((group, f.name), []) if is_pick else []
+    found = lists.options.get((group, f.name), []) if is_pick else []
     source = None
     if is_pick:
-        source = PicklistSource.OBSERVED_IN_RECORDS if found else PicklistSource.NONE
+        fallback = PicklistSource.OBSERVED_IN_RECORDS if found else PicklistSource.NONE
+        source = lists.sources.get((group, f.name), fallback)
     return FormField(
         name=f.name,
         label=f.label,
@@ -121,15 +134,16 @@ def _form_field(group: str, f: EntityField, options: PicklistOptions) -> FormFie
 
 
 PICKLIST_NOTE = (
-    "Picklist options are the distinct {Code, Name} values IDMC returned in this entity's own "
-    "records (Search API). The B360 REST API Reference documents no call that lists a picklist's "
-    "allowed values, so a picklist nobody has filled yet has no options and is left empty "
-    "(type the Code yourself). Nothing is invented."
+    "Picklist options come from Reference 360 first: every {Code, Name} of the rdm.value.be.* "
+    "entity the field's metadata points to (Search API, cached 5 min) - REFERENCE_360, or "
+    "REFERENCE_360_GUESSED when the metadata named no list and the entity was matched by the "
+    "field's name only. Otherwise the distinct values IDMC returned in this entity's own records "
+    "(OBSERVED_IN_RECORDS); otherwise none (NONE: type the Code yourself). Nothing is invented."
 )
 
 
-def form_schema(entity: BusinessEntity, options: PicklistOptions | None = None) -> FormSchema:
-    opts = options or {}
+def form_schema(entity: BusinessEntity, lists: Picklists | None = None) -> FormSchema:
+    opts = lists or Picklists()
     model = record_model(entity)
     return FormSchema(
         entity=entity.name,

@@ -1,7 +1,7 @@
 // 0.9.10 shared form pieces for Add records (S) and Edit records (S).
 // FieldInput: one typed input per field (text / number / checkbox / date / datetime / picklist).
-//   Picklists offer ONLY the Codes IDMC returned (FormField.options, from real records); when none
-//   are known the box is free text for the Code (the reference documents no list-values call).
+//   Picklists offer ONLY real Codes (FormField.options): from the Reference 360 list the metadata
+//   points to (0.9.12), else from real records; when none are known the box is free text.
 // GroupRowsEditor: any field group from the metadata as a repeatable block (MANY) or one row (ONE),
 //   rows stacked, each editable and removable. Not hardcoded to x_phone.
 

@@ -151,6 +151,10 @@ export function App(): React.JSX.Element {
         <a className="api-docs-link" href="/docs" target="_blank" rel="noopener noreferrer" aria-label="OpenAPI docs" data-testid="api-docs-link">
           API docs
         </a>
+        {/* 0.9.12 (Vamsi 02:32 CST): the typed spec, concrete schemas per business entity (/openapi-typed.json). */}
+        <a className="api-docs-link" href="/docs-typed" target="_blank" rel="noopener noreferrer" aria-label="OpenAPI docs typed per business entity" data-testid="api-docs-typed-link">
+          API docs (typed)
+        </a>
         <span className="about-version" data-testid="about-version" title="Backend version (GET /api/about)">
           {version === "" ? "" : `v${version}`}
         </span>

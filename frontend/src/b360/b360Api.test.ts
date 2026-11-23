@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { BusinessEntity, EntityRecord, FieldDataType } from "./api-types";
 import { FIELDDATATYPE_VALUES } from "./api-types";
-import { clampCount, cleanValues, isShown, isSystemColumnShown, missingRequired, parseInput } from "./b360Api";
+import { clampCount, cleanValues, isShown, isSystemColumnShown, missingRequired, parseBusinessIds, parseInput, winnersToSend } from "./b360Api";
 import { cellText, focusNavItems, focusNavValue, groupByCategory, groupRows, recordColumns, SHOW_ALL_VALUE } from "./b360Api";
 
 const entity: BusinessEntity = {
@@ -92,5 +92,15 @@ describe("0.10 field visibility (b360_entities.toml fields list)", () => {
     expect(isShown(undefined, "first_name")).toBe(true);
     expect(isSystemColumnShown(vis, "lastUpdateDate")).toBe(false);
     expect(isSystemColumnShown(vis, "createdBy")).toBe(true);
+  });
+});
+
+describe("Merge helpers (0.9.12)", () => {
+  it("parses pasted business ids, dropping quotes and repeats", () => {
+    expect(parseBusinessIds(' 100000000000141, "100000000000150"\t100000000000141 ')).toEqual(["100000000000141", "100000000000150"]);
+  });
+  it("sends only picked winners and never clns_ followers", () => {
+    const picks = { first_name: "141", last_name: "150", clns_first_name: "141", do_not_contact_ind: "" };
+    expect(winnersToSend(picks, new Set(["clns_first_name"]))).toEqual({ first_name: "141", last_name: "150" });
   });
 });

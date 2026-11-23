@@ -19,11 +19,17 @@ from app.b360data.models import (
     FormSchema,
     GeneratedRows,
     GenerateRequest,
+    MergePreview,
+    MergePreviewRequest,
+    MergeRequest,
+    MergeResponse,
     RecordPage,
     SortOrder,
     SourceRecord,
     SourceRecordList,
     SourceSystemList,
+    UnmergeRequest,
+    UnmergeResponse,
     UpdateSourceRequest,
     UpdateSourceResponse,
 )
@@ -71,7 +77,7 @@ def list_entities(
     description="Read-only GET metadata/api/v2/objects/businessEntity/{name}, cached 5 min.",
 )
 def entity_metadata(name: EntityName, service: Service) -> BusinessEntity:
-    return service.metadata(name)
+    return service.metadata_with_lookups(name)
 
 
 @router.get(
@@ -262,3 +268,67 @@ def update_source_record(
             status_code=422,
             detail=f"edit does not fit the entity: {'; '.join(exc.problems)}. Nothing was sent.",
         ) from exc
+
+
+# ---------------------------------------------------------------- 0.9.12 Merge (M)
+
+
+@router.post(
+    "/entities/{name}/merge/preview",
+    response_model=MergePreview,
+    operation_id="b360_merge_preview",
+    summary="Merge (M) preview: read 2-10 master records side by side (read-only)",
+    description="Read Master Record by Business ID (GET business-entity/public/api/v1/entity/"
+    "{name}/{businessId}, pp. 56-58) per id, one at a time. Nothing is sent. Focus entities only.",
+)
+def merge_preview(
+    name: EntityName, service: Service, request: Annotated[MergePreviewRequest, Body()]
+) -> MergePreview:
+    try:
+        return service.merge_preview(name, request)
+    except B360InputError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post(
+    "/entities/{name}/merge",
+    response_model=MergeResponse,
+    operation_id="b360_merge",
+    summary="WRITE: merge 2-10 master records, then set the picked field winners on the survivor",
+    description="1 READ each id (pp. 56-58). 2 MERGE: POST business-entity/public/api/v1/"
+    "entity-group/{name} with [{businessId}] (Merge API p. 106). 3 OVERRIDE: one PATCH "
+    "business-entity/public/api/v1/entity/{name}/{survivor}?sourceSystem= with [{op: replace, "
+    "path, value}] for each field in winners plus its clns_<field> twin (Update Master Record "
+    "Field pp. 67-68); skipped when approvalRequired is true. 4 READ_BACK the survivor. "
+    "400 before any call when the request is invalid. A 429 before the merge is passed "
+    "through; after the merge it stops the rest and is reported in steps. Never retried.",
+)
+def merge(
+    name: EntityName, service: Service, request: Annotated[MergeRequest, Body()]
+) -> MergeResponse:
+    try:
+        return service.merge(name, request)
+    except (B360InputError, SourceNotAllowedError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post(
+    "/entities/{name}/records/{business_id}/unmerge",
+    response_model=UnmergeResponse,
+    operation_id="b360_unmerge",
+    summary="WRITE: take source records out of a master record (Unmerge API)",
+    description="POST business-entity/public/api/v1/entity-group/{name}/{businessId}"
+    "?_keepRelsWith=BUSINESS_ID[&_allowMergeBack=MAY_MERGE] with [{sourcePKey, sourceSystem}] "
+    "(pp. 107-110). Default grouping: each removed source gets its own master (EACH). "
+    "One call, never retried; 429 passed through.",
+)
+def unmerge(
+    name: EntityName,
+    business_id: BusinessId,
+    service: Service,
+    request: Annotated[UnmergeRequest, Body()],
+) -> UnmergeResponse:
+    try:
+        return service.unmerge(name, business_id, request)
+    except B360InputError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc

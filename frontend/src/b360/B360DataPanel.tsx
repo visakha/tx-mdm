@@ -24,6 +24,7 @@ import { ApiError, errorText } from "../shared/api";
 import type { Route } from "../shared/routes";
 import { selectRibbonTab, useRibbonTab } from "../shell/sections";
 import { AddRecordsView } from "./AddRecordsView";
+import { MergeView } from "./MergeView";
 import { EditSourceView, SourceRecordsView, type SourceKeyPick } from "./SourceViews";
 import type { BusinessEntity, BusinessEntitySummary, FieldGroup } from "./api-types";
 import {
@@ -170,6 +171,7 @@ function FieldTable({ fields, testId, title }: { fields: BusinessEntity["fields"
             <th>Type</th>
             <th>Mandatory</th>
             <th>Searchable</th>
+            <th>Lookup list (Reference 360)</th>
           </tr>
         </thead>
         <tbody>
@@ -185,12 +187,31 @@ function FieldTable({ fields, testId, title }: { fields: BusinessEntity["fields"
               <td title={f.raw_type}>{f.data_type}</td>
               <td>{f.mandatory ? "yes" : "-"}</td>
               <td>{f.searchable ? "yes" : "-"}</td>
+              <td data-testid={`b360-meta-lookup-${f.name}`}>{lookupText(f.lookup)}</td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
   );
+}
+
+// 0.9.12: where a picklist's allowed values come from, as the metadata states it.
+function lookupText(lookup: BusinessEntity["fields"][number]["lookup"]): string {
+  if (lookup === undefined || lookup === null) return "-";
+  const list = lookup.code_list ?? "";
+  const rdm = lookup.rdm_entity ?? "";
+  const keys = (lookup.raw_keys ?? []).join(", ");
+  switch (lookup.status) {
+    case "DECLARED":
+      return `${rdm || list} (metadata attribute ${lookup.found_in ?? "?"})`;
+    case "LABEL_MATCH":
+      return `${rdm} (code list "${list}" from ${lookup.found_in ?? "?"})`;
+    case "GUESSED":
+      return `${rdm} (GUESS: metadata names no list; matched by field name. Raw keys: ${keys})`;
+    default:
+      return `not found (UNVERIFIED; values fall back to records. Raw keys: ${keys})`;
+  }
 }
 
 function MetadataView({ entity, source = false }: { entity: BusinessEntity; source?: boolean }): React.JSX.Element {
@@ -451,11 +472,15 @@ export function B360DataPanel({
 
       {page !== null && tab === "edit" && <EditSourceView entity={page.entity.name} initial={editPick} />}
 
+      {page !== null && tab === "merge" && (
+        <MergeView entity={page.entity.name} initialIds={selected.record ?? ""} onMerged={() => loadRecords(page.entity.name, { page: 1, sort: "NEWEST_FIRST" })} />
+      )}
+
       {page !== null && tab === "add" && (
         <AddRecordsView entity={page.entity.name} onSaved={() => loadRecords(page.entity.name, { page: 1, sort: "NEWEST_FIRST" })} />
       )}
 
-      {page !== null && (tab === "records" || tab === "sources" || !["metadata", "add", "source-metadata", "edit"].includes(tab)) && (
+      {page !== null && (tab === "records" || tab === "sources" || !["metadata", "add", "source-metadata", "edit", "merge"].includes(tab)) && (
         <div className="b360-records master-detail" data-testid="b360-records" data-entity={page.entity.name}>
           <section className="b360-master" data-testid="b360-master">
             <h3>

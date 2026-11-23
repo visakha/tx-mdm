@@ -25,3 +25,4 @@ frontend/dist/
 frontend/cypress/screenshots/
 frontend/cypress/videos/
 frontend/cypress/results/
+backend/openapi-typed.json

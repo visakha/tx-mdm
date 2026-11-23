@@ -15,6 +15,9 @@ export default defineConfig({
       // 0.10: the title-bar "API docs" link opens FastAPI's Swagger UI same-origin.
       "/docs": apiTarget,
       "/openapi.json": apiTarget,
+      // 0.9.12: the typed spec (per business entity) and its Swagger page.
+      "/openapi-typed.json": apiTarget,
+      "/docs-typed": apiTarget,
     },
   },
 });

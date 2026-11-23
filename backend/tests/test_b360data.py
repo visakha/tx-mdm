@@ -26,8 +26,13 @@ PERSON = fake_idmc._B360_ENTITIES["c360.person"]
 
 def test_entities_derived_from_datamodel_only() -> None:
     entities = entities_from_datamodel(fake_idmc.datamodel())
-    assert [e.name for e in entities] == ["c360.organization", "c360.person", "zlv_guest"]
-    assert entities[2].label == "ZLV Guest"
+    assert [e.name for e in entities] == [
+        "c360.organization",
+        "c360.person",
+        "rdm.value.be._ent_phonetype",
+        "zlv_guest",
+    ]
+    assert entities[3].label == "ZLV Guest"
 
 
 def test_entities_found_by_eclass_anywhere() -> None:
@@ -100,13 +105,14 @@ def test_api_end_to_end(idmc: respx.MockRouter, idmc_http: IdmcHttp) -> None:
     focus = client.get("/api/b360/entities").json()
     assert focus["scope"] == "focus"
     assert [e["name"] for e in focus["entities"]] == ["zlv_guest"]
-    assert focus["total"] == 3
+    assert focus["total"] == 4
     assert focus["focus"] == [{"name": "zlv_guest", "label": "ZLV Guest", "found": True}]
     assert focus["focus_file"].endswith("b360_entities.toml")
     every = client.get("/api/b360/entities?scope=all").json()
     assert {e["name"]: e["category"] for e in every["entities"]} == {
         "c360.organization": "OUT_OF_THE_BOX",
         "c360.person": "OUT_OF_THE_BOX",
+        "rdm.value.be._ent_phonetype": "REFERENCE",
         "zlv_guest": "CUSTOM",
     }
     assert client.get("/api/b360/entities?scope=bogus").status_code == 422

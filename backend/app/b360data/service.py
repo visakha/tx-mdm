@@ -23,6 +23,8 @@ from app.b360data.models import (
     CreateResponse,
     CreateResult,
     DiscoveryStatus,
+    EntityField,
+    EntityRecord,
     EntityScope,
     FieldDataType,
     FocusEntityStatus,
@@ -30,14 +32,28 @@ from app.b360data.models import (
     GeneratedRows,
     GenerateRequest,
     LookupMode,
+    LookupStatus,
+    MergeFieldRow,
+    MergeOverride,
+    MergePreview,
+    MergePreviewRequest,
+    MergeRequest,
+    MergeResponse,
+    MergeStep,
+    MergeStepName,
+    MergeStepStatus,
     NameFilterComparator,
     PatchOperation,
+    PicklistOption,
+    PicklistSource,
     RecordPage,
     SortOrder,
     SourceKey,
     SourceRecord,
     SourceRecordList,
     SourceSystemList,
+    UnmergeRequest,
+    UnmergeResponse,
     UpdateSourceRequest,
     UpdateSourceResponse,
 )
@@ -64,12 +80,28 @@ class DuplicateSourcePKeyError(ValueError):
 _STOP_STATUS = {401: "IDMC 401 (session not accepted)", 403: "IDMC 403 (not permitted)"}
 
 
+_PICKS = (FieldDataType.PICKLIST, FieldDataType.DEPENDENT_PICKLIST)
+
+
+def _keyed_fields(entity: BusinessEntity) -> list[tuple[str, EntityField]]:
+    """Root fields under group "", group fields under their group name."""
+    return [("", f) for f in entity.fields] + [
+        (g.name, f) for g in entity.field_groups for f in g.fields
+    ]
+
+
+def _all_fields(entity: BusinessEntity) -> list[EntityField]:
+    return [f for _, f in _keyed_fields(entity)]
+
+
 class B360DataService:
     def __init__(self, http: IdmcHttp, mdm_url: str) -> None:
         self._http = http
         self._mdm_url = mdm_url.rstrip("/")
         self._meta_cache: dict[str, tuple[float, BusinessEntity]] = {}
         self._prefix: dict[str, str] = {}
+        self._rdm_cache: tuple[float, list[BusinessEntitySummary]] | None = None
+        self._rdm_values: dict[str, tuple[float, list[PicklistOption]]] = {}
 
     def entities(self, scope: EntityScope = EntityScope.FOCUS) -> BusinessEntityList:
         body: object = self._http.request("GET", self._mdm_url + ep.DATAMODEL, ep.MDM_HEADERS)
@@ -104,6 +136,54 @@ class B360DataService:
         entity = wire.business_entity_from_metadata(body, guid)
         self._meta_cache[guid] = (time.monotonic(), entity)
         return entity
+
+    def metadata_with_lookups(self, guid: str) -> BusinessEntity:
+        """0.9.12: metadata plus each picklist field's Reference 360 list resolved against the
+        datamodel's rdm.* entities (one extra cached DATAMODEL read, only if a picklist exists)."""
+        entity = self.metadata(guid)
+        if any(f.lookup is not None for f in _all_fields(entity)):
+            entity = wire.with_lookups(entity, self._rdm_entities())
+        return entity
+
+    def _rdm_entities(self) -> list[BusinessEntitySummary]:
+        """rdm.* entities from the datamodel (cached 5 min). Error -> [] (lookups stay
+        unresolved, never invented); 429 passed through."""
+        if self._rdm_cache and time.monotonic() - self._rdm_cache[0] < ep.RDM_CACHE_SECONDS:
+            return self._rdm_cache[1]
+        try:
+            body: object = self._http.request("GET", self._mdm_url + ep.DATAMODEL, ep.MDM_HEADERS)
+        except IdmcRateLimitedError:
+            raise
+        except IdmcError:
+            return []
+        rdm = [e for e in wire.entities_from_datamodel(body) if e.name.startswith("rdm.")]
+        self._rdm_cache = (time.monotonic(), rdm)
+        return rdm
+
+    def _rdm_allowed(self, rdm_entity: str) -> list[PicklistOption]:
+        """Every {Code, Name} of a Reference 360 value entity: one Search API call, pageSize
+        200, cached 5 min. Error or no records -> [] (caller falls back); 429 passed through."""
+        cached = self._rdm_values.get(rdm_entity)
+        if cached is not None and time.monotonic() - cached[0] < ep.RDM_CACHE_SECONDS:
+            return cached[1]
+        body = {
+            "entityType": rdm_entity,
+            "search": "*",
+            "pageSize": ep.RDM_PAGE_SIZE,
+            "recordOffset": 0,
+            "recordsToReturn": ep.RDM_PAGE_SIZE,
+        }
+        try:
+            reply: object = self._http.request(
+                "POST", self._mdm_url + ep.SEARCH, ep.MDM_HEADERS, json=body
+            )
+        except IdmcRateLimitedError:
+            raise
+        except IdmcError:
+            return []
+        found = wire.rdm_options(wire.search_response(reply).records)
+        self._rdm_values[rdm_entity] = (time.monotonic(), found)
+        return found
 
     def records(
         self,
@@ -282,14 +362,56 @@ class B360DataService:
             return {}
         return wire.picklist_options(wire.search_response(reply).records, entity)
 
+    def picklists(self, entity: BusinessEntity) -> forms.Picklists:
+        """0.9.12: allowed values per picklist field. Reference 360 first (the rdm.value.be.*
+        entity the metadata points to), else the values observed in records (0.9.10), else none.
+        """
+        options: forms.PicklistOptions = {}
+        sources: forms.PicklistSources = {}
+        observed: forms.PicklistOptions | None = None
+        for group, f in _keyed_fields(entity):
+            if f.data_type not in _PICKS:
+                continue
+            key = (group, f.name)
+            lookup = f.lookup
+            if lookup is not None and lookup.rdm_entity:
+                allowed = self._rdm_allowed(lookup.rdm_entity)
+                if allowed:
+                    options[key] = allowed
+                    sources[key] = (
+                        PicklistSource.REFERENCE_360_GUESSED
+                        if lookup.status is LookupStatus.GUESSED
+                        else PicklistSource.REFERENCE_360
+                    )
+                    continue
+            if observed is None:
+                observed = self.picklist_options(entity)
+            seen = observed.get(key, [])
+            options[key] = seen
+            sources[key] = PicklistSource.OBSERVED_IN_RECORDS if seen else PicklistSource.NONE
+        return forms.Picklists(options=options, sources=sources)
+
+    def typed_entities(self) -> tuple[list[tuple[BusinessEntity, forms.Picklists]], list[str]]:
+        """0.9.12 /openapi-typed.json: each focus entity's metadata + picklist values (read-only,
+        cached). A failure is a warning, never an error: the spec still renders."""
+        found: list[tuple[BusinessEntity, forms.Picklists]] = []
+        warnings: list[str] = []
+        for wanted in entity_scope.focus_config().entity:
+            try:
+                entity = self.metadata_with_lookups(wanted.name)
+                found.append((entity, self.picklists(entity)))
+            except Exception as exc:  # noqa: BLE001 - a docs page must not 500 (his ask)
+                warnings.append(f"{wanted.name}: metadata not read ({type(exc).__name__}: {exc})")
+        return found, warnings
+
     def form_schema(self, guid: str) -> FormSchema:
-        entity = self.metadata(guid)
-        return forms.form_schema(entity, self.picklist_options(entity))
+        entity = self.metadata_with_lookups(guid)
+        return forms.form_schema(entity, self.picklists(entity))
 
     def generate(self, guid: str, request: GenerateRequest) -> GeneratedRows:
-        entity = self.metadata(guid)
+        entity = self.metadata_with_lookups(guid)
         return testdata.generate(
-            entity, request.count, request.seed, datetime.now(), self.picklist_options(entity)
+            entity, request.count, request.seed, datetime.now(), self.picklists(entity)
         )
 
     # ------------------------------------------------------------------ 0.9.10 source records
@@ -522,4 +644,354 @@ class B360DataService:
             unknown=count(CreateOutcome.UNKNOWN),
             stopped_reason=stopped,
             results=results,
+        )
+
+    # ------------------------------------------------------------------ 0.9.12 Merge (M)
+
+    def _require_focus(self, guid: str) -> BusinessEntity:
+        names = {e.name.lower() for e in entity_scope.focus_config().entity}
+        if guid.lower() not in names:
+            raise B360InputError(
+                f"{guid} is not in the focus list of {entity_scope.config_path().name}; "
+                "merge is only offered for focus entities. Nothing was sent."
+            )
+        return self.metadata(guid)
+
+    @staticmethod
+    def _clean_ids(ids: list[str]) -> list[str]:
+        clean = [i.strip() for i in ids if i.strip()]
+        if len(clean) != len(set(clean)):
+            raise B360InputError("the same business id is listed twice. Nothing was sent.")
+        if not 2 <= len(clean) <= ep.MAX_MERGE:
+            raise B360InputError(
+                f"merge needs 2-{ep.MAX_MERGE} business ids (got {len(clean)}). Nothing was sent."
+            )
+        return clean
+
+    def _read_master(self, entity: BusinessEntity, business_id: str) -> EntityRecord | None:
+        """Read Master Record by Business ID (pp. 56-58). 400/404 -> None; 429 passed through."""
+        url = self._mdm_url + ep.READ_RECORD.format(
+            guid=quote(entity.name, safe="."), business_id=quote(business_id, safe="")
+        )
+        try:
+            reply: object = self._http.request("GET", url, ep.MDM_HEADERS)
+        except IdmcRateLimitedError:
+            raise
+        except IdmcError as exc:
+            if exc.status_code in (400, 404):
+                return None
+            raise
+        data = wire.as_json(reply)
+        if not isinstance(data, dict) or not data:
+            return None
+        return wire.record_from_search(data, entity)
+
+    @staticmethod
+    def _follower(entity: BusinessEntity, field: str) -> str | None:
+        """clns_<field> when the entity has it (the cleansed twin follows its field's winner)."""
+        twin = f"clns_{field}"
+        return twin if any(f.name == twin for f in entity.fields) else None
+
+    def merge_preview(self, guid: str, request: MergePreviewRequest) -> MergePreview:
+        """Read each record (Read Master Record, one at a time). Read-only."""
+        entity = self._require_focus(guid)
+        ids = self._clean_ids(request.business_ids)
+        records: list[EntityRecord] = []
+        missing: list[str] = []
+        for bid in ids:
+            record = self._read_master(entity, bid)
+            if record is None:
+                missing.append(bid)
+            else:
+                records.append(record)
+        followers = {
+            twin: f.name for f in entity.fields if (twin := self._follower(entity, f.name))
+        }
+        rows: list[MergeFieldRow] = []
+        for f in entity.fields:
+            values = {r.business_id: r.values.get(f.name) for r in records}
+            rows.append(
+                MergeFieldRow(
+                    field=f.name,
+                    label=f.label,
+                    values=values,
+                    differs=len({str(v) for v in values.values()}) > 1,
+                    follows=followers.get(f.name),
+                )
+            )
+        note = f"Read {len(records)} of {len(ids)} record(s). Nothing was sent."
+        if missing:
+            note += f" No active master record for: {', '.join(missing)} (merge refused)."
+        return MergePreview(
+            entity=guid, business_ids=ids, records=records, rows=rows, missing=missing, note=note
+        )
+
+    def merge(self, guid: str, request: MergeRequest) -> MergeResponse:
+        """READ each id -> MERGE (p. 106) -> OVERRIDE the picked fields on the survivor
+        (Update Master Record Field, pp. 67-68) -> READ_BACK. Never retried, never parallel.
+
+        Refused before any call (400): entity not in focus, not 2-10 distinct ids, a winner id
+        not in the list, a winner field not a root field, a picklist winner, a not-allowed
+        override source. A missing record stops before MERGE. After MERGE a 429 or error stops
+        the remaining steps and is reported in steps (the merge itself is not undone)."""
+        entity = self._require_focus(guid)
+        ids = self._clean_ids(request.business_ids)
+        by_field = {f.name: f for f in entity.fields}
+        for field, winner in request.winners.items():
+            if field not in by_field:
+                raise B360InputError(f"{field} is not a root field of {guid}. Nothing was sent.")
+            if by_field[field].data_type in (
+                FieldDataType.PICKLIST,
+                FieldDataType.DEPENDENT_PICKLIST,
+            ):
+                raise B360InputError(
+                    f"{field} is a picklist; picklist winners are not supported yet "
+                    "(override body shape UNVERIFIED). Nothing was sent."
+                )
+            if winner not in ids:
+                raise B360InputError(
+                    f"winner {winner} for {field} is not one of the merged ids. Nothing was sent."
+                )
+        sources = entity_scope.focus_config().sources
+        override_source = request.override_source_system or sources.default_source()
+        if request.winners and (override_source is None or not sources.is_allowed(override_source)):
+            raise SourceNotAllowedError(
+                f"source system {override_source!r} is not in [sources] allowed of "
+                f"{entity_scope.config_path().name} (allowed: {', '.join(sources.allowed)}). "
+                "Nothing was sent."
+            )
+
+        steps: list[MergeStep] = []
+
+        def done(note: str, **extra: object) -> MergeResponse:
+            fields: dict[str, object] = {
+                "entity": guid,
+                "business_ids": ids,
+                "surviving_business_id": None,
+                "override_source_system": override_source if request.winners else None,
+                "overrides": [],
+                "steps": steps,
+                "before": [],
+                "note": note,
+            }
+            fields.update(extra)
+            return MergeResponse.model_validate(fields)
+
+        # 1. READ (429 here is passed through: nothing has changed yet)
+        before: list[EntityRecord] = []
+        missing: list[str] = []
+        for bid in ids:
+            record = self._read_master(entity, bid)
+            if record is None:
+                missing.append(bid)
+            else:
+                before.append(record)
+        if missing:
+            steps.append(
+                MergeStep(
+                    step=MergeStepName.READ,
+                    status=MergeStepStatus.FAILED,
+                    detail=f"no active master record for {', '.join(missing)}",
+                )
+            )
+            return done("Nothing was merged.", before=before)
+        steps.append(
+            MergeStep(
+                step=MergeStepName.READ,
+                status=MergeStepStatus.OK,
+                detail=f"read {len(before)} master record(s)",
+            )
+        )
+        values = {r.business_id: r.values for r in before}
+
+        # 2. MERGE
+        url = self._mdm_url + ep.ENTITY_GROUP.format(guid=quote(guid, safe="."))
+        try:
+            reply: object = self._http.request(
+                "POST", url, ep.MDM_HEADERS, json=[{"businessId": bid} for bid in ids]
+            )
+        except IdmcRateLimitedError:
+            raise
+        except IdmcError as exc:
+            steps.append(
+                MergeStep(step=MergeStepName.MERGE, status=MergeStepStatus.FAILED, detail=str(exc))
+            )
+            return done("IDMC refused the merge. Nothing else was sent.", before=before)
+        except httpx.HTTPError as exc:
+            steps.append(
+                MergeStep(
+                    step=MergeStepName.MERGE,
+                    status=MergeStepStatus.FAILED,
+                    detail=f"no answer from IDMC ({type(exc).__name__}); the merge MAY have "
+                    "happened - check Records (M) before trying again",
+                )
+            )
+            return done("Merge outcome unknown. Nothing else was sent.", before=before)
+        data = wire.as_json(reply)
+        raw_bid = data.get("businessId") if isinstance(data, dict) else None
+        raw_approval = data.get("approvalRequired") if isinstance(data, dict) else None
+        survivor = str(raw_bid) if raw_bid is not None else None
+        approval = raw_approval if isinstance(raw_approval, bool) else None
+        steps.append(
+            MergeStep(
+                step=MergeStepName.MERGE,
+                status=MergeStepStatus.OK,
+                detail=f"surviving master {survivor}, approvalRequired {approval}",
+            )
+        )
+
+        # 3. OVERRIDE
+        overrides: list[MergeOverride] = []
+        for field, winner in request.winners.items():
+            overrides.append(
+                MergeOverride(
+                    field=field, winner_business_id=winner, value=values[winner].get(field)
+                )
+            )
+            twin = self._follower(entity, field)
+            if twin is not None and twin not in request.winners:
+                overrides.append(
+                    MergeOverride(
+                        field=twin,
+                        winner_business_id=winner,
+                        value=values[winner].get(twin),
+                        carried_with=field,
+                    )
+                )
+        stop_after_merge = ""
+        if not overrides:
+            steps.append(
+                MergeStep(
+                    step=MergeStepName.OVERRIDE,
+                    status=MergeStepStatus.SKIPPED,
+                    detail="no field winners picked; IDMC survivorship decides every field",
+                )
+            )
+        elif approval is True or survivor is None:
+            steps.append(
+                MergeStep(
+                    step=MergeStepName.OVERRIDE,
+                    status=MergeStepStatus.SKIPPED,
+                    detail="merge waits for steward approval; winners not applied"
+                    if approval
+                    else "IDMC returned no surviving business id; winners not applied",
+                )
+            )
+        else:
+            ops = [
+                {"op": "remove", "path": o.field}
+                if o.value is None
+                else {
+                    "op": "replace",
+                    "path": o.field,
+                    "value": forms.wire_value(o.value, by_field[o.field].data_type),
+                }
+                for o in overrides
+            ]
+            patch_url = self._mdm_url + ep.READ_RECORD.format(
+                guid=quote(guid, safe="."), business_id=quote(survivor, safe="")
+            )
+            try:
+                self._http.request(
+                    "PATCH",
+                    patch_url,
+                    ep.MDM_HEADERS,
+                    json=ops,
+                    params={"sourceSystem": str(override_source)},
+                )
+                steps.append(
+                    MergeStep(
+                        step=MergeStepName.OVERRIDE,
+                        status=MergeStepStatus.OK,
+                        detail=f"{len(ops)} field(s) set with Update Master Record Field "
+                        f"(sourceSystem {override_source})",
+                    )
+                )
+            except IdmcRateLimitedError:
+                stop_after_merge = "IDMC 429 (rate limited); stopped, nothing retried"
+                steps.append(
+                    MergeStep(
+                        step=MergeStepName.OVERRIDE,
+                        status=MergeStepStatus.FAILED,
+                        detail=stop_after_merge,
+                    )
+                )
+            except (IdmcError, httpx.HTTPError) as exc:
+                steps.append(
+                    MergeStep(
+                        step=MergeStepName.OVERRIDE, status=MergeStepStatus.FAILED, detail=str(exc)
+                    )
+                )
+
+        # 4. READ_BACK
+        after: EntityRecord | None = None
+        if survivor is not None and not stop_after_merge:
+            try:
+                after = self._read_master(entity, survivor)
+                steps.append(
+                    MergeStep(
+                        step=MergeStepName.READ_BACK,
+                        status=MergeStepStatus.OK if after else MergeStepStatus.FAILED,
+                        detail="read the surviving master"
+                        if after
+                        else f"no active master {survivor} on read-back",
+                    )
+                )
+            except IdmcRateLimitedError:
+                steps.append(
+                    MergeStep(
+                        step=MergeStepName.READ_BACK,
+                        status=MergeStepStatus.FAILED,
+                        detail="IDMC 429 (rate limited); not retried",
+                    )
+                )
+        else:
+            steps.append(
+                MergeStep(
+                    step=MergeStepName.READ_BACK,
+                    status=MergeStepStatus.SKIPPED,
+                    detail=stop_after_merge or "no surviving business id",
+                )
+            )
+        if after is not None:
+            overrides = [
+                o.model_copy(
+                    update={
+                        "final_value": after.values.get(o.field),
+                        "stuck": str(after.values.get(o.field)) == str(o.value),
+                    }
+                )
+                for o in overrides
+            ]
+        return done(
+            f"Merged {len(ids)} record(s) into {survivor}.",
+            surviving_business_id=survivor,
+            approval_required=approval,
+            overrides=overrides,
+            before=before,
+            after=after,
+        )
+
+    def unmerge(self, guid: str, business_id: str, request: UnmergeRequest) -> UnmergeResponse:
+        """Unmerge API (pp. 107-110), _keepRelsWith=BUSINESS_ID (what the B360 UI does, p. 108),
+        other parameters at their documented defaults. One call, never retried."""
+        self._require_focus(guid)
+        url = self._mdm_url + ep.ENTITY_GROUP_MASTER.format(
+            guid=quote(guid, safe="."), business_id=quote(business_id, safe="")
+        )
+        params = {"_keepRelsWith": "BUSINESS_ID"}
+        if request.allow_merge_back:
+            params["_allowMergeBack"] = "MAY_MERGE"
+        body = [
+            {"sourcePKey": s.source_pkey, "sourceSystem": s.source_system} for s in request.sources
+        ]
+        reply: object = self._http.request("POST", url, ep.MDM_HEADERS, json=body, params=params)
+        data = wire.as_json(reply)
+        approval = data.get("approvalRequired") if isinstance(data, dict) else None
+        return UnmergeResponse(
+            entity=guid,
+            business_id=business_id,
+            sources=request.sources,
+            approval_required=approval if isinstance(approval, bool) else None,
+            note=f"Took {len(request.sources)} source record(s) out of {business_id}.",
         )

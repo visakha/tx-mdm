@@ -22,6 +22,7 @@ import {
   type BusinessEntity,
   type BusinessEntityList,
   type GeneratedRows,
+  type MergePreview,
   type SourceRecord,
   type SourceRecordList,
   type RecordPage,
@@ -89,6 +90,7 @@ export const ACTIONS: readonly ActionInfo[] = [
   { name: "getB360Sources", args: "(name, businessId)", description: "B360 Data Records (S): the source (xref) records of one master record - Read Source Records by Master Record, then Read Source Record each (max 20). Read-only.", sideEffect: false },
   { name: "getB360SourceRecord", args: "(name, sourceSystem, sourcePKey)", description: "B360 Data: read one source record by source system + sourcePKey (Read Source Record). Read-only.", sideEffect: false },
   { name: "generateB360Rows", args: "(name, count = 5)", description: "B360 Data Add records: Faker test rows (1-100) for an entity from the backend. Preview only, nothing is sent to IDMC. Sending is a person's Save / Send to B360 button (sends at once, no pop-up).", sideEffect: false },
+  { name: "previewB360Merge", args: "(name, businessIds)", description: "B360 Data Merge (M): read 2-10 master records side by side (POST /merge/preview, Read Master Record each). Read-only. Merging itself is a person's Merge button (sends at once, no pop-up).", sideEffect: false },
   { name: "openB360Record", args: "(businessId)", description: "B360 Data: open one record of the open entity; its field groups show stacked below.", sideEffect: false },
   { name: "lookupMdmJob", args: "(instanceId)", description: "Read any B360 job instance by its full id (status, times, started by, counts, errors).", sideEffect: false },
 ];
@@ -201,6 +203,7 @@ export const txmdm = {
   getB360SourceRecord: (name: string, sourceSystem: string, sourcePKey: string): Promise<SourceRecord> =>
     b360Api.sourceRecord(name, sourceSystem, sourcePKey),
   generateB360Rows: (name: string, count = 5): Promise<GeneratedRows> => b360Api.generate(name, count),
+  previewB360Merge: (name: string, businessIds: string[]): Promise<MergePreview> => b360Api.mergePreview(name, businessIds),
   openB360Record,
   lookupMdmJob: (instanceId: string): Promise<MdmJobInstance> => mdmMonitorApi.lookup(instanceId),
   getMonitor: (onlyMyTasks = true, rowLimit = 50): Promise<MonitorSnapshot> =>

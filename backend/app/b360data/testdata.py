@@ -36,6 +36,7 @@ from app.b360data.models import (
     NewGroupRow,
     NewGroupRows,
     NewRecord,
+    PicklistSource,
 )
 
 _NON_ALNUM = re.compile(r"[^A-Za-z0-9]")
@@ -109,10 +110,22 @@ def _is_country_code(name: str) -> bool:
     return "cntry" in lowered or "country" in lowered
 
 
-def rule_for(field: EntityField, codes: list[str] | None = None) -> str:
+def rule_for(
+    field: EntityField,
+    codes: list[str] | None = None,
+    source: PicklistSource | None = None,
+) -> str:
     if _is_freeform_reason(field.name):
         return FREEFORM_REASON_RULE
     if field.data_type in (FieldDataType.PICKLIST, FieldDataType.DEPENDENT_PICKLIST):
+        rdm = field.lookup.rdm_entity if field.lookup else None
+        if codes and source is PicklistSource.REFERENCE_360:
+            return f"random Code from Reference 360 list {rdm}: " + ", ".join(codes)
+        if codes and source is PicklistSource.REFERENCE_360_GUESSED:
+            return (
+                f"GUESS (metadata names no list; {rdm} matched by field name only): random "
+                "Code from " + ", ".join(codes)
+            )
         if codes:
             return "one of the Codes IDMC returned: " + ", ".join(codes)
         return "left empty: no documented call lists this picklist's values and none seen yet"
@@ -202,12 +215,13 @@ def generate(
     count: int,
     seed: int | None,
     stamp: datetime,
-    options: forms.PicklistOptions | None = None,
+    lists: forms.Picklists | None = None,
 ) -> GeneratedRows:
     fake = Faker("en_US")
     if seed is not None:
         fake.seed_instance(seed)
-    opts = options or {}
+    picks = lists or forms.Picklists()
+    opts = picks.options
 
     def codes_for(group: str) -> dict[str, list[str]]:
         return {field: [o.code for o in found] for (g, field), found in opts.items() if g == group}
@@ -245,7 +259,9 @@ def generate(
             NewRecord(source_pkey=make_source_pkey(stamp, n), values=cleaned, groups=cleaned_groups)
         )
     rules = [
-        GeneratedFieldRule(field=f.name, rule=rule_for(f, root_codes.get(f.name)))
+        GeneratedFieldRule(
+            field=f.name, rule=rule_for(f, root_codes.get(f.name), picks.sources.get(("", f.name)))
+        )
         for f in entity.fields
     ]
     for group in entity.field_groups:
@@ -260,7 +276,10 @@ def generate(
         rules.extend(
             GeneratedFieldRule(
                 field=f"{group.name}.{f.name}",
-                rule=f"{rule_for(f, group_codes.get(f.name))} ({how})",
+                rule=(
+                    rule_for(f, group_codes.get(f.name), picks.sources.get((group.name, f.name)))
+                    + f" ({how})"
+                ),
             )
             for f in group.fields
         )

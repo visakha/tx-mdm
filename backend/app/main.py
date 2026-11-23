@@ -3,15 +3,20 @@
 import logging
 import sys
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.responses import HTMLResponse, JSONResponse
+from pydantic import JsonValue
 
 from app.b360data import scope as b360_scope
+from app.b360data import typed_openapi
 from app.b360data.router import router as b360_router
+from app.b360data.service import B360DataService
 from app.cdi.router import router as cdi_router
 from app.common.idmc_session import IdmcError, IdmcRateLimitedError
 from app.common.runs import JobAlreadyRunningError, RunNotFoundError
+from app.dependencies import get_b360_data_service
 from app.mdm.router import router as mdm_router
 from app.version import HIGHLIGHTS, VERSION
 
@@ -73,6 +78,25 @@ def create_app(frontend_origin: str = "http://localhost:5173") -> FastAPI:
     @app.get("/api/about", tags=["meta"], operation_id="about", summary="Version + top 3")
     def about() -> dict[str, str | list[str]]:
         return {"version": VERSION, "highlights": list(HIGHLIGHTS)}
+
+    # 0.9.12 (Vamsi 02:32 CST): a second, concrete spec next to /openapi.json - the same spec
+    # plus typed schemas and paths per focus business entity, built from live metadata.
+    @app.get("/openapi-typed.json", include_in_schema=False)
+    def openapi_typed(
+        service: B360DataService = Depends(get_b360_data_service),  # noqa: B008
+    ) -> dict[str, JsonValue]:
+        base: dict[str, JsonValue] = app.openapi()
+        try:
+            entities, warnings = service.typed_entities()
+        except Exception as exc:  # noqa: BLE001 - never 500: base spec + warning
+            entities, warnings = [], [f"typed entities not built ({type(exc).__name__}: {exc})"]
+        return typed_openapi.build(base, entities, warnings)
+
+    @app.get("/docs-typed", include_in_schema=False)
+    def docs_typed() -> HTMLResponse:
+        return get_swagger_ui_html(
+            openapi_url="/openapi-typed.json", title="TX MDM API (typed per business entity)"
+        )
 
     @app.exception_handler(IdmcRateLimitedError)
     def rate_limited(_: Request, exc: IdmcRateLimitedError) -> JSONResponse:

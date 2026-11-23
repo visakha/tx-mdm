@@ -90,6 +90,37 @@ class OriginSource(StrEnum):
     DOCUMENTED = "DOCUMENTED"  # B360 REST API Reference Oct 2026 (_meta table p. 61-62, p. 25)
 
 
+class LookupStatus(StrEnum):
+    """0.9.12: how a picklist field's Reference 360 list was found."""
+
+    DECLARED = "DECLARED"  # the metadata names the list / rdm entity (attribute in found_in)
+    LABEL_MATCH = "LABEL_MATCH"  # declared code list matched an rdm entity labelled
+    # "RDM values of list <code list>" in the datamodel
+    GUESSED = "GUESSED"  # metadata names nothing; matched by field name only (labelled a guess)
+    NOT_FOUND = "NOT_FOUND"  # nothing named, nothing matched: options fall back to observed
+
+
+class FieldLookup(BaseModel):
+    """0.9.12: the Reference 360 code list behind a picklist (LookupField) field."""
+
+    code_list: str | None = Field(default=None, description="Code list name the metadata gives.")
+    master_code_list: str | None = Field(
+        default=None, description="Parent code list of a dependent picklist, if given."
+    )
+    rdm_entity: str | None = Field(
+        default=None, description="Searchable B360 entity holding the values (rdm.value.be.*)."
+    )
+    status: LookupStatus = LookupStatus.NOT_FOUND
+    found_in: str | None = Field(
+        default=None, description="Raw metadata attribute the list was read from (UNVERIFIED)."
+    )
+    raw_keys: list[str] = Field(
+        default_factory=list,
+        description="Every attribute NAME on the raw metadata field (values not kept), to learn "
+        "what IDMC calls the reference.",
+    )
+
+
 class EntityField(BaseModel):
     name: str
     label: str
@@ -99,6 +130,9 @@ class EntityField(BaseModel):
     mandatory: bool
     origin: FieldOrigin = FieldOrigin.CONFIGURED
     origin_source: OriginSource = OriginSource.METADATA
+    lookup: FieldLookup | None = Field(
+        default=None, description="Picklist fields only: the Reference 360 list behind it."
+    )
 
 
 class FieldGroup(BaseModel):
@@ -259,6 +293,8 @@ class PicklistOption(BaseModel):
 class PicklistSource(StrEnum):
     """0.9.10: where a picklist's options came from."""
 
+    REFERENCE_360 = "REFERENCE_360"  # 0.9.12: every record of the rdm.value.be.* entity
+    REFERENCE_360_GUESSED = "REFERENCE_360_GUESSED"  # same, but the entity was matched by name
     OBSERVED_IN_RECORDS = "OBSERVED_IN_RECORDS"  # distinct {Code, Name} in Search API replies
     NONE = "NONE"  # no documented list call and none observed: left empty, never invented
 
@@ -484,5 +520,124 @@ class UpdateSourceResponse(BaseModel):
     source_pkey: str
     ops: list[PatchOp]
     sent: bool
+    approval_required: bool | None = None
+    note: str
+
+
+# ---------------------------------------------------------------------------------------------
+# 0.9.12 Merge (M): merge 2-10 master records, then apply per-field winners on the survivor
+# ---------------------------------------------------------------------------------------------
+
+
+class MergePreviewRequest(BaseModel):
+    business_ids: list[str] = Field(
+        min_length=2, max_length=10, description="2-10 distinct master business ids."
+    )
+
+
+class MergeFieldRow(BaseModel):
+    """One root field, with each record's current value (side by side on the Merge page)."""
+
+    field: str
+    label: str
+    values: dict[str, FieldValue] = Field(description="Current value keyed by business id.")
+    differs: bool = Field(description="True when the records do not all hold the same value.")
+    follows: str | None = Field(
+        default=None,
+        description="clns_<x> rows: the field whose winner they follow (x); not picked alone.",
+    )
+
+
+class MergePreview(BaseModel):
+    """Read-only: what the Merge page shows before anything is sent."""
+
+    entity: str
+    business_ids: list[str]
+    records: list[EntityRecord]
+    rows: list[MergeFieldRow]
+    missing: list[str] = Field(
+        default_factory=list, description="Ids with no active master record (merge refused)."
+    )
+    note: str = ""
+
+
+class MergeRequest(BaseModel):
+    business_ids: list[str] = Field(
+        min_length=2, max_length=10, description="2-10 distinct master business ids to merge."
+    )
+    winners: dict[str, str] = Field(
+        default_factory=dict,
+        description="Root field name -> business id whose value wins on the surviving master. "
+        "Only fields named here are overridden; clns_<field> follows its field's winner.",
+    )
+    override_source_system: str | None = Field(
+        default=None,
+        description="sourceSystem query parameter of the override PATCH; must be in [sources] "
+        "allowed (default: [sources] default).",
+    )
+
+
+class MergeStepName(StrEnum):
+    READ = "READ"  # Read Master Record by Business ID, each id (pp. 56-58)
+    MERGE = "MERGE"  # Merge API (p. 106)
+    OVERRIDE = "OVERRIDE"  # Update Master Record Field PATCH on the survivor (pp. 67-68)
+    READ_BACK = "READ_BACK"  # Read Master Record of the survivor
+
+
+class MergeStepStatus(StrEnum):
+    OK = "OK"
+    FAILED = "FAILED"
+    SKIPPED = "SKIPPED"
+
+
+class MergeStep(BaseModel):
+    step: MergeStepName
+    status: MergeStepStatus
+    detail: str
+
+
+class MergeOverride(BaseModel):
+    """One field value set on the surviving master."""
+
+    field: str
+    winner_business_id: str
+    value: FieldValue
+    carried_with: str | None = Field(
+        default=None, description="Set for clns_<x>: carried because x was picked."
+    )
+    final_value: FieldValue = Field(default=None, description="Value read back after the merge.")
+    stuck: bool | None = Field(
+        default=None, description="True when the read-back value equals the winner's value."
+    )
+
+
+class MergeResponse(BaseModel):
+    entity: str
+    business_ids: list[str]
+    surviving_business_id: str | None
+    approval_required: bool | None = Field(
+        default=None, description="Merge API approvalRequired; true -> overrides not applied."
+    )
+    override_source_system: str | None
+    overrides: list[MergeOverride]
+    steps: list[MergeStep]
+    before: list[EntityRecord] = Field(description="Each record as read before the merge.")
+    after: EntityRecord | None = Field(default=None, description="The survivor, read back.")
+    note: str
+
+
+class UnmergeRequest(BaseModel):
+    sources: list[SourceKey] = Field(
+        min_length=1, max_length=10, description="Source records to take out (Records (S))."
+    )
+    allow_merge_back: bool = Field(
+        default=False, description="false -> NEVER_MERGE (the API default); true -> MAY_MERGE."
+    )
+
+
+class UnmergeResponse(BaseModel):
+    entity: str
+    business_id: str
+    sources: list[SourceKey]
     approval_required: bool | None = None
     note: str

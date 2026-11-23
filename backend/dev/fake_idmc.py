@@ -502,6 +502,8 @@ _B360_ENTITIES: dict[str, dict[str, Any]] = {
             _f("fullName", "Full Name", searchable=True),
             _f("first_name", "First Name", searchable=True),
             _f("last_name", "Last Name", searchable=True),
+            _f("clns_first_name", "Clns First Name"),
+            _f("clns_last_name", "Clns Last Name"),
             _fg("Stay", "Stays", [_f("hotel", "Hotel"), _f("nights", "Nights", "IntegerField")]),
             # like his live x_phone (read 2026-11-23 01:40 CST): MANY, 2 integers, picklist, bool
             _fg(
@@ -510,13 +512,36 @@ _B360_ENTITIES: dict[str, dict[str, Any]] = {
                 [
                     _f("cntry_cd", "Country code", "IntegerField"),
                     _f("ph_num", "Phone number", "IntegerField"),
-                    _f("ph_typ", "Phone type", "LookupField"),
+                    # 0.9.12: names its Reference 360 list with the attribute the reference
+                    # documents for picklist fields (lookupCodeList, pp. 148-150). The live
+                    # attribute name is UNVERIFIED until his Metadata (M) shows raw keys.
+                    {
+                        **_f("ph_typ", "Phone type", "LookupField"),
+                        "lookupCodeList": "Enterprise PhoneType",
+                    },
                     _f("no_mrkt_calls", "No marketing calls", "BooleanField"),
                 ],
             ),
         ],
     },
 }
+
+# 0.9.12 Reference 360 value entities, like his live org (read 2026-11-23 02:27 CST via his
+# backend): rdm.value.be._ent_phonetype, label "RDM values of list Enterprise PhoneType",
+# fields Name / Code, these 11 codes.
+_RDM_PHONETYPE = "rdm.value.be._ent_phonetype"
+_RDM_PHONETYPE_CODES = [
+    "VoIP", "Cell", "Contaminated", "Fax", "Freephone", "LandLine",
+    "Marine", "Mobile", "Pager", "Special", "Telephone",
+]  # fmt: skip
+_B360_ENTITIES[_RDM_PHONETYPE] = {
+    "eClass": _CORE + "BusinessEntity",
+    "guid": _RDM_PHONETYPE,
+    "name": "_ent_phonetype",
+    "label": {"eClass": _CORE + "LocalizedText", "en": "RDM values of list Enterprise PhoneType"},
+    "field": [_f("Name", "Name", searchable=True), _f("Code", "Code", searchable=True)],
+}
+RDM_SEARCHES: list[str] = []  # entityType of each rdm.* search received, for tests
 
 
 _BASE_UPDATE_MS = 1_793_491_200_000  # 2026-11-01T00:00:00Z
@@ -535,7 +560,11 @@ def _fake_records(guid: str) -> list[dict[str, Any]]:
             "lastUpdateDate": str(_BASE_UPDATE_MS + i * 3_600_000),
             "updatedBy": "fake.loader",
         }
-        if guid == "c360.person":
+        if guid == _RDM_PHONETYPE:
+            if i <= len(_RDM_PHONETYPE_CODES):
+                code = _RDM_PHONETYPE_CODES[i - 1]
+                rows.append({"_meta": meta, f"{prefix}.Code": code, f"{prefix}.Name": code})
+        elif guid == "c360.person":
             rows.append(
                 {
                     "_meta": meta,
@@ -575,6 +604,8 @@ def _fake_records(guid: str) -> list[dict[str, Any]]:
                     f"{prefix}.fullName": f"Guest {i}",
                     f"{prefix}.first_name": ["Anna", "Ben", "Carla"][i % 3] + str(i),
                     f"{prefix}.last_name": "Smith" if i % 2 else "Jones",
+                    f"{prefix}.clns_first_name": (["Anna", "Ben", "Carla"][i % 3] + str(i)).upper(),
+                    f"{prefix}.clns_last_name": "SMITH" if i % 2 else "JONES",
                     f"{prefix}.Stay": [{"hotel": "Leander Inn", "nights": i}],
                     # FAKE picklist codes (fake IDMC only): odd records have a phone row
                     **(
@@ -614,7 +645,31 @@ def business_entity(guid: str) -> dict[str, Any] | JSONResponse:
 
 
 def _all_records(guid: str) -> list[dict[str, Any]]:
-    return _fake_records(guid) + _CREATED.get(guid, []) if guid in _B360_ENTITIES else []
+    """Seed + created records, minus merged-away ones, with master overrides (0.9.12) applied."""
+    if guid not in _B360_ENTITIES:
+        return []
+    prefix = guid.replace(".", "")
+    out: list[dict[str, Any]] = []
+    for record in _fake_records(guid) + _CREATED.get(guid, []):
+        bid = record.get("_meta", {}).get("businessId")
+        if (guid, bid) in _MERGED_INTO:
+            continue
+        edits = _MASTER_EDITS.get((guid, bid))
+        if edits:
+            record = {**record, **{f"{prefix}.{k}": v for k, v in edits.items()}}
+            record = {k: v for k, v in record.items() if v is not _REMOVED}
+        out.append(record)
+    return out
+
+
+# ---- 0.9.12 Merge (M) state -----------------------------------------------------------------
+_MERGED_INTO: dict[tuple[str, str], str] = {}  # (guid, merged-away id) -> surviving id
+_MASTER_EDITS: dict[tuple[str, str], dict[str, Any]] = {}
+_REMOVED = object()
+MERGES: list[list[dict[str, Any]]] = []  # Merge API bodies received, for tests
+MASTER_PATCHES: list[dict[str, Any]] = []  # {"business_id", "sourceSystem", "body"}
+UNMERGES: list[dict[str, Any]] = []
+APPROVAL_REQUIRED = {"merge": False}  # tests flip it to see the approval path
 
 
 def _matches(record: dict[str, Any], flt: dict[str, Any]) -> bool:
@@ -634,6 +689,8 @@ def be_search(body: dict[str, Any] = Body(default_factory=dict)) -> dict[str, An
     """Honours recordOffset / recordsToReturn, filters (STARTS_WITH, EQUALS, case-insensitive)
     and a sort on _meta.lastUpdateDate, the way the 0.9.9 Records page sends them."""
     guid = str(body.get("entityType") or "")
+    if guid.startswith("rdm."):
+        RDM_SEARCHES.append(guid)
     records = _all_records(guid)
     filters = body.get("filters") or {}
     for flt in filters.get("filter", []) if isinstance(filters, dict) else []:
@@ -823,4 +880,76 @@ def update_source_record_field(
     record["_meta"]["lastUpdateDate"] = int(time.time() * 1000)
     _XREF_EDITS[(guid, system, pkey)] = record
     PATCHES.append(body)
+    return {"approvalRequired": False}
+
+
+# ---- 0.9.12 Merge (M) -------------------------------------------------------------------------
+# Merge API p. 106, Update Master Record Field pp. 67-68, Unmerge API pp. 107-110. The first id in
+# the merge body survives (the real survivor choice is IDMC's; the app always uses the returned
+# businessId). Test hooks: a businessId containing "RATE429" -> 429; unknown id -> 400.
+
+
+def reset_merge_state() -> None:
+    _MERGED_INTO.clear()
+    _MASTER_EDITS.clear()
+    MERGES.clear()
+    MASTER_PATCHES.clear()
+    UNMERGES.clear()
+    APPROVAL_REQUIRED["merge"] = False
+
+
+@app.post("/business-entity/public/api/v1/entity-group/{guid}", response_model=None)
+def merge_records(
+    guid: str,
+    body: list[dict[str, Any]] = Body(default_factory=list),  # noqa: B008
+) -> dict[str, Any] | JSONResponse:
+    ids = [str(item.get("businessId")) for item in body]
+    if any("RATE429" in i for i in ids):
+        return JSONResponse(status_code=429, content={"message": "Too many requests"})
+    known = {r.get("_meta", {}).get("businessId") for r in _all_records(guid)}
+    if len(ids) < 2 or len(ids) > 10 or any(i not in known for i in ids):
+        return JSONResponse(status_code=400, content={"message": f"cannot merge {ids}"})
+    MERGES.append(body)
+    survivor = ids[0]
+    if not APPROVAL_REQUIRED["merge"]:
+        for other in ids[1:]:
+            _MERGED_INTO[(guid, other)] = survivor
+    return {"approvalRequired": APPROVAL_REQUIRED["merge"], "businessId": survivor}
+
+
+@app.patch("/business-entity/public/api/v1/entity/{guid}/{business_id}", response_model=None)
+def update_master_record_field(
+    guid: str,
+    business_id: str,
+    sourceSystem: str,  # noqa: N803 - IDMC query parameter name
+    body: list[dict[str, Any]] = Body(default_factory=list),  # noqa: B008
+) -> dict[str, Any] | JSONResponse:
+    if business_id not in {r.get("_meta", {}).get("businessId") for r in _all_records(guid)}:
+        return JSONResponse(status_code=404, content={"message": f"no record {business_id}"})
+    edits = _MASTER_EDITS.setdefault((guid, business_id), {})
+    for op in body:
+        edits[str(op.get("path"))] = _REMOVED if op.get("op") == "remove" else op.get("value")
+    MASTER_PATCHES.append({"business_id": business_id, "sourceSystem": sourceSystem, "body": body})
+    return {"approvalRequired": False}
+
+
+@app.post("/business-entity/public/api/v1/entity-group/{guid}/{business_id}", response_model=None)
+def unmerge_records(
+    guid: str,
+    business_id: str,
+    _keepRelsWith: str = "REMAINS",  # noqa: N803
+    _allowMergeBack: str = "NEVER_MERGE",  # noqa: N803
+    body: list[dict[str, Any]] = Body(default_factory=list),  # noqa: B008
+) -> dict[str, Any]:
+    UNMERGES.append(
+        {
+            "business_id": business_id,
+            "keepRelsWith": _keepRelsWith,
+            "allowMergeBack": _allowMergeBack,
+            "body": body,
+        }
+    )
+    for key, survivor in list(_MERGED_INTO.items()):
+        if key[0] == guid and survivor == business_id:
+            del _MERGED_INTO[key]
     return {"approvalRequired": False}

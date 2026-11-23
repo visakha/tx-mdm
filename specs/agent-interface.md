@@ -30,7 +30,8 @@ Layers (an agent may use any of the three)
   `getTaskflowRun`, `getTaskflowSessionLog`, `listB360Entities(scope='focus')`, `getB360Metadata`,
   `getB360Records(name, {page, firstName, lastName, businessId, sort NEWEST_FIRST|OLDEST_FIRST})`,
   `getB360SourceSystems`, `getB360Sources(name, businessId)` (max 20), `getB360SourceRecord`,
-  `openB360Record`, `generateB360Rows(name, count=5)` (preview only, nothing sent).
+  `openB360Record`, `generateB360Rows(name, count=5)` (preview only, nothing sent),
+  `previewB360Merge(name, businessIds)` (0.9.12, read-only merge preview).
 - Side effect: `runJob` (CDI task or MDM job, starts once, never retries),
   `runTaskflowByName(name, parameters={}, apiName?)` (jobInstanceId rule of cdi.md C06; parallel
   starts allowed), `terminateTaskflow`.
@@ -51,7 +52,7 @@ Labels and permissions
   `internal-notes/ui-observations.md`. `CODE`
 
 What agents cannot do through `window.txmdm`
-- **A09** Create B360 records or save source edits: no action exists; an agent can only press the
+- **A09** Create B360 records, save source edits, Merge or Unmerge (0.9.12): no action exists; an agent can only press the
   same Send / Save buttons a person presses, via `window.agent.act`. `CODE`
 - **A10** See credentials or session ids (backend-only, shared.md S01); change `b360_entities.toml`;
   delete anything in the org (Clear is view-only). `CODE`

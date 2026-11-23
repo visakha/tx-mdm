@@ -88,10 +88,60 @@ Safety
 - **D20** Writes to the org happen ONLY when a person presses Save / Send (or an agent presses those
   same buttons through the bridge); tests and builders use the fake IDMC only. `CODE`
 
+Merge (M) (0.9.12, Vamsi 02:21 CST: "merge 100000000000141 and 100000000000150 and let first
+name from 141 win, while last name from 150 win")
+- **D21** `POST /api/b360/entities/{name}/merge/preview` `{business_ids}`: read-only; reads each
+  master (Read Master Record) and returns one row per root field with each record's value, `differs`,
+  and `follows` for `clns_<field>` twins. Missing ids are listed, nothing else happens. `CODE`
+- **D22** `POST /api/b360/entities/{name}/merge` `{business_ids: 2-10 distinct, winners: {field:
+  business_id}, override_source_system?}`. Validated before ANY call (entity in focus, ids, winner
+  ids in the list, winner fields are root fields of the metadata, picklist winners refused, override
+  source in `[sources] allowed`, default `[sources] default`) else 400 and nothing sent. Steps:
+  READ each record (missing -> stop before merge) -> MERGE (Merge API p. 106, body
+  `[{businessId}...]`; error / no answer -> stop, no answer = outcome unknown) -> OVERRIDE (Update
+  Master Record Field PATCH pp. 67-68 on the surviving businessId with `?sourceSystem=`, replace ops
+  for the winner fields plus their `clns_` twins from the same winner; SKIPPED when no winners or
+  `approvalRequired`) -> READ_BACK (each override shows sent / read back / stuck). 429 passed through
+  as a step result, never retried. `CODE`
+- **D23** Undo: `POST /api/b360/entities/{name}/records/{business_id}/unmerge` `{sources: [{source_system,
+  source_pkey}], allow_merge_back}` (Unmerge API pp. 107-110, `_keepRelsWith=BUSINESS_ID`, default
+  NEVER_MERGE). `CODE`
+- **D24** UI: ribbon tab "Merge (M)": ids box (paste is split), Load, side-by-side table with one
+  radio group per field (default "IDMC decides" = no override; clns_ rows say "follows"), Merge
+  button (no pop-up; `data-agent-confirm` label only), inline steps / overrides / survivor, then Undo
+  (pick source records, Unmerge). Agent bridge: `previewB360Merge` read-only; merging is button-only. `CODE`
+
+Reference 360 picklists (0.9.12, Vamsi 02:27 CST: picklists come from Reference 360, out of the box)
+- **D25** Each LookupField / DependentLookupField keeps `lookup` from the RAW businessEntity
+  metadata: `code_list` / `master_code_list` / `rdm_entity`, `found_in` (the raw attribute it came
+  from) and `raw_keys` (every attribute name on that raw field, values not kept). Read attributes:
+  `lookupCodeList`, `masterCodeList`, `beReferenceEntity` (documented names, field designator pp.
+  148-150) and UNVERIFIED alternatives `codeList`, `lookup`, `lookupEntity`, `referenceEntity`,
+  `reference`. Resolved against the datamodel's `rdm.*` entities (cached 5 min): DECLARED (rdm entity
+  named), LABEL_MATCH (code list X matches the entity labelled "RDM values of list X"), GUESSED (no
+  list named; exactly one rdm list name ends with the field's label/name), NOT_FOUND. `CODE`
+- **D26** Allowed values = every {Code, Name} of that `rdm.value.be.*` entity (Search API, pageSize
+  200, cached 5 min) -> `options_source` REFERENCE_360 (or REFERENCE_360_GUESSED, labelled a guess in
+  the Generate rules text); else the 0.9.10 values observed in records; else NONE. Never invented.
+  Forms show a dropdown; Generate picks a random real Code, so x_phone rows are generated again;
+  Metadata (M) shows a "Lookup list (Reference 360)" column. `CODE` (`LIVE` for the list itself:
+  rdm.value.be._ent_phonetype has 11 codes, read 02:27 CST)
+
+Typed API docs (0.9.12, Vamsi 02:32 CST: "create another OpenAPI hyphen typed JSON... more concrete")
+- **D27** `GET /openapi-typed.json` (next to `/openapi.json`, which stays generic and separate) = the
+  app spec plus, per focus entity from live metadata (read-only, same cache): `Record_<e>` (flat,
+  real JSON types, required = mandatory, field groups as arrays of `Row_<e>_<group>`, system fields and
+  `_meta` readOnly with `x-origin: SYSTEM`), `Values_<e>`, `NewRecord_<e>`, `CreateRequest_<e>`,
+  `EntityRecord_<e>`, `RecordPage_<e>`; picklists are an `enum` of real Codes with
+  `x-picklist-source` / `x-reference-360`, else string + note; concrete paths
+  `/api/b360/entities/<e>/records` GET + POST. ALL fields (TOML visibility does not apply). A failed
+  metadata read -> base spec + `x-typed-warnings`, never 500. `GET /docs-typed` = Swagger on it;
+  title-bar link "API docs (typed)"; `backend/dev/write_openapi_typed.py` saves it to a file. `CODE`
+
 ## Out of scope
 
-Master-record create / edit / merge / unmerge; delete / restore; picklist management; entities other
-than the TOML focus list beyond read-only browsing.
+Master-record create / edit (except Merge winners, D22); delete / restore; picklist management;
+entities other than the TOML focus list beyond read-only browsing.
 
 ## Known gaps / UNVERIFIED
 
@@ -104,3 +154,13 @@ than the TOML focus list beyond read-only browsing.
   different field names, so the repo TOML shows warnings there (expected).
 - Add records (S) uses the documented Create MASTER Record API: with a sourceSystem it creates the
   source record that merges into a master. The tab label (S) reflects his model, the API name does not.
+- Merge (0.9.12): never run on his org. Which record IDMC keeps as survivor (the app uses the returned
+  businessId), whether masters merge by businessId there, whether an approval workflow applies, and
+  whether the override PATCH with `sourceSystem=zlv_ttf` counts as a steward override (trust /
+  manualOverride) or a zlv_ttf contribution that a later match/merge or source update replaces.
+  clns_ values are carried from the winner, not recomputed by IDMC cleansing. Unmerge never exercised.
+- Reference 360 (0.9.12): which raw attribute his org's metadata uses to name a LookupField's list is
+  UNVERIFIED (fake mirrors the documented `lookupCodeList`); Metadata (M) shows `raw_keys` so the first
+  live look answers it. Codes of rdm values read from the `Code` field (live: Name / Code).
+- `/openapi-typed.json` per-entity paths duplicate the generic `{name}` routes for readability; the
+  backend validates against the dynamic model, not against this document.

@@ -17,6 +17,9 @@ import type {
   FormInput,
   FormSchema,
   GeneratedRows,
+  MergePreview,
+  MergeRequest,
+  MergeResponse,
   NewRecord,
   NewGroupRows,
   RecordPage,
@@ -25,6 +28,8 @@ import type {
   SourceRecordList,
   SourceSystemList,
   SystemValue,
+  UnmergeRequest,
+  UnmergeResponse,
   UpdateSourceRequest,
   UpdateSourceResponse,
 } from "./api-types";
@@ -79,7 +84,30 @@ export const b360Api = {
     getJson<SourceRecord>(sourceUrl(name, sourceSystem, sourcePKey)),
   updateSource: (name: string, sourceSystem: string, sourcePKey: string, request: UpdateSourceRequest): Promise<UpdateSourceResponse> =>
     postJson<UpdateSourceResponse>(`${sourceUrl(name, sourceSystem, sourcePKey)}/update`, request),
+  // 0.9.12 Merge (M). mergePreview reads only; merge() and unmerge() write, on a person's button.
+  mergePreview: (name: string, businessIds: string[]): Promise<MergePreview> =>
+    postJson<MergePreview>(`${base(name)}/merge/preview`, { business_ids: businessIds }),
+  merge: (name: string, request: MergeRequest): Promise<MergeResponse> => postJson<MergeResponse>(`${base(name)}/merge`, request),
+  unmerge: (name: string, businessId: string, request: UnmergeRequest): Promise<UnmergeResponse> =>
+    postJson<UnmergeResponse>(`${base(name)}/records/${encodeURIComponent(businessId)}/unmerge`, request),
 };
+
+/** Business ids typed or pasted into the Merge box: split on spaces, commas, tabs, new lines. */
+export function parseBusinessIds(text: string): string[] {
+  const out: string[] = [];
+  for (const part of text.split(/[\s,;]+/)) {
+    const id = part.trim().replace(/^["']|["']$/g, "");
+    if (id !== "" && !out.includes(id)) out.push(id);
+  }
+  return out;
+}
+
+/** Winners to send: only fields with a picked id ("" = let IDMC decide), never clns_ followers. */
+export function winnersToSend(picks: Record<string, string>, followers: ReadonlySet<string>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [field, id] of Object.entries(picks)) if (id !== "" && !followers.has(field)) out[field] = id;
+  return out;
+}
 
 function sourceUrl(name: string, sourceSystem: string, sourcePKey: string): string {
   return `${base(name)}/sources/${encodeURIComponent(sourceSystem)}/${encodeURIComponent(sourcePKey)}`;
@@ -87,6 +115,8 @@ function sourceUrl(name: string, sourceSystem: string, sourcePKey: string): stri
 
 export type {
   CreateResponse,
+  MergePreview,
+  MergeResponse,
   FormField,
   FormSchema,
   GeneratedRows,

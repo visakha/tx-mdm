@@ -61,3 +61,19 @@ ENTITY_MEMBER = "/business-entity/public/api/v1/entity-member/{guid}/{business_i
 ENTITY_XREF = "/business-entity/public/api/v1/entity-xref/{guid}/{source_system}/{source_pkey}"
 MAX_SOURCES_READ = 20  # Read Source Record calls per master record, one at a time
 PICKLIST_SAMPLE = 50  # records read (one Search API call) to observe real picklist values
+RDM_PAGE_SIZE = 200  # 0.9.12: one Search API page of a Reference 360 value entity
+RDM_CACHE_SECONDS = 300  # 0.9.12: allowed values cached 5 min, like metadata
+
+# 0.9.12 Merge (M), all in the B360 REST API Reference (Oct 2026):
+#   Merge API, p. 106: POST .../entity-group/<businessEntity>, body = JSON array of up to 10
+#     {"businessId"} (or {"sourcePKey", "sourceSystem"}) -> {"approvalRequired", "businessId"
+#     (the surviving master)}.
+#   Update Master Record Field, pp. 67-68: PATCH .../entity/<businessEntity>/<businessId>
+#     ?sourceSystem=<id>, body [{op, path, value}] -> {"approvalRequired"}. Used ONLY to apply
+#     the per-field winners Vamsi picks on the surviving master (a steward override).
+#   Unmerge API, pp. 107-110: POST .../entity-group/<businessEntity>/<businessId>
+#     ?_keepRelsWith=BUSINESS_ID[&_allowMergeBack=MAY_MERGE], body [{sourcePKey, sourceSystem}]
+#     -> {"approvalRequired"}. Takes SOURCE keys, not business ids.
+ENTITY_GROUP = "/business-entity/public/api/v1/entity-group/{guid}"
+ENTITY_GROUP_MASTER = "/business-entity/public/api/v1/entity-group/{guid}/{business_id}"
+MAX_MERGE = 10

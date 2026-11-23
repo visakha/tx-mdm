@@ -288,3 +288,27 @@ Reference: internal-docs/B360_October2026_Business360_REST-API_Reference_en.pdf.
 - Metadata (S) is derived: same entity metadata + xref `_meta` fields documented on pp. 80-84
   (sourceSystem, sourcePrimaryKey, xrefType, sourceLastUpdatedDate, populationName ...). No separate
   source-metadata call is documented.
+
+## Merge / Override / Unmerge (0.9.12, B360 REST API Reference Oct 2026)
+- Merge API p. 106: `POST {mdm}/business-entity/public/api/v1/entity-group/<businessEntity>`, body =
+  JSON array of up to 10 items, each `{businessId}` or `{sourcePKey, sourceSystem}`; reply
+  `{approvalRequired, businessId}` (businessId = surviving master).
+- Update Master Record Field pp. 67-68: `PATCH .../entity/<be>/<businessId>?sourceSystem=<id>`, body
+  `[{op: add|replace|remove, path, value}]`, reply `{approvalRequired}`; a merged-away (inactive)
+  businessId updates the active master it merged into. Used for merge winners. Update Master Record
+  (PUT) pp. 65-66 replaces the whole record: not used.
+- Unmerge API pp. 107-110: `POST .../entity-group/<be>/<businessId>?_keepRelsWith=BUSINESS_ID|REMAINS|NONE
+  &_groupingForRemoved=ALL|EACH|NONE&_groupingForRemains=...&_allowMergeBack=MAY_MERGE|NEVER_MERGE`,
+  body = source keys `[{sourcePKey, sourceSystem}]` (up to 10); defaults REMAINS / EACH / ALL /
+  NEVER_MERGE; BUSINESS_ID is what the B360 UI does; reply `{approvalRequired}`.
+- Not documented: how an override PATCH interacts with trust / manualOverride and later match/merge.
+
+## Reference 360 picklists (0.9.12)
+- Live (02:27 CST via his backend): `rdm.value.be._ent_phonetype`, label "RDM values of list
+  Enterprise PhoneType", searchable with the normal Search API, 11 records, fields Name / Code; Codes
+  VoIP, Cell, Contaminated, Fax, Freephone, LandLine, Marine, Mobile, Pager, Special, Telephone. Also
+  `rdm.value.be._ent_phonestatus`, `rdm.value.be._ent_phoneusagetype`; 97 rdm.* entities.
+- The reference prints `lookupCodeList` (code list of a picklist), `masterCodeList` (parent list of
+  a dependent picklist) and `beReferenceEntity` for Customer 360 custom field designators (pp.
+  148-150). The businessEntity metadata reply itself is not printed, so the attribute his LookupField
+  carries is UNVERIFIED; tx-mdm keeps every raw attribute name (`lookup.raw_keys`) to find out.

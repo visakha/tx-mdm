@@ -501,3 +501,36 @@ the chip-row Listboxes instead.
   leave every ffr_* empty; the rules line says so.
 - Fake IDMC note: the fake's zlv_guest has different field names (guestId, fullName ...), so with the repo
   TOML the fake screens show warnings and hide the fake-only fields. Expected; his org matches the list.
+
+## v0.9.12 (2026-11-23 ~02:40 CST): Merge (M), Reference 360 picklists, API docs (typed)
+
+### Merge (M) tab (ribbon of every B360 Data entity, after Edit records (S))
+- Intended: merge 2-10 master records, choose a winner per root field, see what IDMC kept.
+- Click order: paste ids into "Merge business IDs" (`b360-merge-ids`; spaces / commas / new lines
+  split them; the selected Records (M) record is pre-filled) -> Load (`b360-merge-load`, read-only
+  preview) -> table `b360-merge-table`, one row per field (`b360-merge-row-<field>`), one radio group
+  per field (`b360-merge-winner-<field>`, aria-label "Winner for <field>"; options "<field> IDMC
+  decides" (default, no override) and "<field> from <id>"). clns_ rows say "follows <field>" and have
+  no radio. -> Merge (`b360-merge-go`, aria-label "Merge master records"; no pop-up,
+  `data-agent-confirm` is a label only).
+- Result inline (`b360-merge-result`): steps READ / MERGE / OVERRIDE / READ_BACK
+  (`b360-merge-step-<STEP>`, OK / FAILED / SKIPPED + text), survivor id (`b360-merge-survivor`),
+  overrides table (`b360-merge-overrides`: field, winner, sent, read back, stuck yes/no), note
+  (`b360-merge-note`), errors (`b360-merge-error`).
+- Undo (`b360-unmerge`): "Show source records to unmerge" (`b360-unmerge-load`) -> one checkbox per
+  source ("Unmerge <system>/<pkey>") -> "Unmerge selected sources" (`b360-unmerge-go`) -> note
+  `b360-unmerge-note`.
+- His first use: ids `100000000000141 100000000000150`, first_name from 141, last_name from 150;
+  expect Charles Harrison (clns CHARLES / HARRISON). Not yet seen live.
+
+### Picklists from Reference 360
+- Metadata (M) table has a new last column "Lookup list (Reference 360)"
+  (`b360-meta-lookup-<field>`): rdm entity + where it came from (metadata attribute / code list
+  label match), "GUESS" when matched by field name only, or "not found (UNVERIFIED ...)" with the raw
+  attribute names of that field. First live look tells us what IDMC calls the reference.
+- Add records (S) / Edit records (S): ph_typ dropdown = the 11 Reference 360 Codes; picklist note
+  says where values came from. Generate fills x_phone again (random real Code).
+
+### Title bar
+- "API docs (typed)" link (`api-docs-typed-link`, aria-label "OpenAPI docs typed per business
+  entity") next to "API docs": opens `/docs-typed` (Swagger on `/openapi-typed.json`).
