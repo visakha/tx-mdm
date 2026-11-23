@@ -298,3 +298,47 @@ def unknown_keys(records: list[dict[str, JsonValue]], entity: BusinessEntity) ->
     known = {f.name for f in entity.fields} | {g.name for g in entity.field_groups}
     found = {_local(k) for r in records for k in r if not k.startswith("_")}
     return sorted(found - known)
+
+
+# ---------------------------------------------------------------------------------------------
+# 0.9.8 Add records
+# ---------------------------------------------------------------------------------------------
+
+
+def source_system_ids(body: object) -> list[str]:
+    """Ids from the (undocumented) source-system metadata call. UNVERIFIED shape.
+
+    Takes every JSON object whose eClass ends with "SourceSystem" (the style of the other
+    /metadata/api/v2/objects replies), anywhere in the reply, plus {"content": [...]} paging.
+    The id is "guid" if present, else "name". Order kept, duplicates dropped.
+    """
+    found: list[str] = []
+
+    def walk(node: JsonValue) -> None:
+        if isinstance(node, dict):
+            e_class = node.get("eClass")
+            if isinstance(e_class, str) and e_class.endswith("SourceSystem"):
+                ident = node.get("guid") or node.get("name")
+                if isinstance(ident, str) and ident and ident not in found:
+                    found.append(ident)
+            for value in node.values():
+                walk(value)
+        elif isinstance(node, list):
+            for value in node:
+                walk(value)
+
+    walk(as_json(body))
+    return found
+
+
+class WireCreated(_Wire):
+    """Create Master Record 200 reply (reference p. 55). id is deprecated; businessId wins."""
+
+    approval_required: bool | None = Field(default=None, alias="approvalRequired")
+    business_id: str | int | None = Field(default=None, alias="businessId")
+    id: str | int | None = None
+
+
+def created_record(body: object) -> WireCreated:
+    data = as_json(body)
+    return WireCreated.model_validate(data if isinstance(data, dict) else {})

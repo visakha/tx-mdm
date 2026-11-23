@@ -134,6 +134,7 @@ export const RIBBON: Record<SectionId, readonly RibbonTab[]> = {
   "b360-data": [
     { id: "records", label: "Records" },
     { id: "metadata", label: "Metadata" },
+    { id: "add", label: "Add records" },
   ],
 };
 

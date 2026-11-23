@@ -117,3 +117,127 @@ class RecordPage(BaseModel):
     unknown_keys: list[str] = Field(
         description="Record keys the entity metadata did not describe (listed, never guessed)."
     )
+
+
+# ---------------------------------------------------------------------------------------------
+# 0.9.8 Add records (Create Master Record). Vamsi, voice 2026-11-23 01:05-01:10 CST.
+# ---------------------------------------------------------------------------------------------
+
+
+class DiscoveryStatus(StrEnum):
+    OK = "OK"  # IDMC answered the (undocumented) source-system metadata call
+    NOT_AVAILABLE = "NOT_AVAILABLE"  # it did not; the TOML allowed list is all there is
+
+
+class SourceSystemList(BaseModel):
+    allowed: list[str] = Field(
+        description="[sources] allowed in b360_entities.toml, exact case. Only these can be sent."
+    )
+    default: str | None = Field(description="[sources] default (falls back to the first allowed).")
+    discovered: list[str] = Field(description="Source system ids IDMC listed (may be empty).")
+    not_allowed: list[str] = Field(
+        description="Discovered but not in the allowed list: add to b360_entities.toml to allow."
+    )
+    discovery: DiscoveryStatus
+    discovery_note: str = Field(description="What the discovery call returned, in plain words.")
+    source: str = Field(description="The metadata call that was tried.")
+
+
+class FormInput(StrEnum):
+    """Which input the frontend renders for a field. Decided by FieldDataType."""
+
+    TEXT = "TEXT"
+    INTEGER = "INTEGER"
+    DECIMAL = "DECIMAL"
+    CHECKBOX = "CHECKBOX"
+    DATE = "DATE"
+    DATETIME = "DATETIME"
+
+
+class FormField(BaseModel):
+    name: str
+    label: str
+    data_type: FieldDataType
+    input: FormInput
+    required: bool = Field(description="True when the metadata marks the field mandatory.")
+
+
+class FormSchema(BaseModel):
+    """The entity's root-field form, built from a Pydantic model created from the metadata."""
+
+    entity: str
+    label: str
+    model_name: str = Field(
+        description="Name of the dynamic Pydantic model (pydantic.create_model)."
+    )
+    fields: list[FormField]
+    skipped_groups: list[str] = Field(
+        description="Field groups not offered in the form yet (root fields only in 0.9.8)."
+    )
+    json_schema_text: str = Field(
+        description="model_json_schema() of the dynamic model as pretty JSON text, for reference."
+    )
+
+
+class NewRecord(BaseModel):
+    source_pkey: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=255,
+        description="sourcePKey. Empty: the backend makes TXMDM-<yyyymmddHHMMSS>-<n>.",
+    )
+    values: dict[str, FieldValue] = Field(description="Root fields, keyed by field name.")
+
+
+class GenerateRequest(BaseModel):
+    count: int = Field(default=5, ge=1, le=100, description="How many test rows (1-100).")
+    seed: int | None = Field(default=None, description="Optional Faker seed for repeatable rows.")
+
+
+class GeneratedFieldRule(BaseModel):
+    field: str
+    rule: str = Field(description="How Faker fills this field, in plain words.")
+
+
+class GeneratedRows(BaseModel):
+    entity: str
+    rows: list[NewRecord]
+    rules: list[GeneratedFieldRule]
+    faker_version: str
+    note: str
+
+
+class CreateRequest(BaseModel):
+    source_system: str = Field(min_length=1, max_length=128)
+    records: list[NewRecord] = Field(min_length=1, max_length=100)
+
+
+class CreateOutcome(StrEnum):
+    CREATED = "CREATED"  # IDMC answered 200 with a businessId
+    FAILED = "FAILED"  # IDMC refused this record (its error text is kept); the next ones still go
+    NOT_SENT = "NOT_SENT"  # never sent: the run stopped before it (429, 401, 403 or unknown result)
+    UNKNOWN = "UNKNOWN"  # no answer (network error): it may or may not exist in B360 now
+
+
+class CreateResult(BaseModel):
+    index: int = Field(description="0-based position in the request.")
+    source_pkey: str
+    outcome: CreateOutcome
+    business_id: str | None = None
+    approval_required: bool | None = Field(
+        default=None, description="IDMC approvalRequired: a data steward must approve it."
+    )
+    error: str | None = None
+
+
+class CreateResponse(BaseModel):
+    entity: str
+    source_system: str
+    created: int
+    failed: int
+    not_sent: int
+    unknown: int
+    stopped_reason: str | None = Field(
+        description="Why sending stopped early (429 / 401 / 403 / no answer); null if it ran out."
+    )
+    results: list[CreateResult]

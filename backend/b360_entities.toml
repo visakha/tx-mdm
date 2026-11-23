@@ -16,3 +16,15 @@
 [[entity]]
 name = "zlv_guest"
 # label = "ZLV Guest"
+
+# Source systems the "Add records" tab may send new records to (Create Master Record API).
+#   - allowed = the source system ids EXACTLY as IDMC knows them. Case matters: zlv_ttf, not ZLV_TTF.
+#   - default = the one picked first in the dropdown (must be in allowed).
+#   - The backend refuses any other source system (HTTP 400), so nothing is sent by mistake.
+#   - There is no documented API that lists source systems; the Add records tab shows any that
+#     an undocumented metadata call does find, as "add to b360_entities.toml to allow".
+# Restart the backend after editing, same as above.
+
+[sources]
+allowed = ["zlv_ttf", "zlv_eci", "c360.default.system"]
+default = "zlv_ttf"

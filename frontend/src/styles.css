@@ -264,3 +264,7 @@ main { flex: 1; padding: 16px 20px; }
 .b360-detail { border-top: 1px solid var(--border, rgba(127, 127, 127, 0.35)); padding-top: 8px; }
 .nav-item.not-found .item-name { text-decoration: line-through; opacity: 0.7; }
 .nav-item.show-all .item-name { font-size: 0.85em; text-decoration: underline; }
+/* 0.9.8 B360 Add records */
+.b360-add { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+.b360-add input[type="text"], .b360-add input[type="number"], .b360-add input[type="date"], .b360-add input[type="datetime-local"], .b360-add select { font: inherit; padding: 3px 6px; min-width: 8em; }
+.b360-add pre { white-space: pre-wrap; overflow-wrap: anywhere; }

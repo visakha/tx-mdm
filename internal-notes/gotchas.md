@@ -150,3 +150,16 @@ this; `app/main.py` forces stdout/stderr to ASCII with backslash escapes at runt
 - File must be plain ASCII; a typo in `name` does not crash - the left pane shows
   "not found in org" (`found: false` in `GET /api/b360/entities`).
 - The left pane loads the focus list once per page load; reload the browser after a restart.
+
+
+## B360 Add records (0.9.8)
+
+- Source system ids are CASE-SENSITIVE: `zlv_ttf`, not `ZLV_TTF` (Vamsi's correction 2026-11-23 01:10 CST).
+  The backend compares exactly; anything not in `[sources] allowed` is a 400 and nothing is sent.
+- The TOML is never written from code; edit it and restart the backend.
+- Validation happens for the WHOLE request before the first call: one bad row -> 422, zero records sent.
+- A network error mid-send marks that row UNKNOWN and stops: it may exist in B360. Check the Records tab
+  before sending again (a repeat would create a second record with a new sourcePKey).
+- The generator's `ffr_` rule (lower-case letters and digits) is the builder's guess at "ffr"; `clns_` =
+  upper-case letters and digits. Both live in `app/b360data/testdata.py`.
+- `pip install -e ".[dev]"` again after pulling 0.9.8: `faker` is a new dependency.

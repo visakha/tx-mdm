@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { BusinessEntity, EntityRecord, FieldDataType } from "./api-types";
 import { FIELDDATATYPE_VALUES } from "./api-types";
+import { clampCount, cleanValues, missingRequired, parseInput } from "./b360Api";
 import { cellText, focusNavItems, focusNavValue, groupByCategory, groupRows, recordColumns, SHOW_ALL_VALUE } from "./b360Api";
 
 const entity: BusinessEntity = {
@@ -58,5 +59,25 @@ describe("0.9.7 entity scope", () => {
   it("groups Custom, Out of the box, Reference, Templates in that order", () => {
     const all = list([["rdm.country", "REFERENCE", false], ["c360.person", "OUT_OF_THE_BOX", false], ["zlv_guest", "CUSTOM", true], ["entity.t", "TEMPLATE", false]]);
     expect(groupByCategory(all.entities).map((g) => g.category)).toEqual(["CUSTOM", "OUT_OF_THE_BOX", "REFERENCE", "TEMPLATE"]);
+  });
+});
+
+describe("Add records helpers (0.9.8)", () => {
+  it("clamps the Number of records box to 1..100", () => {
+    expect([clampCount("0"), clampCount("5"), clampCount("250"), clampCount("x")]).toEqual([1, 5, 100, 5]);
+  });
+  it("parses form text by input kind", () => {
+    expect(parseInput("", "TEXT")).toBeNull();
+    expect(parseInput(" 42 ", "INTEGER")).toBe(42);
+    expect(parseInput("true", "CHECKBOX")).toBe(true);
+    expect(parseInput("Ann", "TEXT")).toBe("Ann");
+  });
+  it("lists empty required fields and drops empties", () => {
+    const fields = [
+      { name: "first_name", label: "First Name", data_type: "STRING" as const, input: "TEXT" as const, required: true },
+      { name: "last_name", label: "Last Name", data_type: "STRING" as const, input: "TEXT" as const, required: false },
+    ];
+    expect(missingRequired(fields, { last_name: "X" })).toEqual(["First Name"]);
+    expect(cleanValues({ first_name: "A", last_name: "", x: null })).toEqual({ first_name: "A" });
   });
 });

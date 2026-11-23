@@ -11,6 +11,7 @@ fields, field groups) still comes from the B360 metadata APIs.
 """
 
 import os
+import re
 import tomllib
 from functools import lru_cache
 from pathlib import Path
@@ -20,6 +21,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 from app.b360data.models import EntityCategory
 
 ENV_VAR = "B360_ENTITIES_FILE"
+_SOURCE_ID = re.compile(r"[A-Za-z0-9._-]{1,128}")
 DEFAULT_FILE = Path(__file__).resolve().parents[2] / "b360_entities.toml"
 
 
@@ -37,12 +39,46 @@ class FocusEntity(BaseModel):
         return value.strip()
 
 
+class SourcesConfig(BaseModel):
+    """The [sources] table: source systems the Add records tab may send to. EXACT case.
+
+    Vamsi, 2026-11-23 01:10 CST: his source systems are zlv_ttf and zlv_eci, all lowercase, plus
+    c360.default.system. There is no documented API that lists source systems, so this list is
+    the gate: the backend refuses any sourceSystem not in it (400). The file is never written
+    from code; he edits it.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    allowed: list[str] = Field(default_factory=list)
+    default: str | None = None
+
+    @field_validator("allowed")
+    @classmethod
+    def _ids(cls, value: list[str]) -> list[str]:
+        for item in value:
+            if not _SOURCE_ID.fullmatch(item):
+                raise ValueError(f"bad source system id {item!r} (letters, digits, . _ - only)")
+        if len(set(value)) != len(value):
+            raise ValueError("a source system is listed twice")
+        return value
+
+    def default_source(self) -> str | None:
+        if self.default is not None:
+            return self.default
+        return self.allowed[0] if self.allowed else None
+
+    def is_allowed(self, source_system: str) -> bool:
+        return source_system in self.allowed  # case-sensitive on purpose
+
+
 class FocusConfig(BaseModel):
     """The whole b360_entities.toml file."""
 
     model_config = ConfigDict(extra="forbid")
 
     entity: list[FocusEntity] = Field(default_factory=list)
+    sources: SourcesConfig = Field(default_factory=SourcesConfig)
 
     def names(self) -> list[str]:
         return [e.name for e in self.entity]
@@ -92,6 +128,11 @@ def load_focus_config(path: Path) -> FocusConfig:
         if key in seen:
             raise FocusConfigError(f"B360 entities file lists {e.name} twice: {path}")
         seen.add(key)
+    sources = config.sources
+    if sources.default is not None and sources.default not in sources.allowed:
+        raise FocusConfigError(
+            f"B360 entities file: [sources] default {sources.default!r} is not in allowed: {path}"
+        )
     return config
 
 

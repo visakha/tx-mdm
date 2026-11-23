@@ -7,6 +7,7 @@
 //                 DETAIL = the picked record below: root fields, then each field group STACKED
 //                 as its own titled block (no tabs). "This entity has no field groups" if none.
 //   Metadata tab: the entity's fields (type, mandatory, searchable) and field groups.
+//   Add records tab (0.9.8): type a record or generate Faker rows, then Save / Send to B360.
 // /b360 with no entity = "Show all entities": every entity grouped by category.
 // No polling; Refresh reloads. A 429 is shown and nothing is retried.
 
@@ -15,6 +16,7 @@ import { Button } from "@ui-sdk/react/button";
 import { ApiError, errorText } from "../shared/api";
 import type { Route } from "../shared/routes";
 import { useRibbonTab } from "../shell/sections";
+import { AddRecordsView } from "./AddRecordsView";
 import type { BusinessEntity, BusinessEntitySummary, FieldGroup } from "./api-types";
 import {
   b360Api,
@@ -296,7 +298,11 @@ export function B360DataPanel({
 
       {page !== null && tab === "metadata" && <MetadataView entity={page.entity} />}
 
-      {page !== null && tab !== "metadata" && (
+      {page !== null && tab === "add" && (
+        <AddRecordsView entity={page.entity.name} onSaved={() => loadRecords(page.entity.name)} />
+      )}
+
+      {page !== null && tab !== "metadata" && tab !== "add" && (
         <div className="b360-records master-detail" data-testid="b360-records" data-entity={page.entity.name}>
           <section className="b360-master" data-testid="b360-master">
             <h3>

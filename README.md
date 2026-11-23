@@ -112,6 +112,10 @@ cd frontend && npm run typecheck && npm test && npm run lint && npm run build
 | GET | `/api/mdm/job-instances/{instance_id}` | Look up ANY B360 job instance by full id (`jobInstance/{id}?details=true`). Read-only |
 | GET | `/api/b360/entities?scope=focus\|all` | B360 Data: business entities DERIVED from the metadata API (`GET {mdm}/metadata/api/v2/objects/tenantModel/datamodel`). `focus` (default) = only the entities listed in `backend/b360_entities.toml`, each marked found / not found in the org; `all` = every entity with its category (CUSTOM, OUT_OF_THE_BOX c360.\*, REFERENCE rdm.\*, TEMPLATE entity.\*). Typed `BusinessEntityList`. Read-only |
 | GET | `/api/b360/entities/{name}/metadata` | One entity's typed fields (data type, searchable, mandatory) and field groups (`GET {mdm}/metadata/api/v2/objects/businessEntity/{name}`, cached 5 min). Read-only |
+| GET | `/api/b360/source-systems` | 0.9.8: source systems the Add records tab may send to = `[sources] allowed` in `backend/b360_entities.toml` (exact case; default `zlv_ttf`), plus a read-only discovery attempt `GET {mdm}/metadata/api/v2/objects/sourceSystem` (UNDOCUMENTED, UNVERIFIED; `NOT_AVAILABLE` when it fails). Typed `SourceSystemList`. Read-only |
+| GET | `/api/b360/entities/{name}/form-schema` | 0.9.8: the entity's root-field form, from a Pydantic model built per entity with `pydantic.create_model` (types from the metadata, mandatory = required). Typed `FormSchema`. No IDMC write |
+| POST | `/api/b360/entities/{name}/records/generate` | 0.9.8: `{count: 1..100, seed?}` -> Faker test rows checked by the same dynamic model. Preview only, NO IDMC call. Typed `GeneratedRows` |
+| POST | `/api/b360/entities/{name}/records` | 0.9.8 WRITE: `{source_system, records[<=100]}` -> Create Master Record (`POST {mdm}/business-entity/public/api/v1/entity/{name}?sourceSystem=&sourcePKey=`, reference pp. 51-55) one record at a time, in order, never retried. Source not allowed -> 400; a record that does not fit the model, duplicate sourcePKey or >100 -> 422; in both cases nothing is sent. 429 / 401 / 403 / no answer stop the run (rest NOT_SENT). Typed `CreateResponse`. Only on a person's Save / Send to B360 |
 | GET | `/api/b360/entities/{name}/records?limit=10` | First N records (1..50) via the Search API; columns and field groups chosen from the metadata, values typed by data type. Typed `RecordPage`. Read-only |
 | GET | `/api/health` | Liveness |
 
@@ -294,6 +298,23 @@ clean; frontend typecheck, unit tests, oxlint and production build clean.
    defensively from any `errorMessage`-style field).
 
 Full, labelled list: `internal-notes/api-facts.md`.
+
+## Adding records to B360 (0.9.8)
+
+Each B360 Data entity page has an **Add records** ribbon tab (next to Records and Metadata):
+
+- **Type it**: a form built from the entity's metadata through a Pydantic model
+  (`backend/app/b360data/forms.py`). Required fields are starred. Save sends ONE record.
+- **Generate test data**: put a number in "Number of records" (1-100), press Generate. The backend
+  makes the rows with Faker (`backend/app/b360data/testdata.py`); nothing is sent yet. Edit or remove
+  rows, then press **Send to B360**. Rows go one at a time; a 429, 401 or 403 stops the rest.
+- Both ask you to confirm first. After a save, the Records tab reloads so the new records show.
+- **Source system** dropdown = `[sources] allowed` in `backend/b360_entities.toml` (today
+  `zlv_ttf` (default), `zlv_eci`, `c360.default.system`, exact case). The backend refuses any other
+  value. Informatica documents no API that lists source systems; an undocumented metadata call is
+  tried and anything it finds that is not allowed is shown as "add to b360_entities.toml to allow".
+  Edit the file and restart the backend to change the list.
+- New backend dependency: `faker` (pip install -e ".[dev]" again after pulling).
 
 ## Which B360 entities the left pane shows (0.9.7)
 

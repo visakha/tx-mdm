@@ -367,3 +367,28 @@ up as a stacked pane"; the list in a TOML file he edits.
 - Agent bridge unchanged: `listB360Entities(scope)`, `getB360Metadata`, `getB360Records`,
   `openB360Record`. `openNavSection("b360-data")` opens the all-entities page.
 - Not yet observed in a browser (no Cypress for this version).
+
+
+## v0.9.8 (2026-11-23): B360 Data - Add records tab
+
+Asked by Vamsi (voice, 01:05-01:10 CST): type data in a form built from the metadata (Pydantic) and Save,
+or generate N test rows with Faker, then save them through the REST API.
+
+- Ribbon tab "Add records" (id `add`) on each B360 Data entity page, after Records and Metadata.
+- Top: Source system dropdown `b360-add-source` (from `[sources]` in b360_entities.toml, default zlv_ttf),
+  discovery note `b360-add-discovery`, hint `b360-add-not-allowed`. Mode buttons `b360-add-mode-type`,
+  `b360-add-mode-generate`.
+- Type it (`b360-add-form`): one input per root field `b360-add-field-<name>` (text / number / checkbox /
+  date / datetime by data type), required starred; sourcePKey box `b360-add-pkey` (empty = generated);
+  Save `b360-add-save` (disabled until required fields are filled; confirm dialog; data-agent-confirm);
+  Clear form; collapsible Pydantic JSON schema `b360-add-json-schema`. Field groups are not in the form yet.
+- Generate (`b360-add-generate`): Number of records `b360-add-count` (clamped 1..100), Generate
+  `b360-add-generate-btn` (backend Faker, no IDMC call), rules line `b360-add-rules`, editable preview table
+  `b360-add-preview` with cells `b360-add-cell-<i>-<field>` and Remove `b360-add-remove-<i>`; Send to B360
+  `b360-add-send` (shows the count; confirm dialog); Clear preview.
+- Result `b360-add-result`: per row sourcePKey, outcome (CREATED / FAILED / NOT_SENT / UNKNOWN), businessId,
+  needs approval, error; `b360-add-stopped` when a 429 / 401 / 403 / no answer stopped it.
+- After anything is created the Records view reloads (master list shows the new records).
+- Agent bridge: `getB360SourceSystems()`, `generateB360Rows(name, count)` (read-only). Creating is only by
+  a person's button.
+- Not yet seen on a screen: built and unit-tested only; no Cypress, no screenshot, not run against his org.

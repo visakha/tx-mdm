@@ -35,6 +35,40 @@ export interface BusinessEntitySummary {
 export type Cardinality = "ONE" | "MANY";
 export const CARDINALITY_VALUES: readonly Cardinality[] = ["ONE", "MANY"];
 
+export type CreateOutcome = "CREATED" | "FAILED" | "NOT_SENT" | "UNKNOWN";
+export const CREATEOUTCOME_VALUES: readonly CreateOutcome[] = ["CREATED", "FAILED", "NOT_SENT", "UNKNOWN"];
+
+export interface CreateRequest {
+  source_system: string;
+  records: NewRecord[];
+}
+
+export interface CreateResponse {
+  entity: string;
+  source_system: string;
+  created: number;
+  failed: number;
+  not_sent: number;
+  unknown: number;
+  /** Why sending stopped early (429 / 401 / 403 / no answer); null if it ran out. */
+  stopped_reason: string | null;
+  results: CreateResult[];
+}
+
+export interface CreateResult {
+  /** 0-based position in the request. */
+  index: number;
+  source_pkey: string;
+  outcome: CreateOutcome;
+  business_id?: string | null;
+  /** IDMC approvalRequired: a data steward must approve it. */
+  approval_required?: boolean | null;
+  error?: string | null;
+}
+
+export type DiscoveryStatus = "OK" | "NOT_AVAILABLE";
+export const DISCOVERYSTATUS_VALUES: readonly DiscoveryStatus[] = ["OK", "NOT_AVAILABLE"];
+
 export type EntityCategory = "CUSTOM" | "OUT_OF_THE_BOX" | "REFERENCE" | "TEMPLATE";
 export const ENTITYCATEGORY_VALUES: readonly EntityCategory[] = ["CUSTOM", "OUT_OF_THE_BOX", "REFERENCE", "TEMPLATE"];
 
@@ -84,10 +118,78 @@ export interface FocusEntityStatus {
   found: boolean;
 }
 
+export interface FormField {
+  name: string;
+  label: string;
+  data_type: FieldDataType;
+  input: FormInput;
+  /** True when the metadata marks the field mandatory. */
+  required: boolean;
+}
+
+export type FormInput = "TEXT" | "INTEGER" | "DECIMAL" | "CHECKBOX" | "DATE" | "DATETIME";
+export const FORMINPUT_VALUES: readonly FormInput[] = ["TEXT", "INTEGER", "DECIMAL", "CHECKBOX", "DATE", "DATETIME"];
+
+export interface FormSchema {
+  entity: string;
+  label: string;
+  /** Name of the dynamic Pydantic model (pydantic.create_model). */
+  model_name: string;
+  fields: FormField[];
+  /** Field groups not offered in the form yet (root fields only in 0.9.8). */
+  skipped_groups: string[];
+  /** model_json_schema() of the dynamic model as pretty JSON text, for reference. */
+  json_schema_text: string;
+}
+
+export interface GenerateRequest {
+  /** How many test rows (1-100). */
+  count?: number;
+  /** Optional Faker seed for repeatable rows. */
+  seed?: number | null;
+}
+
+export interface GeneratedFieldRule {
+  field: string;
+  /** How Faker fills this field, in plain words. */
+  rule: string;
+}
+
+export interface GeneratedRows {
+  entity: string;
+  rows: NewRecord[];
+  rules: GeneratedFieldRule[];
+  faker_version: string;
+  note: string;
+}
+
+export interface NewRecord {
+  /** sourcePKey. Empty: the backend makes TXMDM-<yyyymmddHHMMSS>-<n>. */
+  source_pkey?: string | null;
+  /** Root fields, keyed by field name. */
+  values: Record<string, string | number | boolean | null>;
+}
+
 export interface RecordPage {
   entity: BusinessEntity;
   hits: number | null;
   records: EntityRecord[];
   /** Record keys the entity metadata did not describe (listed, never guessed). */
   unknown_keys: string[];
+}
+
+export interface SourceSystemList {
+  /** [sources] allowed in b360_entities.toml, exact case. Only these can be sent. */
+  allowed: string[];
+  /** [sources] default (falls back to the first allowed). */
+  default: string | null;
+  /** Source system ids IDMC listed (may be empty). */
+  discovered: string[];
+  /** Discovered but not in the allowed list: add to b360_entities.toml to allow. */
+  not_allowed: string[];
+  discovery: DiscoveryStatus;
+  /** What the discovery call returned, in plain words. */
+  discovery_note: string;
+  /** The metadata call that was tried. */
+  source: string;
 }

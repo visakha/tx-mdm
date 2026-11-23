@@ -21,3 +21,16 @@ MDM_HEADERS = ("IDS-SESSION-ID",)
 DEFAULT_LIMIT = 10
 MAX_LIMIT = 50
 METADATA_CACHE_SECONDS = 300  # the reference says model metadata refreshes every 5 min (p. 15)
+
+# 0.9.8 Add records. Create Master Record, reference pp. 51-55:
+#   POST <baseApiURL>/business-entity/public/api/v1/entity/<businessEntity>
+#        ?sourceSystem=<sourceSystem>&sourcePKey=<pkey>
+#   body = the record's fields by internal name; 200 -> {"approvalRequired", "id" (deprecated),
+#   "businessId"} (p. 55). The ONLY write call in the B360 Data notebook.
+CREATE_RECORD = "/business-entity/public/api/v1/entity/{guid}"
+MAX_CREATE = 100
+
+# Source systems: the reference documents NO list call. This path follows the same
+# /metadata/api/v2/objects/<type> family as businessEntity. UNVERIFIED: may 404 on a real org;
+# the service then reports NOT_AVAILABLE and the TOML allowed list is used alone.
+SOURCE_SYSTEMS = "/metadata/api/v2/objects/sourceSystem"

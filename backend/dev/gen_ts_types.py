@@ -41,6 +41,7 @@ def _closure(spec: dict[str, Any]) -> list[str]:
         if path.startswith(PREFIX):
             for op in ops.values():
                 _refs(op.get("responses", {}).get("200", {}), found)
+                _refs(op.get("requestBody", {}), found)  # 0.9.8: POST bodies are typed too
     todo = list(found)
     while todo:
         inner: set[str] = set()

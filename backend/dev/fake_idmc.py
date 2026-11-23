@@ -573,7 +573,7 @@ def business_entity(guid: str) -> dict[str, Any] | JSONResponse:
 @app.post("/search/public/api/v1/search")
 def be_search(body: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:  # noqa: B008
     guid = str(body.get("entityType") or "")
-    records = _fake_records(guid) if guid in _B360_ENTITIES else []
+    records = _fake_records(guid) + _CREATED.get(guid, []) if guid in _B360_ENTITIES else []
     size = int(body.get("recordsToReturn") or body.get("pageSize") or 25)
     return {
         "searchResult": {
@@ -583,3 +583,43 @@ def be_search(body: dict[str, Any] = Body(default_factory=dict)) -> dict[str, An
             "records": records[:size],
         }
     }
+
+
+# ---- 0.9.8 Add records ----------------------------------------------------------------------
+# Create Master Record (reference pp. 51-55). Created rows are kept in memory and show up in the
+# search above, so the Records view refreshes with them. Test hooks by sourcePKey:
+# containing "FAIL400" -> 400, containing "RATE429" -> 429.
+_CREATED: dict[str, list[dict[str, Any]]] = {}
+_FAKE_SOURCE_SYSTEMS = ["c360.default.system", "zlv_ttf", "zlv_eci", "salesforce"]
+
+
+@app.get("/metadata/api/v2/objects/sourceSystem")
+def source_systems() -> dict[str, Any]:
+    """Undocumented on the real org (UNVERIFIED); the fake answers in the metadata style."""
+    return {
+        "content": [
+            {"eClass": _CORE + "SourceSystem", "guid": g, "name": g} for g in _FAKE_SOURCE_SYSTEMS
+        ]
+    }
+
+
+@app.post("/business-entity/public/api/v1/entity/{guid}", response_model=None)
+def create_master_record(
+    guid: str,
+    sourceSystem: str,  # noqa: N803 - IDMC query parameter name
+    sourcePKey: str = "",  # noqa: N803
+    body: dict[str, Any] = Body(default_factory=dict),  # noqa: B008
+) -> dict[str, Any] | JSONResponse:
+    if guid not in _B360_ENTITIES:
+        return JSONResponse(status_code=404, content={"message": f"unknown entity {guid}"})
+    if "RATE429" in sourcePKey:
+        return JSONResponse(status_code=429, content={"message": "Too many requests"})
+    if "FAIL400" in sourcePKey or sourceSystem not in _FAKE_SOURCE_SYSTEMS:
+        return JSONResponse(status_code=400, content={"message": f"rejected {sourcePKey}"})
+    rows = _CREATED.setdefault(guid, [])
+    business_id = f"TX{len(rows) + 1:013d}"
+    prefix = guid.replace(".", "")
+    record: dict[str, Any] = {"_meta": {"businessId": business_id, "businessEntity": guid}}
+    record.update({f"{prefix}.{key}": value for key, value in body.items()})
+    rows.append(record)
+    return {"approvalRequired": False, "id": business_id, "businessId": business_id}

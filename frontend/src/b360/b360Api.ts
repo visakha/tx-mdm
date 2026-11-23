@@ -1,7 +1,7 @@
 // B360 Data notebook (0.9.5): read-only backend calls. Types come from api-types.ts, which is
 // GENERATED from the backend Pydantic models (npm run gen:types) - never hand-edit them here.
 
-import { getJson } from "../shared/api";
+import { getJson, postJson } from "../shared/api";
 import type {
   BusinessEntity,
   BusinessEntityList,
@@ -10,8 +10,16 @@ import type {
   EntityField,
   EntityRecord,
   EntityScope,
+  CreateRequest,
+  CreateResponse,
   FieldDataType,
+  FormField,
+  FormInput,
+  FormSchema,
+  GeneratedRows,
+  NewRecord,
   RecordPage,
+  SourceSystemList,
 } from "./api-types";
 
 export type { BusinessEntity, BusinessEntityList, EntityField, EntityRecord, RecordPage };
@@ -30,7 +38,51 @@ export const b360Api = {
   metadata: (name: string): Promise<BusinessEntity> => getJson<BusinessEntity>(`${base(name)}/metadata`),
   records: (name: string, limit = B360_LIMIT): Promise<RecordPage> =>
     getJson<RecordPage>(`${base(name)}/records?limit=${limit}`),
+  // 0.9.8 Add records. Only create() writes to IDMC, and only on a person's Save / Send.
+  sourceSystems: (): Promise<SourceSystemList> => getJson<SourceSystemList>("/api/b360/source-systems"),
+  formSchema: (name: string): Promise<FormSchema> => getJson<FormSchema>(`${base(name)}/form-schema`),
+  generate: (name: string, count: number, seed: number | null = null): Promise<GeneratedRows> =>
+    postJson<GeneratedRows>(`${base(name)}/records/generate`, { count, seed }),
+  create: (name: string, request: CreateRequest): Promise<CreateResponse> =>
+    postJson<CreateResponse>(`${base(name)}/records`, request),
 };
+
+export type { CreateResponse, FormField, FormSchema, GeneratedRows, NewRecord, SourceSystemList };
+
+export const MAX_ADD = 100;
+
+/** Clamp the "Number of records" box to 1..100 (default 5 for anything unreadable). */
+export function clampCount(text: string): number {
+  const n = Number.parseInt(text, 10);
+  if (!Number.isFinite(n)) return 5;
+  return Math.min(MAX_ADD, Math.max(1, n));
+}
+
+/** Form text -> typed value for the field's input kind. "" means not given (null). */
+export function parseInput(text: string, input: FormInput): CellValue {
+  const t = text.trim();
+  if (input === "CHECKBOX") return t === "true";
+  if (t === "") return null;
+  if (input === "INTEGER" || input === "DECIMAL") {
+    const n = Number(t);
+    return Number.isFinite(n) ? n : t; // the backend's dynamic model reports a bad number
+  }
+  return t;
+}
+
+/** Required fields that are still empty, by label. */
+export function missingRequired(fields: readonly FormField[], values: Record<string, CellValue>): string[] {
+  return fields
+    .filter((f) => f.required && (values[f.name] === null || values[f.name] === undefined || values[f.name] === ""))
+    .map((f) => f.label);
+}
+
+/** Drop empty values so the backend sees "not given", not "". */
+export function cleanValues(values: Record<string, CellValue>): Record<string, CellValue> {
+  const out: Record<string, CellValue> = {};
+  for (const [k, v] of Object.entries(values)) if (v !== null && v !== "") out[k] = v;
+  return out;
+}
 
 /** Display text of one cell; dates/datetimes arrive as ISO strings. */
 export function cellText(value: CellValue | undefined, type: FieldDataType): string {

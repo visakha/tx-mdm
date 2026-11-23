@@ -17,7 +17,14 @@ import {
 } from "./cdi/taskflowApi";
 import { mdmApi, type MdmJob } from "./mdm/mdmApi";
 import { mdmMonitorApi, type MdmJobInstance, type MdmMonitorSnapshot } from "./mdm/mdmMonitorApi";
-import { b360Api, type BusinessEntity, type BusinessEntityList, type RecordPage } from "./b360/b360Api";
+import {
+  b360Api,
+  type BusinessEntity,
+  type BusinessEntityList,
+  type GeneratedRows,
+  type RecordPage,
+  type SourceSystemList,
+} from "./b360/b360Api";
 import { openB360Record } from "./b360/B360DataPanel";
 import { getJson } from "./shared/api";
 import type { RunView } from "./shared/run";
@@ -75,6 +82,8 @@ export const ACTIONS: readonly ActionInfo[] = [
   { name: "listB360Entities", args: "(scope = 'focus')", description: "B360 Data: business entities derived from the metadata APIs (GET /api/b360/entities?scope=focus|all). focus (default) = only the entities in backend/b360_entities.toml (left pane); all = every entity with its category (CUSTOM, OUT_OF_THE_BOX c360.*, REFERENCE rdm.*, TEMPLATE entity.*). Opens the notebook (all-entities page).", sideEffect: false },
   { name: "getB360Metadata", args: "(name)", description: "B360 Data: one entity's typed fields + field groups from its metadata.", sideEffect: false },
   { name: "getB360Records", args: "(name)", description: "B360 Data: open an entity and read its first 10 records (top-level values + field group rows).", sideEffect: false },
+  { name: "getB360SourceSystems", args: "()", description: "B360 Data Add records: source systems allowed in backend/b360_entities.toml (default zlv_ttf) plus any an undocumented IDMC metadata call found.", sideEffect: false },
+  { name: "generateB360Rows", args: "(name, count = 5)", description: "B360 Data Add records: Faker test rows (1-100) for an entity from the backend. Preview only, nothing is sent to IDMC. Sending is a person's Save / Send to B360 button (it asks first).", sideEffect: false },
   { name: "openB360Record", args: "(businessId)", description: "B360 Data: open one record of the open entity; its field groups show stacked below.", sideEffect: false },
   { name: "lookupMdmJob", args: "(instanceId)", description: "Read any B360 job instance by its full id (status, times, started by, counts, errors).", sideEffect: false },
 ];
@@ -194,6 +203,8 @@ export const txmdm = {
     navigate({ screen: "b360", service: "mdm", entity: name });
     return b360Api.records(name);
   },
+  getB360SourceSystems: (): Promise<SourceSystemList> => b360Api.sourceSystems(),
+  generateB360Rows: (name: string, count = 5): Promise<GeneratedRows> => b360Api.generate(name, count),
   openB360Record,
   lookupMdmJob: (instanceId: string): Promise<MdmJobInstance> => mdmMonitorApi.lookup(instanceId),
   getMonitor: (onlyMyTasks = true, rowLimit = 50): Promise<MonitorSnapshot> =>

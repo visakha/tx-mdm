@@ -200,3 +200,21 @@ Step 3 - the first 10 records
   entity [to] be shown should be written to a config file or a toml file in the backend".
 - So `scope=focus` filters the derived list to the TOML entries; nothing else is hardcoded.
   Category is by name prefix only (`app/b360data/scope.py: category_of`).
+
+
+## B360 Add records (0.9.8, Vamsi 2026-11-23 01:05-01:10 CST)
+
+- Create Master Record (reference pp. 51-55): `POST {mdm}/business-entity/public/api/v1/entity/<entity>?sourceSystem=<ss>&sourcePKey=<pkey>`,
+  header `IDS-SESSION-ID`, body = the record's fields by internal name (picklists as `{"Code": ...}`, the
+  reference example's shape; UNVERIFIED on his org - zlv_guest has no picklists). 200 reply:
+  `{"approvalRequired": bool, "id": "<deprecated>", "businessId": "..."}` (p. 55). Code: `app/b360data/service.py` `create`.
+- sourceSystem is REQUIRED. Vamsi's source systems (his words, 01:09-01:10 CST, corrected to all
+  lowercase): `zlv_ttf`, `zlv_eci`; plus the out-of-box `c360.default.system` (seen in the Postman
+  collection). Seeded in `backend/b360_entities.toml` `[sources]`, default `zlv_ttf` (builder's choice:
+  the egress job is Src_TTF). The internal ids are as he dictated; NOT yet checked against IDMC - if IDMC
+  rejects one, the result row shows IDMC's own error text.
+- Listing source systems: the reference has NO documented call (searched 2026-11-23). The backend tries
+  `GET {mdm}/metadata/api/v2/objects/sourceSystem` (same /metadata/api/v2/objects family as businessEntity)
+  - UNDOCUMENTED, UNVERIFIED; any non-429 error -> `NOT_AVAILABLE`, the TOML list is used alone.
+- Default sourcePKey: `TXMDM-<yyyymmddHHMMSS>-<n>` (backend local time, n = 1-based row in the request).
+- Never called against the live org by the builder: tests use respx + the fake IDMC only.

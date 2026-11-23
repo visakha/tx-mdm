@@ -66,3 +66,12 @@ call `txmdm.about()`.
 - `B360_ENTITIES_FILE=/path/other.toml` points elsewhere (tests use tmp files).
 - Bad file (not TOML, missing `name`, unknown key, bad characters, duplicate) = `FocusConfigError`
   at startup. Check: `GET /api/b360/entities` -> `focus` (each entry with `found`) and `focus_file`.
+
+
+## B360 Add records (0.9.8)
+
+- After pulling: in backend, `pip install -e ".[dev]"` (new dependency faker), then restart uvicorn.
+- Fake IDMC answers `GET /metadata/api/v2/objects/sourceSystem` (c360.default.system, zlv_ttf, zlv_eci,
+  salesforce) and `POST /business-entity/public/api/v1/entity/{guid}`; created rows show in its search.
+  Test hooks: a sourcePKey containing `FAIL400` -> 400, containing `RATE429` -> 429.
+- Tests: `backend/tests/test_b360_add_records.py`.
