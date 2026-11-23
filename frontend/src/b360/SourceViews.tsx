@@ -17,12 +17,14 @@ import { Input } from "@ui-sdk/react/input";
 import { Listbox, ListboxItem } from "@ui-sdk/react/listbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@ui-sdk/react/select";
 import { errorText } from "../shared/api";
-import type { BusinessEntity, EntityField, FormSchema, NewGroupRow, NewRecord, SourceRecord } from "./api-types";
+import type { BusinessEntity, EntityField, FieldVisibility, FormSchema, NewGroupRow, NewRecord, SourceRecord } from "./api-types";
 import {
   b360Api,
   cellText,
   cleanGroups,
   cleanValues,
+  isShown,
+  isSystemColumnShown,
   systemValue,
   systemValueText,
   type CellValue,
@@ -122,10 +124,12 @@ function SourceDetail({
   entity,
   record,
   onEdit,
+  vis,
 }: {
   entity: BusinessEntity;
   record: SourceRecord;
   onEdit: (pick: SourceKeyPick) => void;
+  vis: FieldVisibility | undefined;
 }): React.JSX.Element {
   const key = `${record.source_system}/${record.source_pkey}`;
   return (
@@ -146,7 +150,7 @@ function SourceDetail({
         <h4>Root fields</h4>
         <table className="monitor kv" aria-label={`Source ${key} root fields`}>
           <tbody>
-            {entity.fields.map((f) => (
+            {entity.fields.filter((f) => isShown(vis, f.name)).map((f) => (
               <tr key={f.name}>
                 <th title={`${f.name} (${f.data_type})`}>{f.label}</th>
                 <td>{cellText(record.values[f.name], f.data_type)}</td>
@@ -155,7 +159,8 @@ function SourceDetail({
           </tbody>
         </table>
       </section>
-      {entity.field_groups.map((g) => {
+      {entity.field_groups.filter((g) => isShown(vis, g.name)).map((g0) => {
+        const g = { ...g0, fields: g0.fields.filter((f) => isShown(vis, `${g0.name}.${f.name}`)) };
         const rows = record.groups.find((b) => b.group === g.name)?.rows ?? [];
         return (
           <section key={g.name} className="b360-group" data-testid={`b360-source-group-${g.name}`}>
@@ -198,7 +203,7 @@ function SourceDetail({
           </h4>
           <table className="monitor kv" aria-label={`Source ${key} system fields`}>
             <tbody>
-              {(record.system_values ?? []).map((v) => (
+              {(record.system_values ?? []).filter((v) => isSystemColumnShown(vis, v.name)).map((v) => (
                 <tr key={v.name} className="system-row" data-origin="SYSTEM">
                   <th>
                     <code>{v.name}</code>
@@ -267,7 +272,9 @@ export function SourceRecordsView({
   );
 
   const records: readonly SourceRecord[] = looked !== null ? [looked] : (list?.records ?? []);
-  const sysCols: readonly EntityField[] = list?.system_columns ?? [];
+  const vis = list?.visibility;
+  const sysCols: readonly EntityField[] = (list?.system_columns ?? []).filter((c) => isSystemColumnShown(vis, c.name));
+  const cols = entity.fields.filter((f) => isShown(vis, f.name));
   const current = records.find((r) => `${r.source_system}/${r.source_pkey}` === picked) ?? null;
 
   return (
@@ -314,7 +321,7 @@ export function SourceRecordsView({
               <tr>
                 <th>Source system</th>
                 <th>sourcePKey</th>
-                {entity.fields.map((f) => (
+                {cols.map((f) => (
                   <th key={f.name} title={`${f.name} (${f.data_type})`}>{f.label}</th>
                 ))}
                 {sysCols.map((c) => (
@@ -339,7 +346,7 @@ export function SourceRecordsView({
                     <td>
                       <code>{r.source_pkey}</code>
                     </td>
-                    {entity.fields.map((f) => (
+                    {cols.map((f) => (
                       <td key={f.name}>{cellText(r.values[f.name], f.data_type)}</td>
                     ))}
                     {sysCols.map((c) => (
@@ -355,7 +362,7 @@ export function SourceRecordsView({
         </div>
         </>
       )}
-      {current !== null && <SourceDetail entity={entity} record={current} onEdit={onEdit} />}
+      {current !== null && <SourceDetail entity={entity} record={current} onEdit={onEdit} vis={vis} />}
     </section>
   );
 }

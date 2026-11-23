@@ -484,3 +484,20 @@ chars at start, 15 / 3284 on Records (M), 15 / 4247 on Metadata (M), 57 / 9362 a
 shell is ready first, the entity list a few seconds later - wait for the label you need.
 Still not in the snapshot by design: tables themselves (own markup, labelled with aria-label); agents use
 the chip-row Listboxes instead.
+
+## v0.9.11 (2026-11-23 ~02:10 CST): hide fields via TOML, ffr_ left empty, API docs link
+
+- **Title bar**: "API docs" link (`api-docs-link`, aria-label "OpenAPI docs") just before the version label;
+  opens the backend Swagger UI `/docs` in a new tab. Vite proxies `/docs` and `/openapi.json` to the backend
+  like `/api`, so it is same-origin on his laptop (Vamsi 02:08 CST).
+- **Hide fields** (Vamsi 02:01 CST): `backend/b360_entities.toml` lists every field of zlv_guest under
+  `fields = [...]`, one per line (configured, x_phone group + its fields, system fields, `_meta.*`). Comment a
+  line out with `#` and restart the backend: that column / detail row disappears from Records (M) and Records
+  (S) (a commented group hides the whole group). Metadata tabs still show everything. The page lists what is
+  hidden (`b360-hidden-fields`); a name the metadata does not know shows a warning line
+  (`b360-visibility-warning`) and is ignored. No list = show all. Backend-first: the records endpoints return
+  a typed `visibility` {listed, hidden, warnings}.
+- **Generate**: ffr_<x> = freeform reason (free text for when validation of <x> fails), so generated rows
+  leave every ffr_* empty; the rules line says so.
+- Fake IDMC note: the fake's zlv_guest has different field names (guestId, fullName ...), so with the repo
+  TOML the fake screens show warnings and hide the fake-only fields. Expected; his org matches the list.

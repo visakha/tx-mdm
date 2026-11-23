@@ -173,6 +173,25 @@ class LookupMode(StrEnum):
     BUSINESS_ID = "BUSINESS_ID"  # Read Master Record by Business ID (p. 56-58)
 
 
+class FieldVisibility(BaseModel):
+    """0.10 (Vamsi 02:01 CST): which fields the Records (M)/(S) columns and record detail show.
+
+    From the entity's `fields = [...]` list in b360_entities.toml: a name commented out there is
+    hidden. Names: root field `first_name`, group `x_phone`, group field `x_phone.ph_num`, system
+    field `validationType`, record system metadata `_meta.lastUpdateDate`. The Metadata tab always
+    shows everything."""
+
+    listed: bool = Field(
+        default=False, description="True when the TOML has a fields list (else everything shows)."
+    )
+    hidden: list[str] = Field(
+        default_factory=list, description="Metadata names hidden on the records screens."
+    )
+    warnings: list[str] = Field(
+        default_factory=list, description="TOML names not in the metadata (ignored, not a crash)."
+    )
+
+
 class RecordPage(BaseModel):
     entity: BusinessEntity
     hits: int | None
@@ -192,6 +211,7 @@ class RecordPage(BaseModel):
         default_factory=list,
         description="0.9.10: _meta keys present in these records, origin SYSTEM, reply order.",
     )
+    visibility: FieldVisibility = Field(default_factory=FieldVisibility)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -417,6 +437,7 @@ class SourceRecordList(BaseModel):
     system_columns: list[EntityField] = Field(
         default_factory=list, description="xref _meta keys present in these records (SYSTEM)."
     )
+    visibility: FieldVisibility = Field(default_factory=FieldVisibility)
 
 
 class PatchOperation(StrEnum):

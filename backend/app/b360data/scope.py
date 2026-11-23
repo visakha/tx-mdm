@@ -18,10 +18,11 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
-from app.b360data.models import EntityCategory
+from app.b360data.models import BusinessEntity, EntityCategory, FieldVisibility
 
 ENV_VAR = "B360_ENTITIES_FILE"
 _SOURCE_ID = re.compile(r"[A-Za-z0-9._-]{1,128}")
+_FIELD_NAME = re.compile(r"[A-Za-z0-9._-]{1,256}")
 DEFAULT_FILE = Path(__file__).resolve().parents[2] / "b360_entities.toml"
 
 
@@ -32,11 +33,29 @@ class FocusEntity(BaseModel):
 
     name: str = Field(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9._-]+$")
     label: str | None = Field(default=None, min_length=1, max_length=128)
+    fields: list[str] | None = Field(
+        default=None,
+        description="0.10: every field / group / system name, one per line; comment one out with "
+        "# to hide it on the records screens. Missing list = show all.",
+    )
 
     @field_validator("name")
     @classmethod
     def _strip(cls, value: str) -> str:
         return value.strip()
+
+    @field_validator("fields")
+    @classmethod
+    def _field_names(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
+        out = [v.strip() for v in value]
+        for item in out:
+            if not _FIELD_NAME.fullmatch(item):
+                raise ValueError(f"bad field name {item!r} (letters, digits, . _ - only)")
+        if len({v.lower() for v in out}) != len(out):
+            raise ValueError("a field is listed twice")
+        return out
 
 
 class SourcesConfig(BaseModel):
@@ -88,6 +107,13 @@ class FocusConfig(BaseModel):
         for e in self.entity:
             if e.name.lower() == wanted:
                 return e.label
+        return None
+
+    def fields_for(self, name: str) -> list[str] | None:
+        wanted = name.strip().lower()
+        for e in self.entity:
+            if e.name.lower() == wanted:
+                return e.fields
         return None
 
     def contains(self, name: str) -> bool:
@@ -160,3 +186,44 @@ def category_of(name: str) -> EntityCategory:
 
 def is_focus(name: str) -> bool:
     return focus_config().contains(name)
+
+
+def metadata_names(entity: BusinessEntity) -> list[str]:
+    """Every name a fields list may carry, in metadata order: root fields, groups and their
+    fields (group.field), system fields, system groups (_meta) and their fields (_meta.x)."""
+    names: list[str] = [f.name for f in entity.fields]
+    for g in entity.field_groups:
+        names.append(g.name)
+        names.extend(f"{g.name}.{f.name}" for f in g.fields)
+    names.extend(f.name for f in entity.system_fields)
+    for g in entity.system_field_groups:
+        names.append(g.name)
+        names.extend(f"{g.name}.{f.name}" for f in g.fields)
+    return names
+
+
+def visibility_for(entity: BusinessEntity, listed: list[str] | None) -> FieldVisibility:
+    """Hidden = metadata names not in the list (a hidden group hides all its fields); TOML
+    names the metadata does not know become warnings. Compared case-insensitively."""
+    if listed is None:
+        return FieldVisibility()
+    known = metadata_names(entity)
+    keep = {n.lower() for n in listed}
+    groups = {g.name.lower() for g in [*entity.field_groups, *entity.system_field_groups]}
+    hidden: list[str] = []
+    for name in known:
+        head = name.split(".", 1)[0].lower() if "." in name else None
+        group_hidden = head is not None and head in groups and head not in keep
+        if name.lower() not in keep or group_hidden:
+            hidden.append(name)
+    known_lower = {n.lower() for n in known}
+    warnings = [
+        f"{entity.name}: '{n}' in b360_entities.toml is not in the metadata (ignored)"
+        for n in listed
+        if n.lower() not in known_lower
+    ]
+    return FieldVisibility(listed=True, hidden=hidden, warnings=warnings)
+
+
+def field_visibility(entity: BusinessEntity) -> FieldVisibility:
+    return visibility_for(entity, focus_config().fields_for(entity.name))

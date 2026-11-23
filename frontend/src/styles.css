@@ -295,3 +295,5 @@ html[data-theme="dark"] { --system: #f06fcf; }
 .record-picker, .field-list { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; padding: 0; list-style: none; }
 .record-picker [role="option"], .field-list [role="option"] { font-size: 0.8em; padding: 1px 6px; border: 1px solid var(--line); border-radius: 3px; cursor: pointer; }
 .record-picker [aria-selected="true"] { border-color: var(--one); }
+.api-docs-link { margin-right: 8px; font-size: 0.85em; color: inherit; }
+.visibility-warn { color: var(--warn); }

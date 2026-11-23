@@ -35,6 +35,8 @@ import {
   groupRows,
   lastUpdatedText,
   recordColumns,
+  isShown,
+  isSystemColumnShown,
   systemValue,
   systemValueText,
   type EntityRecord,
@@ -101,7 +103,7 @@ function RecordDetail({ page, record }: { page: RecordPage; record: EntityRecord
         <h4>Root fields</h4>
         <table className="monitor kv">
           <tbody>
-            {page.entity.fields.map((f) => (
+            {page.entity.fields.filter((f) => isShown(page.visibility, f.name)).map((f) => (
               <tr key={f.name}>
                 <th title={`${f.name} (${f.data_type})`}>{f.label}</th>
                 <td>{cellText(record.values[f.name], f.data_type)}</td>
@@ -113,7 +115,15 @@ function RecordDetail({ page, record }: { page: RecordPage; record: EntityRecord
       {page.entity.field_groups.length === 0 ? (
         <p className="muted" data-testid="b360-no-groups">This entity has no field groups.</p>
       ) : (
-        page.entity.field_groups.map((g) => <GroupBlock key={g.name} group={g} record={record} />)
+        page.entity.field_groups
+          .filter((g) => isShown(page.visibility, g.name))
+          .map((g) => (
+            <GroupBlock
+              key={g.name}
+              group={{ ...g, fields: g.fields.filter((f) => isShown(page.visibility, `${g.name}.${f.name}`)) }}
+              record={record}
+            />
+          ))
       )}
       {(record.system_values ?? []).length > 0 && (
         <section className="b360-group system-group" data-testid="b360-detail-system" data-origin="SYSTEM">
@@ -122,7 +132,7 @@ function RecordDetail({ page, record }: { page: RecordPage; record: EntityRecord
           </h4>
           <table className="monitor kv" aria-label={`Record ${record.business_id} system fields`}>
             <tbody>
-              {(record.system_values ?? []).map((v) => (
+              {(record.system_values ?? []).filter((v) => isSystemColumnShown(page.visibility, v.name)).map((v) => (
                 <tr key={v.name} className="system-row" data-origin="SYSTEM">
                   <th>
                     <code>{v.name}</code>
@@ -507,6 +517,16 @@ export function B360DataPanel({
                 Next
               </Button>
             </div>
+            {(page.visibility?.hidden ?? []).length > 0 && (
+              <p className="muted small" data-testid="b360-hidden-fields">
+                Hidden by b360_entities.toml: {(page.visibility?.hidden ?? []).join(", ")} (Metadata tab shows all).
+              </p>
+            )}
+            {(page.visibility?.warnings ?? []).map((w) => (
+              <p key={w} className="small visibility-warn" data-testid="b360-visibility-warning">
+                Warning: {w}
+              </p>
+            ))}
             {page.unknown_keys.length > 0 && (
               <p className="muted small" data-testid="b360-unknown-keys">
                 Not in the metadata (not shown): {page.unknown_keys.join(", ")}
@@ -550,10 +570,10 @@ export function B360DataPanel({
                           Last updated {query.sort === "OLDEST_FIRST" ? "(oldest first) ^" : "(newest first) v"}
                         </Button>
                       </th>
-                      {recordColumns(page.entity).map((f) => (
+                      {recordColumns(page.entity).filter((f) => isShown(page.visibility, f.name)).map((f) => (
                         <th key={f.name} title={`${f.name} (${f.data_type})`}>{f.label}</th>
                       ))}
-                      {(page.system_columns ?? []).map((c) => (
+                      {(page.system_columns ?? []).filter((c) => isSystemColumnShown(page.visibility, c.name)).map((c) => (
                         <th key={c.name} className="system-col" data-origin="SYSTEM" title={`${c.name} (system)`}>
                           {c.name}
                         </th>
@@ -573,10 +593,10 @@ export function B360DataPanel({
                         <td data-testid={`b360-updated-${r.business_id}`} title={r.updated_by ? `by ${r.updated_by}` : undefined}>
                           {lastUpdatedText(r.last_updated)}
                         </td>
-                        {recordColumns(page.entity).map((f) => (
+                        {recordColumns(page.entity).filter((f) => isShown(page.visibility, f.name)).map((f) => (
                           <td key={f.name}>{cellText(r.values[f.name], f.data_type)}</td>
                         ))}
-                        {(page.system_columns ?? []).map((c) => (
+                        {(page.system_columns ?? []).filter((c) => isSystemColumnShown(page.visibility, c.name)).map((c) => (
                           <td key={c.name} className="system-col" data-origin="SYSTEM">
                             {systemValueText(c.name, systemValue(r.system_values, c.name))}
                           </td>

@@ -253,3 +253,14 @@ export function systemValueText(name: string, value: CellValue | undefined): str
 export function systemValue(values: readonly SystemValue[] | undefined, name: string): CellValue {
   return values?.find((v) => v.name === name)?.value ?? null;
 }
+
+/** 0.10: hidden names from b360_entities.toml (fields = [...]); case-insensitive. */
+export function isShown(vis: { hidden?: string[] } | undefined, name: string): boolean {
+  const wanted = name.toLowerCase();
+  return !(vis?.hidden ?? []).some((h) => h.toLowerCase() === wanted);
+}
+
+/** A record system column (a _meta key, maybe dotted) is shown unless _meta.<first part> is hidden. */
+export function isSystemColumnShown(vis: { hidden?: string[] } | undefined, column: string): boolean {
+  return isShown(vis, `_meta.${column.split(".")[0] ?? column}`) && isShown(vis, `_meta.${column}`);
+}

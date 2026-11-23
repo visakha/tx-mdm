@@ -7,8 +7,8 @@ Rules (by field name, then by data type), one place:
   - first/last/middle/full name, email, phone, city, postal code, address -> matching Faker
     provider (en_US).
   - clns_<x>  ("cleansed"): the row's own <x> value, upper-cased, letters and digits only.
-  - ffr_<x>   ("fuzzy-friendly"): the row's own <x> value, lower-cased, letters and digits only.
-    Chosen by the builder (2026-11-23); Vamsi has not said what ffr means. Change it here.
+  - ffr_<x>   = FREEFORM REASON (Vamsi 2026-11-23 02:01 CST): free-text reasoning for when data
+    validation of <x> fails. Not a name variant, so generated rows leave every ffr_* EMPTY.
   - INTEGER phone number (name has "phone" or starts "ph_"): a 10-digit number;
     INTEGER country code (name has "cntry" / "country"): 1.
   - PICKLIST: one of the Codes IDMC itself returned for that field (forms.PICKLIST_NOTE); none
@@ -39,10 +39,18 @@ from app.b360data.models import (
 )
 
 _NON_ALNUM = re.compile(r"[^A-Za-z0-9]")
-_DERIVED = (
-    ("clns_", "cleansed: upper-case, letters and digits only"),
-    ("ffr_", "fuzzy-friendly: lower-case, letters and digits only"),
+_DERIVED = (("clns_", "cleansed: upper-case, letters and digits only"),)
+FREEFORM_REASON_PREFIX = "ffr_"
+FREEFORM_REASON_RULE = (
+    "left empty: ffr_ = freeform reason, free text for when validation of the field fails"
 )
+
+
+def _is_freeform_reason(name: str) -> bool:
+    return name.lower().startswith(FREEFORM_REASON_PREFIX) and len(name) > len(
+        FREEFORM_REASON_PREFIX
+    )
+
 
 # name hint (substring of the lower-cased field name) -> (Faker call, plain words)
 _HINTS: tuple[tuple[str, str, str], ...] = (
@@ -102,6 +110,8 @@ def _is_country_code(name: str) -> bool:
 
 
 def rule_for(field: EntityField, codes: list[str] | None = None) -> str:
+    if _is_freeform_reason(field.name):
+        return FREEFORM_REASON_RULE
     if field.data_type in (FieldDataType.PICKLIST, FieldDataType.DEPENDENT_PICKLIST):
         if codes:
             return "one of the Codes IDMC returned: " + ", ".join(codes)
@@ -152,10 +162,12 @@ def _cleanse(value: FieldValue, upper: bool) -> str:
 def _row(
     fake: Faker, fields: list[EntityField], codes: dict[str, list[str]]
 ) -> dict[str, FieldValue]:
-    """Plain fields first, so clns_/ffr_ copies can use the row's own value."""
+    """Plain fields first, so clns_ copies can use the row's own value. ffr_* stay empty."""
     by_name = {f.name.lower(): f for f in fields}
     values: dict[str, FieldValue] = {}
     for field in fields:
+        if _is_freeform_reason(field.name):
+            continue  # freeform reason: never generated
         if _derived(field.name) is None:
             values[field.name] = _fresh(fake, field, codes.get(field.name))
     for field in fields:
@@ -166,7 +178,7 @@ def _row(
         base = values.get(base_field.name) if base_field else None
         if base is None:
             base = _fresh(fake, field)
-        values[field.name] = _cleanse(base, upper=field.name.lower().startswith("clns_"))
+        values[field.name] = _cleanse(base, upper=True)
     return values
 
 

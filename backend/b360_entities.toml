@@ -7,6 +7,13 @@
 #   - label = optional. Overrides the label from the metadata in the left pane.
 #   - Order here is the order in the left pane.
 #   - A name that is not in your org's metadata shows as "not found in org"; nothing crashes.
+#   - fields = optional. Every field, field group and system field of the entity, ONE PER LINE.
+#             Comment a line out with # to HIDE it from the Records (M) / Records (S) columns and the
+#             record detail. The Metadata tabs still show everything. No fields list = show all.
+#             Names: root field first_name; group x_phone (commenting it hides the whole group);
+#             group field x_phone.ph_num; system field validationType; record system metadata
+#             _meta.lastUpdateDate. A name not in the metadata shows a warning line on the page and
+#             is ignored; nothing crashes.
 #
 # The backend reads this file ONCE at startup. Edit, save, then restart the backend
 # (Ctrl+C, then uvicorn again). A bad file stops the backend at startup with a clear error.
@@ -16,6 +23,43 @@
 [[entity]]
 name = "zlv_guest"
 # label = "ZLV Guest"
+# Starting list = zlv_guest's live metadata as read on 2026-11-23 ~02:00 CST.
+fields = [
+  # configured root fields
+  "first_name",
+  "clns_first_name",
+  "last_name",
+  "clns_last_name",
+  "ffr_first_name",   # ffr = freeform reason: text for when validation of first_name fails
+  "ffr_last_name",
+  "do_not_contact_ind",
+  # field group x_phone
+  "x_phone",
+  "x_phone.cntry_cd",
+  "x_phone.ph_num",
+  "x_phone.ph_typ",
+  "x_phone.no_mrkt_calls",
+  # system fields (validation, record state, index validation)
+  "validationType",
+  "validationState",
+  "recordStateIndicator",
+  "_indexValidationError.code",
+  # record system metadata (_meta), system-owned
+  "_meta",
+  "_meta.businessId",
+  "_meta.id",
+  "_meta.businessEntity",
+  "_meta.state",
+  "_meta.validation",
+  "_meta.consolidation",
+  "_meta.searchIndex",
+  "_meta.score",
+  "_meta.createdBy",
+  "_meta.creationDate",
+  "_meta.updatedBy",
+  "_meta.lastUpdateDate",
+  "_meta.changeList",
+]
 
 # Source systems the "Add records" tab may send new records to (Create Master Record API).
 #   - allowed = the source system ids EXACTLY as IDMC knows them. Case matters: zlv_ttf, not ZLV_TTF.

@@ -147,6 +147,10 @@ export function App(): React.JSX.Element {
             ? (focus?.focus.find((f) => f.name === route.entity)?.label ?? route.entity)
             : SECTIONS.find((s) => s.id === section)?.label}
         </span>
+        {/* 0.10 (Vamsi 02:08 CST): link to the backend's OpenAPI docs (Swagger UI), same-origin via the Vite proxy. */}
+        <a className="api-docs-link" href="/docs" target="_blank" rel="noopener noreferrer" aria-label="OpenAPI docs" data-testid="api-docs-link">
+          API docs
+        </a>
         <span className="about-version" data-testid="about-version" title="Backend version (GET /api/about)">
           {version === "" ? "" : `v${version}`}
         </span>

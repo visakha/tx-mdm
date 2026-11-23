@@ -101,7 +101,10 @@ def test_faker_rows_fit_and_derive() -> None:
     for row in rows.rows:
         first = str(row.values["first_name"])
         assert row.values["clns_first_name"] == "".join(c for c in first if c.isalnum()).upper()
-        assert row.values["ffr_first_name"] == "".join(c for c in first if c.isalnum()).lower()
+        # ffr_ = freeform reason (Vamsi 02:01 CST): never generated, left empty.
+        assert "ffr_first_name" not in row.values and "ffr_last_name" not in row.values
+    rules = {r.field: r.rule for r in rows.rules}
+    assert rules["ffr_first_name"].startswith("left empty: ffr_ = freeform reason")
 
 
 def test_generate_endpoint_caps_at_100(idmc: respx.MockRouter, idmc_http: IdmcHttp) -> None:

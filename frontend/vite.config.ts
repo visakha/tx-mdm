@@ -12,6 +12,9 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": apiTarget,
+      // 0.10: the title-bar "API docs" link opens FastAPI's Swagger UI same-origin.
+      "/docs": apiTarget,
+      "/openapi.json": apiTarget,
     },
   },
 });

@@ -160,8 +160,9 @@ this; `app/main.py` forces stdout/stderr to ASCII with backslash escapes at runt
 - Validation happens for the WHOLE request before the first call: one bad row -> 422, zero records sent.
 - A network error mid-send marks that row UNKNOWN and stops: it may exist in B360. Check the Records tab
   before sending again (a repeat would create a second record with a new sourcePKey).
-- The generator's `ffr_` rule (lower-case letters and digits) is the builder's guess at "ffr"; `clns_` =
-  upper-case letters and digits. Both live in `app/b360data/testdata.py`.
+- `ffr_` = FREEFORM REASON (Vamsi 2026-11-23 02:01 CST): free text for when validation of the field fails.
+  Since 0.9.11 the generator leaves every ffr_* empty (0.9.8-0.9.10 wrongly copied a lower-cased name in).
+  `clns_` = upper-case letters and digits of the row's own value. Both in `app/b360data/testdata.py`.
 - `pip install -e ".[dev]"` again after pulling 0.9.8: `faker` is a new dependency.
 
 ## B360 lastUpdateDate types (0.9.9)

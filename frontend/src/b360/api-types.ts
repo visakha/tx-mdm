@@ -137,6 +137,15 @@ export interface FieldGroupRows {
 export type FieldOrigin = "CONFIGURED" | "SYSTEM";
 export const FIELDORIGIN_VALUES: readonly FieldOrigin[] = ["CONFIGURED", "SYSTEM"];
 
+export interface FieldVisibility {
+  /** True when the TOML has a fields list (else everything shows). */
+  listed?: boolean;
+  /** Metadata names hidden on the records screens. */
+  hidden?: string[];
+  /** TOML names not in the metadata (ignored, not a crash). */
+  warnings?: string[];
+}
+
 export interface FocusEntityStatus {
   /** Entity id as written in b360_entities.toml. */
   name: string;
@@ -277,6 +286,7 @@ export interface RecordPage {
   note?: string;
   /** 0.9.10: _meta keys present in these records, origin SYSTEM, reply order. */
   system_columns?: EntityField[];
+  visibility?: FieldVisibility;
 }
 
 export type SortOrder = "NEWEST_FIRST" | "OLDEST_FIRST";
@@ -323,6 +333,7 @@ export interface SourceRecordList {
   note?: string;
   /** xref _meta keys present in these records (SYSTEM). */
   system_columns?: EntityField[];
+  visibility?: FieldVisibility;
 }
 
 export interface SourceSystemList {

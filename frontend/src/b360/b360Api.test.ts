@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { BusinessEntity, EntityRecord, FieldDataType } from "./api-types";
 import { FIELDDATATYPE_VALUES } from "./api-types";
-import { clampCount, cleanValues, missingRequired, parseInput } from "./b360Api";
+import { clampCount, cleanValues, isShown, isSystemColumnShown, missingRequired, parseInput } from "./b360Api";
 import { cellText, focusNavItems, focusNavValue, groupByCategory, groupRows, recordColumns, SHOW_ALL_VALUE } from "./b360Api";
 
 const entity: BusinessEntity = {
@@ -79,5 +79,18 @@ describe("Add records helpers (0.9.8)", () => {
     ];
     expect(missingRequired(fields, { last_name: "X" })).toEqual(["First Name"]);
     expect(cleanValues({ first_name: "A", last_name: "", x: null })).toEqual({ first_name: "A" });
+  });
+});
+
+
+describe("0.10 field visibility (b360_entities.toml fields list)", () => {
+  it("hides listed-out names case-insensitively; no list shows all", () => {
+    const vis = { hidden: ["first_name", "x_phone.ph_num", "_meta.lastUpdateDate"] };
+    expect(isShown(vis, "FIRST_NAME")).toBe(false);
+    expect(isShown(vis, "last_name")).toBe(true);
+    expect(isShown(vis, "x_phone.ph_num")).toBe(false);
+    expect(isShown(undefined, "first_name")).toBe(true);
+    expect(isSystemColumnShown(vis, "lastUpdateDate")).toBe(false);
+    expect(isSystemColumnShown(vis, "createdBy")).toBe(true);
   });
 });

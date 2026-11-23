@@ -155,6 +155,16 @@ Jobs / Run). URLs are unchanged (plus `/cdi/runs`, `/mdm/runs`, `/mdm/ingress`, 
 Every status poll in the UI is 15 s (one constant, `frontend/src/shared/poll.ts`).
 Screen-by-screen notes: `internal-notes/ui-observations.md`.
 
+### Hide fields on the records screens (b360_entities.toml)
+
+`backend/b360_entities.toml` lists every field of each entity under `fields = [...]`, one per line:
+root fields (`first_name`), field groups (`x_phone`) and their fields (`x_phone.ph_num`), system fields
+(`validationType`) and record system metadata (`_meta.lastUpdateDate`). Put `#` in front of a line to hide
+that field from the Records (M) / Records (S) columns and the record detail (a commented group hides the
+whole group); the Metadata tabs always show everything. Save, then restart the backend (Ctrl+C, run
+uvicorn again). No `fields` list = show all. A name not in the metadata shows a warning line and is ignored.
+In the title bar, **API docs** opens the backend's Swagger UI (`/docs`).
+
 ### UI end-to-end (Cypress, against the fake IDMC)
 
 Start the fake stack (see "Try it without an IDMC org") and `npm run dev`, then in `frontend`:

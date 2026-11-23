@@ -161,6 +161,7 @@ class B360DataService:
             records=records,
             unknown_keys=wire.unknown_keys(raw, entity),
             system_columns=wire.system_columns([r.system_values for r in records]),
+            visibility=entity_scope.field_visibility(entity),
             page=page,
             page_size=limit,
             total_pages=max(1, math.ceil((hits or 0) / limit)),
@@ -217,6 +218,7 @@ class B360DataService:
             hits=len(raw),
             records=records,
             system_columns=wire.system_columns([r.system_values for r in records]),
+            visibility=entity_scope.field_visibility(entity),
             unknown_keys=wire.unknown_keys(raw, entity),
             page=1,
             page_size=limit,
@@ -372,6 +374,7 @@ class B360DataService:
             not_read=not_read,
             note=note,
             system_columns=wire.system_columns([r.system_values for r in records]),
+            visibility=entity_scope.field_visibility(entity),
         )
 
     def update_source(
