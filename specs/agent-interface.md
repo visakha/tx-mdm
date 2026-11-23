@@ -49,6 +49,7 @@ pixels or guess at selectors.
 | Shell | `service-tabs`, `tab-mdm`, `tab-cdi` |
 | MDM panel | `mdm-panel`, `mdm-refresh`, `mdm-filter`, `mdm-job-list`, `mdm-job-<assetId>`, `mdm-job-detail`, `mdm-run`, `mdm-load-error`, `mdm-start-error` |
 | CDI panel | `cdi-panel`, `cdi-refresh`, `cdi-filter`, `cdi-task-list`, `cdi-task-<id>`, `cdi-task-detail`, `cdi-api-name`, `cdi-run`, `cdi-load-error`, `cdi-start-error` |
+| Monitor tab | `tab-monitor`, `monitor-panel`, `monitor-pause`, `monitor-refresh`, `monitor-scope`, `monitor-status-line`, `monitor-error`, `monitor-running`, `monitor-history`, `monitor-row-<key>` (with `data-status`), `monitor-steps-<key>`, `monitor-app-runs` |
 | Results | `run-result` (with `data-run-key` and `data-status` attributes), `run-job-name`, `run-status`, `run-started`, `run-idmc-started`, `run-log`, `run-counts`, `run-errors` |
 
 Each interactive control also has an `aria-label`. Run buttons are labelled

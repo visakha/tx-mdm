@@ -7,6 +7,7 @@
 //   /cdi/jobs               CDI task list
 //   /cdi/jobs/:taskId       one CDI task (with its Run button)
 //   /cdi/runs/:runKey       results screen for one CDI run
+//   /monitor                CDI Monitor tab (running jobs + recent history)
 
 import { useCallback, useEffect, useState } from "react";
 
@@ -15,13 +16,18 @@ export type Service = "mdm" | "cdi";
 export type Route =
   | { screen: "jobs"; service: Service }
   | { screen: "job"; service: Service; jobId: string }
-  | { screen: "run"; service: Service; runKey: string };
+  | { screen: "run"; service: Service; runKey: string }
+  // The Monitor tab watches CDI jobs, so it carries service "cdi".
+  | { screen: "monitor"; service: "cdi" };
+
+export const MONITOR_ROUTE: Route = { screen: "monitor", service: "cdi" };
 
 export const DEFAULT_ROUTE: Route = { screen: "jobs", service: "mdm" };
 
 export function parseRoute(pathname: string): Route {
   const parts = pathname.split("/").filter((p) => p !== "").map(decodeURIComponent);
   const [service, kind, id] = parts;
+  if (service === "monitor" && kind === undefined) return MONITOR_ROUTE;
   if (service !== "mdm" && service !== "cdi") return DEFAULT_ROUTE;
   if (kind === "jobs" && id === undefined) return { screen: "jobs", service };
   if (kind === "jobs" && id !== undefined) return { screen: "job", service, jobId: id };
@@ -37,6 +43,8 @@ export function formatRoute(route: Route): string {
       return `/${route.service}/jobs/${encodeURIComponent(route.jobId)}`;
     case "run":
       return `/${route.service}/runs/${encodeURIComponent(route.runKey)}`;
+    case "monitor":
+      return "/monitor";
   }
 }
 

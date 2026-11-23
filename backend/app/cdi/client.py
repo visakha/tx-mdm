@@ -108,6 +108,28 @@ class CdiClient:
                 )
                 return snapshot_from_taskflow_status(body or {})
 
+    # ---- Monitor tab (read-only) -------------------------------------------------------------
+
+    def running_jobs(self) -> list[dict[str, Any]]:
+        """Every job IDMC lists as running, with child entries (details=true)."""
+        body = self._http.request(
+            "GET",
+            self.platform_url() + ep.ACTIVITY_MONITOR,
+            ep.V2_HEADERS,
+            params={"details": "true"},
+        )
+        return [e for e in body if isinstance(e, dict)] if isinstance(body, list) else []
+
+    def recent_jobs(self, row_limit: int) -> list[dict[str, Any]]:
+        """Newest finished jobs from the activity log (rowLimit max 1000 per the reference)."""
+        body = self._http.request(
+            "GET",
+            self.platform_url() + ep.ACTIVITY_LOG,
+            ep.V2_HEADERS,
+            params={"rowLimit": max(1, min(row_limit, 1000))},
+        )
+        return [e for e in body if isinstance(e, dict)] if isinstance(body, list) else []
+
     def _check_v2(self, handle: CdiRunHandle) -> CdiRunSnapshot:
         monitor = self._http.request(
             "GET",

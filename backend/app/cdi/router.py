@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 
 from app.cdi.models import CdiRunRequest, CdiTask, CdiTaskType
+from app.cdi.monitor import MonitorSnapshot
 from app.cdi.service import CdiService
 from app.common.runs import RunView
 from app.dependencies import get_cdi_service
@@ -57,3 +58,21 @@ def list_runs(service: Service) -> list[RunView]:
 )
 def get_run(run_key: str, service: Service) -> RunView:
     return service.refresh(run_key)
+
+
+@router.get(
+    "/monitor",
+    operation_id="cdi_monitor",
+    summary="Monitor CDI jobs: running now + recent history",
+    description="Read-only. Running jobs from IDMC activityMonitor (details=true, with child "
+    "steps) and the newest finished jobs from activityLog. `elapsed_minutes` is start -> now "
+    "for running jobs and start -> end for finished ones. With only_my_tasks=true (default) "
+    "only jobs whose name is in the org task list (GET /api/cdi/tasks) are kept. Also returns "
+    "the CDI runs started from this backend. Poll every 10-15 s; a 429 is a hard stop.",
+)
+def monitor(
+    service: Service,
+    row_limit: Annotated[int, Query(ge=1, le=1000)] = 50,
+    only_my_tasks: bool = True,
+) -> MonitorSnapshot:
+    return service.monitor(row_limit, only_my_tasks)

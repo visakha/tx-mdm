@@ -66,3 +66,15 @@ ASCII only in code, logs, terminal output and docs - no emoji, icons or special 
 (Windows terminals garble them). Use `->`, `-`, `...`, `OK`/`FAIL`, and `+--`/`|` for tree
 diagrams. `backend/tests/test_ascii_only.py` fails the build if a tracked text file breaks
 this; `app/main.py` forces stdout/stderr to ASCII with backslash escapes at runtime.
+
+## Monitor tab (2026-11-22)
+
+- activityMonitor `objectName` is the SOURCE object, not the task. Use `taskName` there; in
+  activityLog `objectName` is the task name. Getting this wrong makes the "my tasks" filter empty.
+- errorMsg on clean runs is "No errors encountered." - treated as no error.
+- Advanced taskflows may not appear in the v2 activity calls at all (UNVERIFIED). If the
+  Monitor shows only their MTT steps, that is why; the per-run taskflow status call is
+  `/active-bpel/services/tf/status/{runId}`.
+- Starting tf_MDM_ZLV_TTF_Guest_Basic over the API on 2026-11-22 returned IDMC 403 "User
+  VVamsi-idmcdev not authorized to access service ..." - the taskflow needs the user in its
+  Start step Allowed Users and must be re-published.

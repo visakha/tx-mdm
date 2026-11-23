@@ -6,10 +6,18 @@
 // (window.confirm), the same rule the UI SDK agent bridge applies to button presses.
 
 import { cdiApi, type CdiTask } from "./cdi/cdiApi";
+import { monitorApi, type MonitorSnapshot } from "./cdi/monitorApi";
 import { mdmApi, type MdmJob } from "./mdm/mdmApi";
 import { getJson } from "./shared/api";
 import type { RunView } from "./shared/run";
-import { currentRoute, formatRoute, navigate, type Route, type Service } from "./shared/routes";
+import {
+  currentRoute,
+  formatRoute,
+  MONITOR_ROUTE,
+  navigate,
+  type Route,
+  type Service,
+} from "./shared/routes";
 
 export interface ActionInfo {
   name: string;
@@ -28,6 +36,8 @@ export const ACTIONS: readonly ActionInfo[] = [
   { name: "runJob", args: "(service, jobId, apiName?)", description: "Start one run after a person confirms; opens its results screen. Never retries.", sideEffect: true },
   { name: "openRun", args: "(service, runKey)", description: "Open the results screen for a run (/<service>/runs/:runKey).", sideEffect: false },
   { name: "getRun", args: "(service, runKey)", description: "Read a run's current state (status, counts, errors, log).", sideEffect: false },
+  { name: "openMonitor", args: "()", description: "Show the CDI Monitor tab (/monitor).", sideEffect: false },
+  { name: "getMonitor", args: "(onlyMyTasks = true, rowLimit = 50)", description: "Read running CDI jobs (elapsed minutes) + recent history (status, rows, errors, taskflow steps).", sideEffect: false },
 ];
 
 async function runJob(service: Service, jobId: string, apiName?: string): Promise<RunView> {
@@ -67,6 +77,9 @@ export const txmdm = {
     navigate({ screen: "run", service, runKey }),
   getRun: (service: Service, runKey: string): Promise<RunView> =>
     getJson<RunView>(service === "mdm" ? mdmApi.runUrl(runKey) : cdiApi.runUrl(runKey)),
+  openMonitor: (): void => navigate(MONITOR_ROUTE),
+  getMonitor: (onlyMyTasks = true, rowLimit = 50): Promise<MonitorSnapshot> =>
+    monitorApi.get(onlyMyTasks, rowLimit),
 };
 
 export type TxMdmAgentActions = typeof txmdm;

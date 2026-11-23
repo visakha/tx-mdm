@@ -7,6 +7,7 @@ describe("routes", () => {
     ["/cdi/jobs", { screen: "jobs", service: "cdi" }],
     ["/mdm/jobs/A1", { screen: "job", service: "mdm", jobId: "A1" }],
     ["/cdi/runs/abc123", { screen: "run", service: "cdi", runKey: "abc123" }],
+    ["/monitor", { screen: "monitor", service: "cdi" }],
   ];
 
   it.each(cases)("parses and formats %s both ways", (path, route) => {
