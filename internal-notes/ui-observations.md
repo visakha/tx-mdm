@@ -130,3 +130,30 @@ plus the job / monitor / taskflow actions (`runTaskflowByName`, `trackTaskflowRu
 - Poll clock enlarged (22px -> 30px circle, 14px -> 20px icon).
 - Status text ("Running - no row counts reported yet") now sits on its own line UNDER the progress bar, not beside it.
 - New "Last refresh" row in the times list, directly before "Ended" (data-testid run-last-refresh): local date/time of the last answered status check, same format as Requested / Started in IDMC; updates in place every 15 s while running, "-" before the first answer.
+
+## v0.9.0: Business 360 Currently running (Vamsi 2026-11-22 23:55 CST) + one 15 s poll (23:56 CST)
+Observed with Cypress vs the fake IDMC (spec `cypress/e2e/mdm_running.cy.js`).
+- Left pane, Business 360 notebook: new section **Currently running** (data-nav `mdm-running`,
+  data-testid `nav-mdm-running`), URL `/mdm/running`. Ribbon tabs: Everything / Running now /
+  Recently finished / Look up id.
+- What it shows: EVERY running B360 job in the org whose jobType starts with `b360.` or `c360.`,
+  whoever started it - this app, the portal, another machine, another user. Not only runs this
+  backend started (those stay under Runs). Columns: Instance id (FULL, one line, never wrapped),
+  Job, Type, Status, Started, Elapsed (ticks every second while running), Started by, Rows in.
+  Non-B360 types (e.g. `internal.c360.ingress.fileImportJob`) are counted under the recent table,
+  not listed.
+- Test ids: `b360-monitor`, `b360-running` (table), `b360-row-<instanceId>`, `b360-recent`,
+  `b360-running-count`, `b360-refresh`, `b360-last-refresh`, `b360-error`, `b360-lookup-input`,
+  `b360-lookup`, `b360-lookup-result`, `b360-lookup-error`; shared `run-progress` + `poll-clock`.
+- Refresh: every 15 s (poll clock changes colour each answer) + Refresh now; "Last refresh:
+  <time> (every 15 s)" under the bar. A 429 stops auto-refresh for good.
+- Look up id: paste any full instance id (quotes / spaces / a trailing dot are trimmed), press
+  Look up -> one row with status, started by, counts; errors listed under it.
+- Agent bridge: `txmdm.openMdmMonitor()`, `txmdm.getMdmMonitor(rowLimit = 25)`,
+  `txmdm.lookupMdmJob(instanceId)` (read-only, no confirm).
+- 15 s everywhere: ONE constant `POLL_SECONDS` / `POLL_MS` in `frontend/src/shared/poll.ts`, used
+  by MDM + CDI run results (useRunPolling), the taskflow run view (was 10 s, now 15 s), CDI
+  Monitor and Currently running. The taskflow run view also shows "Last refresh: <time>"
+  (data-testid `tf-last-refresh`). The run results "Last refresh" row is the 2026-11-23 hotfix one.
+- Not yet seen live: his backend needs `git pull` + restart for `/api/mdm/monitor` to exist. Real
+  case to check after pickup: 1309395637279657984 (b360.ingress.load, portal, 23:50:47 CST).

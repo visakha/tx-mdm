@@ -14,7 +14,8 @@ describe("OneNote shell model", () => {
   it("search filters sections by label or notebook", () => {
     expect(matchSections("egress").map((s) => s.id)).toEqual(["mdm-egress"]);
     expect(matchSections("cdi").length).toBe(4);
-    expect(matchSections("").length).toBe(8);
+    expect(matchSections("").length).toBe(9);
+    expect(sectionOf({ screen: "mdm-monitor", service: "mdm" }, null)).toBe("mdm-running");
   });
 
   it("ribbon tab defaults to the first and rejects unknown tabs", () => {

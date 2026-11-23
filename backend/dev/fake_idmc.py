@@ -11,6 +11,8 @@ Run id 900000000000000003 stays RUNNING until PUT /active-bpel/services/tf/termi
 Session logs: /saas/api/v2/activity/activityLog/<id>/sessionLog.
 The Monitor tab calls (activityMonitor?details=true, activityLog?rowLimit=N) get a fixed
 demo set: one running taskflow with two child steps, plus a few finished runs.
+B360 job search returns a fixed set incl. 800000000000007984, RUNNING, started from the
+portal by another user (for the Business 360 Currently running view); status filters apply.
 """
 
 import json
@@ -170,14 +172,79 @@ def activity_log(rowLimit: int | None = None) -> list[dict[str, Any]]:  # noqa: 
     ]
 
 
+# B360 job instances. PORTAL_RUNNING was started from the portal by another user (not by this
+# app) and stays RUNNING, so "Currently running" must list it. The others are finished.
+PORTAL_RUNNING = "800000000000007984"
+_NOW_MS = int(datetime.now(tz=UTC).timestamp() * 1000)
+_B360_INSTANCES: list[dict[str, Any]] = [
+    {
+        "id": PORTAL_RUNNING,
+        "name": "zlv_ingr_guest_basic",
+        "jobType": "b360.ingress.load",
+        "jobDefinition": {"id": "ingress_person"},
+        "jobLevelMetrics": None,
+        "_meta": {
+            "state": "RUNNING",
+            "startedAt": _NOW_MS - 4 * 60_000,
+            "startedBy": "someone.else",
+            "completedAt": None,
+            "isCompleted": False,
+        },
+    },
+    {
+        "id": "800000000000002720",
+        "name": "egress_person",
+        "jobType": "c360.egress.etl",
+        "jobDefinition": {"id": "egress_person"},
+        "jobLevelMetrics": [{"id": "NUM_OF_INCOMING_RECORDS", "value": 21}],
+        "_meta": {
+            "state": "SUCCESS",
+            "startedAt": _NOW_MS - 30 * 60_000,
+            "completedAt": _NOW_MS - 28 * 60_000,
+            "startedBy": "vvamsi-idmcdev",
+            "isCompleted": True,
+        },
+    },
+    {
+        "id": "800000000000001111",
+        "name": "ingress_person",
+        "jobType": "c360.ingress.load",
+        "jobDefinition": {"id": "ingress_person"},
+        "jobLevelMetrics": None,
+        "_meta": {
+            "state": "FAILED",
+            "startedAt": _NOW_MS - 90 * 60_000,
+            "completedAt": _NOW_MS - 89 * 60_000,
+            "startedBy": "vvamsi-idmcdev",
+            "isCompleted": True,
+        },
+    },
+    {  # console upload: not a b360./c360. type, so it is counted but not listed
+        "id": "800000000000000555",
+        "name": "fileImport",
+        "jobType": "internal.c360.ingress.fileImportJob",
+        "jobDefinition": {"id": "internal.c360.ingress.fileImportJob"},
+        "_meta": {"state": "RUNNING", "startedAt": _NOW_MS - 60_000, "startedBy": "console"},
+    },
+]
+
+
 @app.post("/job/public/api/v1/search")
-def job_search() -> dict[str, Any]:
+def job_search(body: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:  # noqa: B008
+    items = list(_B360_INSTANCES)
+    wanted = [
+        str(f.get("fieldValue"))
+        for f in ((body.get("filters") or {}).get("filter") or [])
+        if f.get("fieldName") == "status"
+    ]
+    if wanted:
+        items = [i for i in items if i["_meta"]["state"] in wanted]
+    size = int(body.get("pageSize") or 25)
     return {
+        "totalRecords": len(items),
         "totalPages": 1,
-        "jobInstances": [
-            {"jobType": "c360.ingress.load", "jobDefinition": {"id": "ingress_person"}},
-            {"jobType": "c360.egress.export", "jobDefinition": {"id": "egress_person"}},
-        ],
+        "currentPage": 0,
+        "jobInstances": items[:size],
     }
 
 
@@ -187,11 +254,19 @@ def run_mdm(kind: str) -> dict[str, Any]:
     return {"id": f"JI-{kind}-{_bump('mdm-start-' + kind)}"}
 
 
-@app.get("/job/public/api/v1/jobInstance/{instance_id}")
-def read_instance(instance_id: str) -> dict[str, Any]:
+@app.get("/job/public/api/v1/jobInstance/{instance_id}", response_model=None)
+def read_instance(instance_id: str) -> dict[str, Any] | JSONResponse:
+    known = next((i for i in _B360_INSTANCES if i["id"] == instance_id), None)
+    if known is not None:
+        return known
+    if not instance_id.startswith("JI-"):
+        return JSONResponse(
+            status_code=404, content={"error": f"job instance {instance_id} not found"}
+        )
     done = _bump(instance_id) >= 2
     return {
         "id": instance_id,
+        "jobType": "c360.ingress.load",
         "jobLevelMetrics": [
             {"id": "NUM_OF_INCOMING_RECORDS", "value": 1000},
             {"id": "NUM_OF_REC_FAILED", "value": 3},

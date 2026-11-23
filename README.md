@@ -107,6 +107,8 @@ cd frontend && npm run typecheck && npm test && npm run lint && npm run build
 | GET | `/api/mdm/jobs` | MDM job definitions (v3 objects) + resolved internal id / kind |
 | POST | `/api/mdm/runs` | Start one MDM job `{asset_id}` |
 | GET | `/api/mdm/runs/{run_key}` | Refresh and return the run |
+| GET | `/api/mdm/monitor?row_limit=25` | Business 360 Currently running: every running `b360.*` / `c360.*` job in the org, whoever started it (portal, other machine, other user), plus recent finished ones. B360 job search; status-filter value spelling and sort order UNVERIFIED (see `app/mdm/monitor.py`). Read-only |
+| GET | `/api/mdm/job-instances/{instance_id}` | Look up ANY B360 job instance by full id (`jobInstance/{id}?details=true`). Read-only |
 | GET | `/api/health` | Liveness |
 
 Rules built in: one active run per job (a second start gets HTTP 409); a failed run is
@@ -117,10 +119,11 @@ not a job retry). The password never goes to the browser and is never echoed in 
 ## Layout (OneNote style)
 
 Left pane: a search box and two notebooks - **Data Integration (CDI)**: Tasks, Taskflows,
-Monitor, Runs; **Business 360 (MDM)**: All jobs, Ingress jobs, Egress jobs, Runs. Top ribbon:
+Monitor, Runs; **Business 360 (MDM)**: All jobs, Ingress jobs, Egress jobs, Currently running, Runs. Top ribbon:
 contextual tabs for the selected section (Taskflows: Run / Track run id / Summary / Session log;
 Monitor: Everything / Running now / History / Started here; Runs: Runs / Result; job sections:
-Jobs / Run). URLs are unchanged (plus `/cdi/runs`, `/mdm/runs`, `/mdm/ingress`, `/mdm/egress`).
+Jobs / Run). URLs are unchanged (plus `/cdi/runs`, `/mdm/runs`, `/mdm/ingress`, `/mdm/egress`, `/mdm/running`).
+Every status poll in the UI is 15 s (one constant, `frontend/src/shared/poll.ts`).
 Screen-by-screen notes: `internal-notes/ui-observations.md`.
 
 ### UI end-to-end (Cypress, against the fake IDMC)

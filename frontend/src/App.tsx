@@ -16,6 +16,7 @@ import { CdiPanel } from "./cdi/CdiPanel";
 import { MonitorPanel } from "./cdi/MonitorPanel";
 import { TaskflowsPanel } from "./cdi/TaskflowsPanel";
 import { MdmPanel } from "./mdm/MdmPanel";
+import { MdmMonitorPanel } from "./mdm/MdmMonitorPanel";
 import { TASKFLOWS_ROUTE, useRoute, type MdmKindFilter, type Route } from "./shared/routes";
 import type { CdiTask } from "./cdi/cdiApi";
 import type { MdmJob } from "./mdm/mdmApi";
@@ -47,6 +48,10 @@ const HINTS: Record<string, string> = {
   "cdi-monitor/app": "Only runs started from this app.",
   "cdi-runs/list": "Runs started from this backend. Pick one to see its result.",
   "cdi-runs/result": "Result of the selected run.",
+  "mdm-running/all": "Every Business 360 job running in the org (any starter), recent finished, lookup. Refreshes every 15 s.",
+  "mdm-running/running": "Only B360 jobs running right now, whoever started them.",
+  "mdm-running/recent": "Only recently finished B360 jobs.",
+  "mdm-running/lookup": "Paste any full job instance id and press Look up.",
   "mdm-runs/list": "Runs started from this backend. Pick one to see its result.",
   "mdm-runs/result": "Result of the selected run.",
 };
@@ -102,7 +107,7 @@ export function App(): React.JSX.Element {
   const isCdiList = section === "cdi-tasks";
   const isMdmList = section === "mdm-all" || section === "mdm-ingress" || section === "mdm-egress";
   const cdiRoute: Route = route.service === "cdi" && (route.screen === "jobs" || route.screen === "job" || route.screen === "run") ? route : { screen: "jobs", service: "cdi" };
-  const mdmRoute: Route = route.service === "mdm" && route.screen !== "runs" ? route : { screen: "jobs", service: "mdm" };
+  const mdmRoute: Route = route.service === "mdm" && route.screen !== "runs" && route.screen !== "mdm-monitor" ? route : { screen: "jobs", service: "mdm" };
   const tfRoute: Route = route.screen === "taskflows" ? route : TASKFLOWS_ROUTE;
   const mdmKind: MdmKindFilter | null =
     section === "mdm-ingress" ? "Ingress" : section === "mdm-egress" ? "Egress" : null;
@@ -242,6 +247,9 @@ export function App(): React.JSX.Element {
         </div>
         <div hidden={section !== "cdi-monitor"}>
           <MonitorPanel active={section === "cdi-monitor"} />
+        </div>
+        <div hidden={section !== "mdm-running"}>
+          <MdmMonitorPanel active={section === "mdm-running"} />
         </div>
         <div hidden={section !== "cdi-taskflows"}>
           <TaskflowsPanel route={tfRoute} go={go} active={section === "cdi-taskflows"} />

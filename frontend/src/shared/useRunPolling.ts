@@ -6,8 +6,9 @@ import { useEffect, useState } from "react";
 import { ApiError, errorText, getJson } from "./api";
 import { isTerminal, type RunView } from "./run";
 
-export const RUN_POLL_SECONDS = 15;
-const POLL_MS = RUN_POLL_SECONDS * 1000;
+import { POLL_MS, POLL_SECONDS } from "./poll";
+
+export const RUN_POLL_SECONDS = POLL_SECONDS;
 
 export function useRunPolling(
   runKey: string | null,

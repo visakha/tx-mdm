@@ -65,6 +65,29 @@ class MdmClient:
                 break
         return instances
 
+    def search_page(
+        self, page_size: int, page_offset: int, filters: dict[str, Any] | None
+    ) -> list[dict[str, Any]]:
+        """One page of the B360 job search (read-only). `filters` as in the reference."""
+        payload: dict[str, Any] = {"search": "*", "pageSize": page_size, "pageOffset": page_offset}
+        if filters is not None:
+            payload["filters"] = filters
+        body = self._http.request(
+            "POST", self._mdm_url + ep.JOB_SEARCH, ep.MDM_HEADERS, json=payload
+        )
+        items = (body or {}).get("jobInstances") or []
+        return [item for item in items if isinstance(item, dict)]
+
+    def read_instance(self, instance_id: str) -> dict[str, Any]:
+        """Raw job instance summary (details=true), read-only."""
+        body = self._http.request(
+            "GET",
+            self._mdm_url + ep.JOB_INSTANCE_READ.format(instance_id=instance_id),
+            ep.MDM_HEADERS,
+            params={"details": "true"},
+        )
+        return body if isinstance(body, dict) else {}
+
     def start(self, kind: MdmJobKind, job_definition_id: str) -> str:
         if kind is MdmJobKind.UNKNOWN:
             raise ValueError("job kind unknown; refusing to guess which run endpoint to call")

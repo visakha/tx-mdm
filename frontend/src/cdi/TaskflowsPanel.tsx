@@ -28,8 +28,8 @@ import {
   type SubtaskRun,
   type TaskflowRunStatus,
 } from "./taskflowApi";
+import { POLL_MS, POLL_SECONDS } from "../shared/poll";
 
-const POLL_MS = 10000;
 
 function fmt(value: string | null): string {
   return value === null ? "-" : new Date(value).toLocaleString();
@@ -103,6 +103,7 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
   const [stopped, setStopped] = useState<boolean>(false);
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
   const [polls, setPolls] = useState<number>(0);
+  const [lastRefreshAt, setLastRefreshAt] = useState<Date | null>(null);
   const [logFor, setLogFor] = useState<string | null>(null);
   const [logText, setLogText] = useState<string>("");
 
@@ -111,6 +112,7 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
     setPollError(null);
     setStopped(false);
     setPolls(0);
+    setLastRefreshAt(null);
     setLogFor(null);
     setLogText("");
     setAbortNote(null);
@@ -127,6 +129,7 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
           if (cancelled) return;
           setStatus(next);
           setPolls((n) => n + 1);
+          setLastRefreshAt(new Date());
           setPollError(null);
           if (!next.is_final) timer = window.setTimeout(poll, POLL_MS);
         })
@@ -309,8 +312,12 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
                   : `${String(status.subtasks.filter((c) => c.status === "SUCCESS").length)} of ${String(status.subtask_count ?? status.subtasks.length)} child steps done, ${status.totals.source_success.toLocaleString()} source rows ok`
               }
               polls={polls}
-              everySeconds={POLL_MS / 1000}
+              everySeconds={POLL_SECONDS}
             />
+            <p className="muted last-refresh" data-testid="tf-last-refresh">
+              Last refresh: {lastRefreshAt === null ? "-" : lastRefreshAt.toLocaleTimeString()}
+              {status.is_final ? " (final, checks stopped)" : ` (every ${String(POLL_SECONDS)} s)`}
+            </p>
             {running && (
               <Button
                 aria-label={`Abort taskflow run ${status.run_id}`}

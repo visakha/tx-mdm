@@ -48,6 +48,12 @@ Labels:
 | Job search returns `jobDefinition.id` + `jobType`, used by the resolver | DOC for the call; using it to map definitions to ids is UNVERIFIED |
 | `internal.c360.ingress.fileImportJob` is an internal job type, so the resolver skips it | DOC (seen in the collection) |
 | Egress `jobType` string | UNVERIFIED. Recognised by the substring "egress" and never hard-coded |
+| Search Job Instances body: `search`, `pageSize`, `pageOffset`, `filters{operator, filter[{fieldName, fieldValue}]}`, fieldName `name`/`status`/`jobType` | DOC (PDF pp. 130-132) / CODE (0.9.0) |
+| Search response: `totalRecords`, `totalPages`, `currentPage`, `jobInstances[]` each with `id`, `name`, `jobType`, `jobDefinition.id`, `_meta{state, startedAt, startedBy, completedAt, isCompleted}` (epoch ms) | DOC (PDF example pp. 132-134) / CODE |
+| Status filter value spelling (we send `RUNNING`, `QUEUED`) | UNVERIFIED. Running jobs found in the unfiltered page are merged in too |
+| Sort order of an unfiltered search | UNVERIFIED. Backend sorts by `startedAt`, newest first |
+| Search is org-wide (all users), not only the caller's jobs | UNVERIFIED (PDF says you can search by the user who started it, which suggests org-wide) |
+| Job types seen live: `b360.ingress.load` (portal ingress 1309395637279657984, 2026-11-22 23:50:47 CST), `c360.egress.etl` (app egress 1309392734552862720, 23:39 CST) | LIVE (portal screen read by Vamsi + backend run list) |
 | Field names in the `details=true` error payload | UNVERIFIED. Errors are collected from any `errorMessage`-style field |
 
 ## How to promote a fact to LIVE

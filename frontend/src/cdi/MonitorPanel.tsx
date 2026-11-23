@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@ui-sdk/react/button";
 import { ApiError, errorText } from "../shared/api";
+import { POLL_MS } from "../shared/poll";
 import { statusTone } from "../shared/run";
 import {
   elapsedText,
@@ -16,7 +17,7 @@ import {
   type MonitorSnapshot,
 } from "./monitorApi";
 
-const REFRESH_MS = 15000;
+const REFRESH_MS = POLL_MS;
 
 function fmt(value: string | null): string {
   return value === null ? "-" : new Date(value).toLocaleString();

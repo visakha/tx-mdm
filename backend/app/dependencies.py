@@ -13,6 +13,7 @@ from app.common.idmc_session import IdmcHttp, IdmcSession
 from app.common.runs import RunRegistry
 from app.config import Settings, get_settings
 from app.mdm.client import MdmClient
+from app.mdm.monitor import MdmMonitor
 from app.mdm.resolver import JobSearchResolver
 from app.mdm.service import MdmService
 
@@ -62,3 +63,11 @@ def get_mdm_service() -> MdmService:
     client = MdmClient(http, settings.idmc_mdm_url, settings.idmc_platform_url)
     resolver = JobSearchResolver(client.search_job_instances, settings.mdm_resolver_cache_seconds)
     return MdmService(client, resolver, RunRegistry("mdm"))
+
+
+@lru_cache
+def get_mdm_monitor() -> MdmMonitor:
+    """Read-only B360 job search; its own client on the MDM session settings."""
+    settings = get_settings()
+    http = IdmcHttp(get_http_client(), _new_session(settings))
+    return MdmMonitor(MdmClient(http, settings.idmc_mdm_url, settings.idmc_platform_url))

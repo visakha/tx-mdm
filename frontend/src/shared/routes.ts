@@ -12,6 +12,7 @@
 //   /monitor                CDI Monitor tab (running jobs + recent history)
 //   /taskflows              Taskflows tab: run a taskflow by name, or paste a run id
 //   /taskflows/runs/:runId  track one taskflow run by its IDMC run id
+//   /mdm/running            Business 360 Currently running (any starter) + lookup by id
 
 import { useCallback, useEffect, useState } from "react";
 
@@ -28,11 +29,15 @@ export type Route =
   // The Monitor tab watches CDI jobs, so it carries service "cdi".
   | { screen: "monitor"; service: "cdi" }
   // Taskflows tab: runId is the IDMC run id (null = nothing tracked yet).
-  | { screen: "taskflows"; service: "cdi"; runId: string | null };
+  | { screen: "taskflows"; service: "cdi"; runId: string | null }
+  // Business 360 Currently running: every b360.* / c360.* job in the org.
+  | { screen: "mdm-monitor"; service: "mdm" };
 
 export const MONITOR_ROUTE: Route = { screen: "monitor", service: "cdi" };
 
 export const TASKFLOWS_ROUTE: Route = { screen: "taskflows", service: "cdi", runId: null };
+
+export const MDM_MONITOR_ROUTE: Route = { screen: "mdm-monitor", service: "mdm" };
 
 export const DEFAULT_ROUTE: Route = { screen: "jobs", service: "mdm" };
 
@@ -44,6 +49,7 @@ export function parseRoute(pathname: string): Route {
   if (service === "taskflows" && kind === "runs" && id !== undefined) {
     return { screen: "taskflows", service: "cdi", runId: id };
   }
+  if (service === "mdm" && kind === "running" && id === undefined) return MDM_MONITOR_ROUTE;
   if (service === "mdm" && kind === "ingress" && id === undefined) {
     return { screen: "kind", service: "mdm", kind: "Ingress" };
   }
@@ -72,6 +78,8 @@ export function formatRoute(route: Route): string {
       return `/mdm/${route.kind.toLowerCase()}`;
     case "monitor":
       return "/monitor";
+    case "mdm-monitor":
+      return "/mdm/running";
     case "taskflows":
       return route.runId === null ? "/taskflows" : `/taskflows/runs/${encodeURIComponent(route.runId)}`;
   }

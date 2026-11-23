@@ -41,6 +41,7 @@ export const SECTION_ICON: Record<SectionId, IconName> = {
   "mdm-all": "jobs",
   "mdm-ingress": "ingress",
   "mdm-egress": "egress",
+  "mdm-running": "monitor",
   "mdm-runs": "runs",
 };
 

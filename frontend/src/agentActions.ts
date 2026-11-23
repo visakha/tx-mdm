@@ -16,6 +16,7 @@ import {
   type TerminateResult,
 } from "./cdi/taskflowApi";
 import { mdmApi, type MdmJob } from "./mdm/mdmApi";
+import { mdmMonitorApi, type MdmJobInstance, type MdmMonitorSnapshot } from "./mdm/mdmMonitorApi";
 import { getJson } from "./shared/api";
 import type { RunView } from "./shared/run";
 import {
@@ -29,6 +30,7 @@ import {
 import {
   currentRoute,
   formatRoute,
+  MDM_MONITOR_ROUTE,
   MONITOR_ROUTE,
   navigate,
   type Route,
@@ -48,7 +50,7 @@ export const ACTIONS: readonly ActionInfo[] = [
   { name: "currentRoute", args: "()", description: "Current screen as a Route + its URL path.", sideEffect: false },
   { name: "openSection", args: "(service: 'mdm' | 'cdi')", description: "Show the job list of a section.", sideEffect: false },
   { name: "layout", args: "()", description: "OneNote layout: left-pane sections, the selected section, its ribbon tabs and the selected tab.", sideEffect: false },
-  { name: "openNavSection", args: "(sectionId)", description: "Select a left-pane section (cdi-tasks, cdi-taskflows, cdi-monitor, cdi-runs, mdm-all, mdm-ingress, mdm-egress, mdm-runs).", sideEffect: false },
+  { name: "openNavSection", args: "(sectionId)", description: "Select a left-pane section (cdi-tasks, cdi-taskflows, cdi-monitor, cdi-runs, mdm-all, mdm-ingress, mdm-egress, mdm-running, mdm-runs).", sideEffect: false },
   { name: "selectRibbonTab", args: "(tabId)", description: "Select a ribbon tab of the current section (see layout()).", sideEffect: false },
   { name: "listMdmJobs", args: "()", description: "MDM job definitions from the metadata API (with runnable flag).", sideEffect: false },
   { name: "listCdiTasks", args: "()", description: "CDI tasks from the metadata API.", sideEffect: false },
@@ -63,6 +65,9 @@ export const ACTIONS: readonly ActionInfo[] = [
   { name: "terminateTaskflow", args: "(runId)", description: "Terminate (abort) a running taskflow by IDMC run id, after a person confirms. Never retried.", sideEffect: true },
   { name: "getTaskflowSessionLog", args: "(runId, childTask?)", description: "Plain-text session log of one child task of a taskflow run.", sideEffect: false },
   { name: "getMonitor", args: "(onlyMyTasks = true, rowLimit = 50)", description: "Read running CDI jobs (elapsed minutes) + recent history (status, rows, errors, taskflow steps).", sideEffect: false },
+  { name: "openMdmMonitor", args: "()", description: "Show Business 360 Currently running (/mdm/running).", sideEffect: false },
+  { name: "getMdmMonitor", args: "(rowLimit = 25)", description: "Read every running B360 job (b360.* / c360.*) in the org, whoever started it, plus recently finished ones.", sideEffect: false },
+  { name: "lookupMdmJob", args: "(instanceId)", description: "Read any B360 job instance by its full id (status, times, started by, counts, errors).", sideEffect: false },
 ];
 
 async function runJob(service: Service, jobId: string, apiName?: string): Promise<RunView> {
@@ -159,6 +164,9 @@ export const txmdm = {
   getTaskflowRun: (runId: string): Promise<TaskflowRunStatus> => taskflowApi.status(runId),
   getTaskflowSessionLog: (runId: string, childTask?: string): Promise<string> =>
     taskflowApi.sessionLog(runId, childTask ?? null),
+  openMdmMonitor: (): void => navigate(MDM_MONITOR_ROUTE),
+  getMdmMonitor: (rowLimit = 25): Promise<MdmMonitorSnapshot> => mdmMonitorApi.get(rowLimit),
+  lookupMdmJob: (instanceId: string): Promise<MdmJobInstance> => mdmMonitorApi.lookup(instanceId),
   getMonitor: (onlyMyTasks = true, rowLimit = 50): Promise<MonitorSnapshot> =>
     monitorApi.get(onlyMyTasks, rowLimit),
 };

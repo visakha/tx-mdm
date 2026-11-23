@@ -2,16 +2,18 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Path, Query
 
 from app.common.runs import RunView
-from app.dependencies import get_mdm_service
+from app.dependencies import get_mdm_monitor, get_mdm_service
 from app.mdm.models import MdmJob, MdmRunRequest
+from app.mdm.monitor import MAX_ROW_LIMIT, MdmJobInstanceView, MdmMonitor, MdmMonitorSnapshot
 from app.mdm.service import MdmService
 
 router = APIRouter(prefix="/api/mdm", tags=["mdm"])
 
 Service = Annotated[MdmService, Depends(get_mdm_service)]
+Monitor = Annotated[MdmMonitor, Depends(get_mdm_monitor)]
 
 
 @router.get(
@@ -55,3 +57,32 @@ def list_runs(service: Service) -> list[RunView]:
 )
 def get_run(run_key: str, service: Service) -> RunView:
     return service.refresh(run_key)
+
+
+@router.get(
+    "/monitor",
+    operation_id="mdm_monitor",
+    summary="Currently running B360 jobs in the org (any starter) + recent finished",
+    description="Read-only. B360 job search: running = status RUNNING or QUEUED, recent = one "
+    "page of `row_limit`. Only jobTypes starting with b360. or c360. are listed. Includes jobs "
+    "started from the portal, another machine or another user, not only from this backend. "
+    "Poll every 15 s. A 429 from IDMC is returned as 429 and never retried.",
+)
+def mdm_monitor(
+    monitor: Monitor, row_limit: Annotated[int, Query(ge=1, le=MAX_ROW_LIMIT)] = 25
+) -> MdmMonitorSnapshot:
+    return monitor.snapshot(row_limit)
+
+
+@router.get(
+    "/job-instances/{instance_id}",
+    operation_id="mdm_lookup_job_instance",
+    summary="Look up any B360 job instance by its full id",
+    description="Read-only GET jobInstance/{id}?details=true. Works for jobs started anywhere "
+    "(portal, other machines), not only runs this backend started.",
+)
+def lookup_job_instance(
+    monitor: Monitor,
+    instance_id: Annotated[str, Path(pattern=r"^[A-Za-z0-9._-]{1,64}$")],
+) -> MdmJobInstanceView:
+    return monitor.lookup(instance_id)

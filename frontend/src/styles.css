@@ -208,3 +208,18 @@ main { flex: 1; padding: 16px 20px; }
 .result .log { overflow-wrap: anywhere; }
 .run-box .run-progress-row { width: 100%; }
 .tf-panel .detail { overflow-x: auto; }
+
+/* Business 360 Currently running (0.9.0): full instance ids on one line, never wrapped. */
+.b360-jobs td.instance-id, .b360-jobs td.instance-id code, .b360-jobs td.nowrap { white-space: nowrap; overflow-wrap: normal; }
+.lookup-row { display: flex; gap: 8px; width: 100%; }
+.lookup-row > :first-child { flex: 1 1 auto; min-width: 0; }
+.last-refresh { margin: 4px 0; }
+[data-section="mdm-running"][data-view="running"] section[aria-label="Recently finished"],
+[data-section="mdm-running"][data-view="running"] section[aria-label="Look up a job instance"],
+[data-section="mdm-running"][data-view="recent"] section[aria-label="Currently running"],
+[data-section="mdm-running"][data-view="recent"] section[aria-label="Look up a job instance"],
+[data-section="mdm-running"][data-view="lookup"] section[aria-label="Currently running"],
+[data-section="mdm-running"][data-view="lookup"] section[aria-label="Recently finished"] { display: none; }
+.b360-monitor { min-width: 0; max-width: 100%; }
+.b360-monitor .detail { min-width: 0; overflow: hidden; }
+.b360-monitor .table-wrap { max-width: 100%; overflow-x: auto; }
