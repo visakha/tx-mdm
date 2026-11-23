@@ -170,3 +170,14 @@ this; `app/main.py` forces stdout/stderr to ASCII with backslash escapes at runt
 `_meta.lastUpdateDate` is an epoch-ms STRING in search results but an epoch NUMBER in Read Master Record.
 `wire._epoch_or_iso` takes both (and ISO text). The filter fieldName prefix for custom entities is not
 documented beyond `c360person.firstName`; the backend reuses the prefix the last search reply used.
+
+## 0.9.11.1 (2026-11-23): Generate test data returned a bare HTTP 500
+- Live cause: on his org x_phone.ph_typ is a REQUIRED picklist, and no documented call lists
+  its values. The generator leaves picklists empty (never invents codes), then its own Pydantic
+  check rejected the row, and that RecordInvalidError was not caught -> "Internal Server Error".
+- Fix: a group whose required picklist has no known codes is generated with zero rows (rule text
+  says "group skipped ... add rows by hand"); a required ROOT picklist with no codes -> 422 with a
+  plain message. Generate also maps RecordInvalidError to 422.
+- Catch-all handler in app/main.py: any unhandled error returns JSON detail
+  "Backend error on <METHOD> <path>: <Type>: <message>" (UI already shows detail inline);
+  the traceback still prints in the backend window. Never a bare 500 again.

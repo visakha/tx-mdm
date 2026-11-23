@@ -34,6 +34,7 @@ from app.b360data.service import (
     SourceNotAllowedError,
     SourceRecordNotFoundError,
 )
+from app.b360data.testdata import GenerateBlockedError
 from app.dependencies import get_b360_data_service
 
 router = APIRouter(prefix="/api/b360", tags=["b360"])
@@ -143,7 +144,15 @@ def generate_records(
     service: Service,
     request: Annotated[GenerateRequest, Body()],
 ) -> GeneratedRows:
-    return service.generate(name, request)
+    try:
+        return service.generate(name, request)
+    except GenerateBlockedError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except RecordInvalidError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=f"generated row {exc.index} does not fit the entity: {'; '.join(exc.problems)}",
+        ) from exc
 
 
 @router.post(

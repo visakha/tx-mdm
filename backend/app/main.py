@@ -1,5 +1,6 @@
 """FastAPI app: two routers (CDI, MDM) and a small error mapping. Run: uvicorn app.main:app"""
 
+import logging
 import sys
 
 from fastapi import FastAPI, Request
@@ -13,6 +14,8 @@ from app.common.idmc_session import IdmcError, IdmcRateLimitedError
 from app.common.runs import JobAlreadyRunningError, RunNotFoundError
 from app.mdm.router import router as mdm_router
 from app.version import HIGHLIGHTS, VERSION
+
+log = logging.getLogger("tx_mdm")
 
 
 def _force_ascii_console() -> None:
@@ -86,6 +89,18 @@ def create_app(frontend_origin: str = "http://localhost:5173") -> FastAPI:
     @app.exception_handler(RunNotFoundError)
     def run_not_found(_: Request, exc: RunNotFoundError) -> JSONResponse:
         return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+    @app.exception_handler(Exception)
+    def unexpected(request: Request, exc: Exception) -> JSONResponse:
+        # Never a bare "Internal Server Error": say where and what, so the UI can show it.
+        log.exception("unhandled error on %s %s", request.method, request.url.path)
+        return JSONResponse(
+            status_code=500,
+            content={
+                "detail": f"Backend error on {request.method} {request.url.path}: "
+                f"{type(exc).__name__}: {exc}. Full traceback is in the backend window."
+            },
+        )
 
     @app.exception_handler(LookupError)
     def lookup_error(_: Request, exc: LookupError) -> JSONResponse:

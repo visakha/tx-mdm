@@ -182,6 +182,21 @@ def _row(
     return values
 
 
+class GenerateBlockedError(ValueError):
+    """Test rows cannot be generated without inventing data. Nothing was generated."""
+
+
+def _blocking_picklists(fields: list[EntityField], codes: dict[str, list[str]]) -> list[str]:
+    """Required picklist fields with no known codes (the generator never invents one)."""
+    return [
+        f.name
+        for f in fields
+        if f.mandatory
+        and f.data_type in (FieldDataType.PICKLIST, FieldDataType.DEPENDENT_PICKLIST)
+        and not codes.get(f.name)
+    ]
+
+
 def generate(
     entity: BusinessEntity,
     count: int,
@@ -198,6 +213,13 @@ def generate(
         return {field: [o.code for o in found] for (g, field), found in opts.items() if g == group}
 
     root_codes = codes_for("")
+    blocked_root = _blocking_picklists(entity.fields, root_codes)
+    if blocked_root:
+        raise GenerateBlockedError(
+            f"Cannot generate {entity.name}: required picklist field(s) {', '.join(blocked_root)} "
+            "have no known values (no documented call lists them), and the generator never "
+            "invents codes. Use 'Type it', or make the field optional in the portal."
+        )
     rows: list[NewRecord] = []
     for n in range(1, count + 1):
         values = _row(fake, entity.fields, root_codes)
@@ -205,6 +227,9 @@ def generate(
         for group in entity.field_groups:
             how_many = int(fake.random_int(1, 2)) if group.cardinality.value == "MANY" else 1
             group_codes = codes_for(group.name)
+            if _blocking_picklists(group.fields, group_codes):
+                groups.append(NewGroupRows(group=group.name, rows=[]))
+                continue  # a required picklist has no known codes: skip the group, never invent
             groups.append(
                 NewGroupRows(
                     group=group.name,
@@ -226,6 +251,12 @@ def generate(
     for group in entity.field_groups:
         group_codes = codes_for(group.name)
         how = "1-2 rows per record" if group.cardinality.value == "MANY" else "1 row"
+        blocked = _blocking_picklists(group.fields, group_codes)
+        if blocked:
+            how = (
+                f"group skipped: required picklist {', '.join(blocked)} has no known values; "
+                "add rows by hand"
+            )
         rules.extend(
             GeneratedFieldRule(
                 field=f"{group.name}.{f.name}",
