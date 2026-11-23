@@ -26,3 +26,4 @@ frontend/cypress/screenshots/
 frontend/cypress/videos/
 frontend/cypress/results/
 backend/openapi-typed.json
+backend/openapi-idmc.json

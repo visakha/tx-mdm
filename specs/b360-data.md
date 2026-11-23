@@ -200,6 +200,22 @@ Lengths (0.9.12.2, Vamsi 02:40-02:41 CST)
   are key-path lists. Each TOML `fields` line is matched WHOLE (case-insensitive) against the TOML
   name of a tree node, never split. The frontend uses isFieldShown / isGroupShown /
   isGroupFieldShown / isMetaShown on those objects. `CODE`
+- **D35** Forms and copying (0.9.13.1, Vamsi 02:56-03:11 CST). Add records (S) Type it and Edit
+  records (S) share one form grid (FieldGrid) and field groups render as a mini table, one row per
+  group row. Edit computes `PendingChange` objects locally on every edit; Save enables on the first
+  change; "No changes yet." inline otherwise; Preview PATCH = optional backend dry run. Add Save says
+  why it is disabled, inline. Records (M) / (S): Ctrl+C / Cmd+C copies only the highlighted row as
+  TSV (header + values, group rows as compact JSON, ASCII only), unless real text is selected.
+  Copy IDMC curl copies to the clipboard and shows one small line; the script is not rendered. `CODE`
+- **D36** IDMC-only spec (0.9.14, Vamsi 03:15 CST: "API docs that are specific to IDMC calls
+  only"). `backend/app/common/idmc_registry.py` is ONE typed table of every IDMC call
+  (IdmcCallSpec: id, area, method, host LOGIN | PLATFORM | POD | MDM, path from the endpoints
+  modules, auth SessionHeader, doc source + DocStatus REFERENCE | KB | POSTMAN | UNVERIFIED_DOC,
+  query params, request / response Pydantic wire models where known). `IdmcHttp.request(spec, url,
+  ...)` takes a registry row, so no IDMC call exists outside it; each Copy IDMC curl call carries
+  the row id (`call_id`). `/openapi-idmc.json` + `/docs-idmc` are built from it alone; no /api
+  paths. Guard tests: every endpoint path constant is registered; every `_http.request(` call
+  passes `idmc.<ROW>`. Not called (so not listed): delete / restore source record. `CODE`
 
 ## Out of scope
 

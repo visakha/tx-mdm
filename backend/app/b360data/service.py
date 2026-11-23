@@ -68,6 +68,7 @@ from app.b360data.models import (
     UpdateSourceRequest,
     UpdateSourceResponse,
 )
+from app.common import idmc_registry as idmc
 from app.common.idmc_session import IdmcError, IdmcHttp, IdmcRateLimitedError
 
 
@@ -115,7 +116,7 @@ class B360DataService:
         self._rdm_values: dict[str, tuple[float, list[PicklistOption]]] = {}
 
     def entities(self, scope: EntityScope = EntityScope.FOCUS) -> BusinessEntityList:
-        body: object = self._http.request("GET", self._mdm_url + ep.DATAMODEL, ep.MDM_HEADERS)
+        body: object = self._http.request(idmc.DATAMODEL, self._mdm_url + ep.DATAMODEL)
         every = wire.entities_from_datamodel(body)
         config = entity_scope.focus_config()
         by_id = {e.name.lower(): e for e in every}
@@ -142,7 +143,7 @@ class B360DataService:
         if cached is not None and time.monotonic() - cached[0] < ep.METADATA_CACHE_SECONDS:
             return cached[1]
         body: object = self._http.request(
-            "GET", self._mdm_url + ep.BUSINESS_ENTITY.format(guid=guid), ep.MDM_HEADERS
+            idmc.BUSINESS_ENTITY, self._mdm_url + ep.BUSINESS_ENTITY.format(guid=guid)
         )
         entity = wire.business_entity_from_metadata(body, guid)
         entity = entity_scope.apply_lengths(entity, entity_scope.focus_config().entity_config(guid))
@@ -204,7 +205,7 @@ class B360DataService:
         if self._rdm_cache and time.monotonic() - self._rdm_cache[0] < ep.RDM_CACHE_SECONDS:
             return self._rdm_cache[1]
         try:
-            body: object = self._http.request("GET", self._mdm_url + ep.DATAMODEL, ep.MDM_HEADERS)
+            body: object = self._http.request(idmc.DATAMODEL, self._mdm_url + ep.DATAMODEL)
         except IdmcRateLimitedError:
             raise
         except IdmcError:
@@ -227,9 +228,7 @@ class B360DataService:
             "recordsToReturn": ep.RDM_PAGE_SIZE,
         }
         try:
-            reply: object = self._http.request(
-                "POST", self._mdm_url + ep.SEARCH, ep.MDM_HEADERS, json=body
-            )
+            reply: object = self._http.request(idmc.SEARCH, self._mdm_url + ep.SEARCH, json=body)
         except IdmcRateLimitedError:
             raise
         except IdmcError:
@@ -278,9 +277,7 @@ class B360DataService:
                     for f in filters
                 ]
             }
-        reply: object = self._http.request(
-            "POST", self._mdm_url + ep.SEARCH, ep.MDM_HEADERS, json=body
-        )
+        reply: object = self._http.request(idmc.SEARCH, self._mdm_url + ep.SEARCH, json=body)
         result = wire.search_response(reply)
         raw = result.records[:limit]
         seen_prefix = wire.key_prefix(raw)
@@ -336,7 +333,7 @@ class B360DataService:
         )
         note = "Read Master Record by Business ID (exact match)."
         try:
-            reply: object = self._http.request("GET", url, ep.MDM_HEADERS)
+            reply: object = self._http.request(idmc.READ_RECORD, url)
             data = wire.as_json(reply)
             raw = [data] if isinstance(data, dict) and data else []
         except IdmcRateLimitedError:
@@ -370,7 +367,7 @@ class B360DataService:
         discovered: list[str] = []
         try:
             body: object = self._http.request(
-                "GET", self._mdm_url + ep.SOURCE_SYSTEMS, ep.MDM_HEADERS
+                idmc.SOURCE_SYSTEMS, self._mdm_url + ep.SOURCE_SYSTEMS
             )
             discovered = wire.source_system_ids(body)
             status = DiscoveryStatus.OK
@@ -406,9 +403,7 @@ class B360DataService:
             "recordsToReturn": ep.PICKLIST_SAMPLE,
         }
         try:
-            reply: object = self._http.request(
-                "POST", self._mdm_url + ep.SEARCH, ep.MDM_HEADERS, json=body
-            )
+            reply: object = self._http.request(idmc.SEARCH, self._mdm_url + ep.SEARCH, json=body)
         except IdmcRateLimitedError:
             raise
         except IdmcError:
@@ -514,7 +509,7 @@ class B360DataService:
                 guid=quote(guid, safe="."), business_id=quote(master.business_id, safe="")
             )
             try:
-                reply: object = self._http.request("GET", url, ep.MDM_HEADERS)
+                reply: object = self._http.request(idmc.ENTITY_MEMBERS, url)
             except IdmcRateLimitedError:
                 raise
             except IdmcError:
@@ -528,9 +523,8 @@ class B360DataService:
                     continue
                 try:
                     body: object = self._http.request(
-                        "GET",
+                        idmc.READ_SOURCE,
                         self._xref_url(guid, member.source_system, member.source_pkey),
-                        ep.MDM_HEADERS,
                     )
                 except IdmcRateLimitedError:
                     raise
@@ -573,7 +567,7 @@ class B360DataService:
         entity = self.metadata(guid)
         try:
             reply: object = self._http.request(
-                "GET", self._xref_url(guid, source_system, source_pkey), ep.MDM_HEADERS
+                idmc.READ_SOURCE, self._xref_url(guid, source_system, source_pkey)
             )
         except IdmcRateLimitedError:
             raise
@@ -593,7 +587,7 @@ class B360DataService:
             guid=quote(guid, safe="."), business_id=quote(business_id, safe="")
         )
         try:
-            reply: object = self._http.request("GET", url, ep.MDM_HEADERS)
+            reply: object = self._http.request(idmc.ENTITY_MEMBERS, url)
         except IdmcRateLimitedError:
             raise
         except IdmcError as exc:
@@ -615,9 +609,8 @@ class B360DataService:
                 continue
             try:
                 body: object = self._http.request(
-                    "GET",
+                    idmc.READ_SOURCE,
                     self._xref_url(guid, member.source_system, member.source_pkey),
-                    ep.MDM_HEADERS,
                 )
             except IdmcRateLimitedError:
                 raise
@@ -684,7 +677,7 @@ class B360DataService:
             for o in ops
         ]
         reply: object = self._http.request(
-            "PATCH", self._xref_url(guid, source_system, source_pkey), ep.MDM_HEADERS, json=body
+            idmc.UPDATE_SOURCE_FIELD, self._xref_url(guid, source_system, source_pkey), json=body
         )
         data = wire.as_json(reply)
         approval = data.get("approvalRequired") if isinstance(data, dict) else None
@@ -734,7 +727,7 @@ class B360DataService:
             params = {"sourceSystem": request.source_system, "sourcePKey": pkey}
             try:
                 reply: object = self._http.request(
-                    "POST", url, ep.MDM_HEADERS, json=body, params=params
+                    idmc.CREATE_RECORD, url, json=body, params=params
                 )
             except IdmcRateLimitedError:
                 stopped = "IDMC 429 (rate limited); stopped, nothing retried"
@@ -816,7 +809,7 @@ class B360DataService:
             guid=quote(entity.name, safe="."), business_id=quote(business_id, safe="")
         )
         try:
-            reply: object = self._http.request("GET", url, ep.MDM_HEADERS)
+            reply: object = self._http.request(idmc.READ_RECORD, url)
         except IdmcRateLimitedError:
             raise
         except IdmcError as exc:
@@ -836,10 +829,12 @@ class B360DataService:
 
     # ---- 0.9.12.4 Merge history (M) / (S): documented reads only ---------------------------
 
-    def _get_raw(self, url: str, params: dict[str, Any] | None = None) -> JsonValue | None:
+    def _get_raw(
+        self, spec: idmc.IdmcCallSpec, url: str, params: dict[str, Any] | None = None
+    ) -> JsonValue | None:
         """GET one IDMC record. 400/404 -> None; 429 passed through, never retried."""
         try:
-            reply: object = self._http.request("GET", url, ep.MDM_HEADERS, params=params)
+            reply: object = self._http.request(spec, url, params=params)
         except IdmcRateLimitedError:
             raise
         except IdmcError as exc:
@@ -856,7 +851,7 @@ class B360DataService:
         url = self._mdm_url + ep.READ_RECORD.format(
             guid=quote(guid, safe="."), business_id=quote(business_id, safe="")
         )
-        raw = self._get_raw(url, {"_showContentMeta": "true"})
+        raw = self._get_raw(idmc.READ_RECORD, url, {"_showContentMeta": "true"})
         if not isinstance(raw, dict) or not raw:
             raise LookupError(f"no master record {business_id} in {guid}")
         record = wire.record_from_search(raw, entity)
@@ -870,10 +865,11 @@ class B360DataService:
             for f in entity.fields
         ]
         members_raw = self._get_raw(
+            idmc.ENTITY_MEMBERS,
             self._mdm_url
             + ep.ENTITY_MEMBER.format(
                 guid=quote(guid, safe="."), business_id=quote(business_id, safe="")
-            )
+            ),
         )
         contributors: list[Contributor] = []
         for n, member in enumerate(wire.source_members(members_raw or {})):
@@ -886,7 +882,9 @@ class B360DataService:
                     )
                 )
                 continue
-            xref = self._get_raw(self._xref_url(guid, member.source_system, member.source_pkey))
+            xref = self._get_raw(
+                idmc.READ_SOURCE, self._xref_url(guid, member.source_system, member.source_pkey)
+            )
             meta = xref.get("_meta") if isinstance(xref, dict) else None
             m: dict[str, JsonValue] = meta if isinstance(meta, dict) else {}
             contributors.append(
@@ -918,7 +916,9 @@ class B360DataService:
         self._require_focus(guid)
         entity = self.metadata(guid)
         raw = self._get_raw(
-            self._xref_url(guid, source_system, source_pkey), {"_showContentMeta": "true"}
+            idmc.READ_SOURCE,
+            self._xref_url(guid, source_system, source_pkey),
+            {"_showContentMeta": "true"},
         )
         if not isinstance(raw, dict) or not raw:
             raise SourceRecordNotFoundError(f"no source record {source_system}/{source_pkey}")
@@ -926,7 +926,7 @@ class B360DataService:
         master_url = self._mdm_url + ep.READ_RECORD.format(
             guid=quote(guid, safe="."), business_id=quote(source.business_id, safe="")
         )
-        master_raw = self._get_raw(master_url, {"_showContentMeta": "true"})
+        master_raw = self._get_raw(idmc.READ_RECORD, master_url, {"_showContentMeta": "true"})
         master = (
             wire.record_from_search(master_raw, entity)
             if isinstance(master_raw, dict) and master_raw
@@ -1072,7 +1072,7 @@ class B360DataService:
         url = self._mdm_url + ep.ENTITY_GROUP.format(guid=quote(guid, safe="."))
         try:
             reply: object = self._http.request(
-                "POST", url, ep.MDM_HEADERS, json=[{"businessId": bid} for bid in ids]
+                idmc.MERGE, url, json=[{"businessId": bid} for bid in ids]
             )
         except IdmcRateLimitedError:
             raise
@@ -1157,9 +1157,8 @@ class B360DataService:
             )
             try:
                 self._http.request(
-                    "PATCH",
+                    idmc.UPDATE_MASTER_FIELD,
                     patch_url,
-                    ep.MDM_HEADERS,
                     json=ops,
                     params={"sourceSystem": str(override_source)},
                 )
@@ -1249,7 +1248,7 @@ class B360DataService:
         body = [
             {"sourcePKey": s.source_pkey, "sourceSystem": s.source_system} for s in request.sources
         ]
-        reply: object = self._http.request("POST", url, ep.MDM_HEADERS, json=body, params=params)
+        reply: object = self._http.request(idmc.UNMERGE, url, json=body, params=params)
         data = wire.as_json(reply)
         approval = data.get("approvalRequired") if isinstance(data, dict) else None
         return UnmergeResponse(

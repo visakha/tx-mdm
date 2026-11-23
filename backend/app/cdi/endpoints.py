@@ -17,7 +17,5 @@ TASKFLOW_STATUS = "/active-bpel/services/tf/status/{run_id}"
 TASKFLOW_TERMINATE = "/active-bpel/services/tf/terminate"
 TERMINATE_MAX_IDS = 200
 
-V3_HEADERS = ("INFA-SESSION-ID",)
-V2_HEADERS = ("icSessionId",)
 
 PAGE_SIZE = 200  # documented maximum for the objects query

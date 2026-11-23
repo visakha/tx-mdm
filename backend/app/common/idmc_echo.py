@@ -14,29 +14,22 @@ import json
 import threading
 from collections import OrderedDict
 from contextvars import ContextVar
-from enum import StrEnum
 from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
+from app.common.idmc_registry import LOGIN, IdmcCallSpec, SessionHeader
+
 ECHO_KEEP = 200
 MAX_CALLS_IN_SCRIPT = 25
-LOGIN_PATH = "/saas/public/core/v3/login"
+LOGIN_PATH = LOGIN.path
 SESSION_VAR_PS = "$sid"
 SESSION_VAR_SH = "$SID"
 
 
-class SessionHeader(StrEnum):
-    """Session header names IDMC uses (MDM: IDS-SESSION-ID, CDI v3: INFA-SESSION-ID, v2:
-    icSessionId). The value in a script is always the login variable, never a real id."""
-
-    IDS = "IDS-SESSION-ID"
-    INFA = "INFA-SESSION-ID"
-    IC = "icSessionId"
-
-
 class IdmcCall(BaseModel):
+    call_id: str = Field(description="Registry id (app/common/idmc_registry.py, /docs-idmc).")
     method: str
     url: str = Field(description="Full IDMC URL including the query string.")
     session_headers: list[SessionHeader]
@@ -81,9 +74,8 @@ def begin() -> _Recorded:
 
 
 def record(
-    method: str,
+    spec: IdmcCallSpec,
     url: str,
-    session_headers: tuple[str, ...],
     accept: str,
     body: Any,
     login_url: str,
@@ -93,15 +85,16 @@ def record(
     recorded = _CURRENT.get()
     if recorded is None:
         return
-    headers = [SessionHeader(h) for h in session_headers if h in SessionHeader._value2member_map_]
+    headers = [] if spec.auth is None else [spec.auth]
     recorded.calls.append(
         IdmcCall(
-            method=method.upper(),
+            call_id=spec.id,
+            method=spec.method.value,
             url=url,
             session_headers=headers,
             accept=accept,
             body=None if body is None else json.dumps(body, indent=2, ensure_ascii=True),
-            writes=method.upper() in {"POST", "PUT", "PATCH", "DELETE"},
+            writes=spec.writes,
         )
     )
     if recorded.login is None:

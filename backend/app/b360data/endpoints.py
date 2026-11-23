@@ -16,7 +16,6 @@ The datamodel and businessEntity RESPONSE shapes are NOT printed in the referenc
 DATAMODEL = "/metadata/api/v2/objects/tenantModel/datamodel"
 BUSINESS_ENTITY = "/metadata/api/v2/objects/businessEntity/{guid}"
 SEARCH = "/search/public/api/v1/search"
-MDM_HEADERS = ("IDS-SESSION-ID",)
 
 DEFAULT_LIMIT = 10
 MAX_LIMIT = 50

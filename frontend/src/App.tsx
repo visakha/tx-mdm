@@ -156,6 +156,10 @@ export function App(): React.JSX.Element {
         <a className="api-docs-link" href="/docs-typed" target="_blank" rel="noopener noreferrer" aria-label="OpenAPI docs typed per business entity" data-testid="api-docs-typed-link">
           API docs (typed)
         </a>
+        {/* 0.9.14 (Vamsi 03:15 CST): only the real IDMC endpoints the backend calls (/openapi-idmc.json). */}
+        <a className="api-docs-link" href="/docs-idmc" target="_blank" rel="noopener noreferrer" aria-label="OpenAPI docs for IDMC calls" data-testid="api-docs-idmc-link">
+          API docs IDMC
+        </a>
         <span className="about-version" data-testid="about-version" title="Backend version (GET /api/about)">
           {version === "" ? "" : `v${version}`}
         </span>

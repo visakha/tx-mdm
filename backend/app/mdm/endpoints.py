@@ -7,13 +7,11 @@ the job-definition list call is from the IDMC REST API Reference (July 2026, "Fi
 # Platform host (baseApiUrl .../saas), header INFA-SESSION-ID
 OBJECTS = "/public/core/v3/objects"
 JOB_DEFINITION_ASSET_TYPE = "MDM_JOB_DEFINITION"
-PLATFORM_HEADERS = ("INFA-SESSION-ID",)
 
 # MDM host (usw1-mdm...), header IDS-SESSION-ID
 JOB_SEARCH = "/job/public/api/v1/search"
 JOB_INSTANCE_RUN = "/job/public/api/v1/jobInstance/{kind}"  # Ingress | Egress | MatchMerge
 JOB_INSTANCE_READ = "/job/public/api/v1/jobInstance/{instance_id}"
-MDM_HEADERS = ("IDS-SESSION-ID",)
 
 PAGE_SIZE = 200
 JOB_SEARCH_PAGE_SIZE = 100

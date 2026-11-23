@@ -286,6 +286,8 @@ export interface GeneratedRows {
 }
 
 export interface IdmcCall {
+  /** Registry id (app/common/idmc_registry.py, /docs-idmc). */
+  call_id: string;
   method: string;
   /** Full IDMC URL including the query string. */
   url: string;

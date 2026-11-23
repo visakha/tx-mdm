@@ -18,6 +18,9 @@ export default defineConfig({
       // 0.9.12: the typed spec (per business entity) and its Swagger page.
       "/openapi-typed.json": apiTarget,
       "/docs-typed": apiTarget,
+      // 0.9.14: the third spec - IDMC calls only - and its Swagger page.
+      "/openapi-idmc.json": apiTarget,
+      "/docs-idmc": apiTarget,
     },
   },
 });

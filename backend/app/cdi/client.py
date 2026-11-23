@@ -7,6 +7,7 @@ from typing import Any
 from app.cdi import endpoints as ep
 from app.cdi.models import CdiRunHandle, CdiTask, CdiTaskType
 from app.cdi.taskflow_kind import TaskDomain, mapping_task_domain, taskflow_domain
+from app.common import idmc_registry as idmc
 from app.common.idmc_session import IdmcHttp
 from app.common.runs import RunCounts, RunStatus
 
@@ -54,9 +55,8 @@ class CdiClient:
         skip = 0
         while True:
             body = self._http.request(
-                "GET",
+                idmc.PLATFORM_OBJECTS,
                 self.platform_url() + ep.OBJECTS,
-                ep.V3_HEADERS,
                 params={"q": f"type=='{task_type.value}'", "limit": ep.PAGE_SIZE, "skip": skip},
             )
             objects = (body or {}).get("objects", [])
@@ -78,9 +78,8 @@ class CdiClient:
         match task_type:
             case CdiTaskType.MTT | CdiTaskType.WORKFLOW:
                 body = self._http.request(
-                    "POST",
+                    idmc.JOB_RUN,
                     self.platform_url() + ep.JOB_RUN,
-                    ep.V2_HEADERS,
                     json={"@type": "job", "taskFederatedId": task_id, "taskType": task_type.value},
                 )
                 return CdiRunHandle(
@@ -90,9 +89,8 @@ class CdiClient:
                 if not api_name:
                     raise ValueError("advanced taskflow needs its published API name")
                 body = self._http.request(
-                    "POST",
+                    idmc.TASKFLOW_RUN,
                     self.pod_url() + ep.TASKFLOW_RUN.format(api_name=api_name),
-                    ep.V3_HEADERS,
                     # Start-step input fields go as top-level JSON keys, named exactly as in
                     # the taskflow (case-sensitive), e.g. {"jobInstanceId": "ABC123"}.
                     # VERIFIED shape: Informatica KB "HOW TO: run multiple instances of
@@ -114,9 +112,8 @@ class CdiClient:
                 return self._check_v2(handle)
             case CdiTaskType.TASKFLOW:
                 body = self._http.request(
-                    "GET",
+                    idmc.TASKFLOW_STATUS,
                     self.pod_url() + ep.TASKFLOW_STATUS.format(run_id=handle.run_id),
-                    ep.V3_HEADERS,
                 )
                 return snapshot_from_taskflow_status(body or {})
 
@@ -125,9 +122,8 @@ class CdiClient:
     def running_jobs(self) -> list[dict[str, Any]]:
         """Every job IDMC lists as running, with child entries (details=true)."""
         body = self._http.request(
-            "GET",
+            idmc.ACTIVITY_MONITOR,
             self.platform_url() + ep.ACTIVITY_MONITOR,
-            ep.V2_HEADERS,
             params={"details": "true"},
         )
         return [e for e in body if isinstance(e, dict)] if isinstance(body, list) else []
@@ -135,9 +131,8 @@ class CdiClient:
     def recent_jobs(self, row_limit: int) -> list[dict[str, Any]]:
         """Newest finished jobs from the activity log (rowLimit max 1000 per the reference)."""
         body = self._http.request(
-            "GET",
+            idmc.ACTIVITY_LOG,
             self.platform_url() + ep.ACTIVITY_LOG,
-            ep.V2_HEADERS,
             params={"rowLimit": max(1, min(row_limit, 1000))},
         )
         return [e for e in body if isinstance(e, dict)] if isinstance(body, list) else []
@@ -152,9 +147,8 @@ class CdiClient:
         in the KB screenshots; a community post confirms "PUT /active-bpel/services/tf/terminate".
         """
         self._http.request(
-            "PUT",
+            idmc.TASKFLOW_TERMINATE,
             self.pod_url() + ep.TASKFLOW_TERMINATE,
-            ep.V3_HEADERS,
             json={"runid": run_ids},
         )
 
@@ -166,9 +160,8 @@ class CdiClient:
         Status API"). A list-shaped answer (query-parameter form) is unwrapped to its first item.
         """
         body = self._http.request(
-            "GET",
+            idmc.TASKFLOW_STATUS,
             self.pod_url() + ep.TASKFLOW_STATUS.format(run_id=run_id),
-            ep.V3_HEADERS,
             params={"subtaskDetails": "Yes"},
         )
         if isinstance(body, list):
@@ -178,14 +171,13 @@ class CdiClient:
     def session_log(self, log_id: str) -> tuple[str, bytes]:
         """Session log for one activityLog entry: (content type, bytes). May be a ZIP."""
         return self._http.request_bytes(
-            self.platform_url() + ep.SESSION_LOG.format(log_id=log_id), ep.V2_HEADERS
+            idmc.SESSION_LOG, self.platform_url() + ep.SESSION_LOG.format(log_id=log_id)
         )
 
     def _check_v2(self, handle: CdiRunHandle) -> CdiRunSnapshot:
         monitor = self._http.request(
-            "GET",
+            idmc.ACTIVITY_MONITOR,
             self.platform_url() + ep.ACTIVITY_MONITOR,
-            ep.V2_HEADERS,
             params={"details": "false"},
         )
         running = find_monitor_entry(monitor or [], handle.run_id, handle.v2_task_id)
@@ -194,9 +186,8 @@ class CdiClient:
         if handle.v2_task_id is None:
             return CdiRunSnapshot(RunStatus.UNKNOWN, "No taskId returned by the run call")
         log = self._http.request(
-            "GET",
+            idmc.ACTIVITY_LOG,
             self.platform_url() + ep.ACTIVITY_LOG,
-            ep.V2_HEADERS,
             params={"runId": handle.run_id, "taskId": handle.v2_task_id},
         )
         entries = log if isinstance(log, list) else []

@@ -11,8 +11,9 @@ import httpx
 from pydantic import SecretStr
 
 from app.common import idmc_echo
+from app.common.idmc_registry import LOGIN, IdmcCallSpec
 
-V3_LOGIN_PATH = "/saas/public/core/v3/login"
+V3_LOGIN_PATH = LOGIN.path
 
 
 class IdmcError(Exception):
@@ -92,32 +93,33 @@ class IdmcHttp:
 
     def request(
         self,
-        method: str,
+        spec: IdmcCallSpec,
         url: str,
-        session_headers: tuple[str, ...],
         json: Any = None,
         params: dict[str, Any] | None = None,
     ) -> Any:
-        response = self._send(method, url, session_headers, json, params)
+        """0.9.14: every IDMC call names its registry row (method + session header come from it),
+        so /openapi-idmc.json and Copy IDMC curl cannot drift from the code."""
+        response = self._send(spec, url, json, params)
         if response.status_code == 401:
             self.session.invalidate()
-            response = self._send(method, url, session_headers, json, params)
+            response = self._send(spec, url, json, params)
         return _parse(response)
 
     def request_bytes(
         self,
+        spec: IdmcCallSpec,
         url: str,
-        session_headers: tuple[str, ...],
         params: dict[str, Any] | None = None,
     ) -> tuple[str, bytes]:
         """GET a non-JSON body (e.g. a session log). Returns (content type, raw bytes).
 
         Same 401 re-login and 429 hard stop as request().
         """
-        response = self._send("GET", url, session_headers, None, params, accept="*/*")
+        response = self._send(spec, url, None, params, accept="*/*")
         if response.status_code == 401:
             self.session.invalidate()
-            response = self._send("GET", url, session_headers, None, params, accept="*/*")
+            response = self._send(spec, url, None, params, accept="*/*")
         if response.status_code == 429:
             raise IdmcRateLimitedError(429, "rate limited by Informatica; not retrying")
         if response.status_code >= 400:
@@ -126,9 +128,8 @@ class IdmcHttp:
 
     def _send(
         self,
-        method: str,
+        spec: IdmcCallSpec,
         url: str,
-        session_headers: tuple[str, ...],
         json: Any,
         params: dict[str, Any] | None,
         accept: str = "application/json",
@@ -136,10 +137,11 @@ class IdmcHttp:
         session_id = self.session.current().session_id
         # Copy IDMC curl: header NAMES only, never the session id value.
         full_url = str(httpx.URL(url, params=params)) if params else url
+        method = spec.method.value
+        session_headers = spec.session_headers
         idmc_echo.record(
-            method,
+            spec,
             full_url,
-            session_headers,
             accept,
             json,
             self.session.login_url,

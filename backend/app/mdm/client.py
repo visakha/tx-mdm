@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
+from app.common import idmc_registry as idmc
 from app.common.idmc_session import IdmcHttp
 from app.common.runs import RunCounts, RunStatus
 from app.mdm import endpoints as ep
@@ -34,9 +35,8 @@ class MdmClient:
         skip = 0
         while True:
             body = self._http.request(
-                "GET",
+                idmc.PLATFORM_OBJECTS,
                 self._platform_url() + ep.OBJECTS,
-                ep.PLATFORM_HEADERS,
                 params={
                     "q": f"type=='{ep.JOB_DEFINITION_ASSET_TYPE}'",
                     "limit": ep.PAGE_SIZE,
@@ -54,9 +54,8 @@ class MdmClient:
         instances: list[dict[str, Any]] = []
         for page in range(ep.JOB_SEARCH_MAX_PAGES):
             body = self._http.request(
-                "POST",
+                idmc.JOB_SEARCH,
                 self._mdm_url + ep.JOB_SEARCH,
-                ep.MDM_HEADERS,
                 json={"search": "*", "pageSize": ep.JOB_SEARCH_PAGE_SIZE, "pageOffset": page},
             )
             body = body or {}
@@ -72,18 +71,15 @@ class MdmClient:
         payload: dict[str, Any] = {"search": "*", "pageSize": page_size, "pageOffset": page_offset}
         if filters is not None:
             payload["filters"] = filters
-        body = self._http.request(
-            "POST", self._mdm_url + ep.JOB_SEARCH, ep.MDM_HEADERS, json=payload
-        )
+        body = self._http.request(idmc.JOB_SEARCH, self._mdm_url + ep.JOB_SEARCH, json=payload)
         items = (body or {}).get("jobInstances") or []
         return [item for item in items if isinstance(item, dict)]
 
     def read_instance(self, instance_id: str) -> dict[str, Any]:
         """Raw job instance summary (details=true), read-only."""
         body = self._http.request(
-            "GET",
+            idmc.JOB_INSTANCE_READ,
             self._mdm_url + ep.JOB_INSTANCE_READ.format(instance_id=instance_id),
-            ep.MDM_HEADERS,
             params={"details": "true"},
         )
         return body if isinstance(body, dict) else {}
@@ -92,18 +88,16 @@ class MdmClient:
         if kind is MdmJobKind.UNKNOWN:
             raise ValueError("job kind unknown; refusing to guess which run endpoint to call")
         body = self._http.request(
-            "POST",
+            idmc.JOB_INSTANCE_RUN,
             self._mdm_url + ep.JOB_INSTANCE_RUN.format(kind=kind.value),
-            ep.MDM_HEADERS,
             json={"jobDefinitionId": job_definition_id},
         )
         return str(body["id"])
 
     def check(self, instance_id: str) -> MdmRunSnapshot:
         body = self._http.request(
-            "GET",
+            idmc.JOB_INSTANCE_READ,
             self._mdm_url + ep.JOB_INSTANCE_READ.format(instance_id=instance_id),
-            ep.MDM_HEADERS,
             params={"details": "true"},
         )
         return snapshot_from_job_instance(body or {})

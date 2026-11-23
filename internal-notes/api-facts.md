@@ -336,3 +336,15 @@ Reference: internal-docs/B360_October2026_Business360_REST-API_Reference_en.pdf.
 - No read-merge-history API is documented. entity-history .../anonymize (p. 78) is a WRITE
   (anonymize) and is never called.
 - UNVERIFIED on his org: whether fieldData carries per-field entries for zlv_guest or only "/".
+
+## IDMC call registry (0.9.14)
+- Single source: `backend/app/common/idmc_registry.py` -> `/openapi-idmc.json` (`/docs-idmc`) and
+  the `call_id` of every Copy IDMC curl call. 24 rows: login; CDI objects / v2 job / activityMonitor
+  / activityLog / sessionLog; taskflow run / status / terminate; B360 job search / run / read;
+  datamodel, businessEntity, sourceSystem (UNVERIFIED-DOC); Search, Create, Read master, Update
+  master field, Source records by master, Read source, Update source field, Merge, Unmerge.
+- Reference 360 lookups are Search calls on rdm.value.be.* entities (same row as Search).
+- Delete / restore source record are NOT called by tx-mdm, so they are not in the IDMC spec.
+- Wire models (LoginRequest, SearchRequest, MergeResponse, JsonPatchOp, ...) only hold the fields
+  tx-mdm sends or reads; IDMC replies carry more.
+

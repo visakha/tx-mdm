@@ -15,7 +15,7 @@ from app.b360data import typed_openapi
 from app.b360data.router import router as b360_router
 from app.b360data.service import B360DataService
 from app.cdi.router import router as cdi_router
-from app.common import idmc_echo
+from app.common import idmc_echo, idmc_openapi
 from app.common.idmc_session import IdmcError, IdmcRateLimitedError
 from app.common.runs import JobAlreadyRunningError, RunNotFoundError
 from app.dependencies import get_b360_data_service
@@ -128,6 +128,17 @@ def create_app(frontend_origin: str = "http://localhost:5173") -> FastAPI:
     def docs_typed() -> HTMLResponse:
         return get_swagger_ui_html(
             openapi_url="/openapi-typed.json", title="TX MDM API (typed per business entity)"
+        )
+
+    # 0.9.14 (Vamsi 03:15 CST): a THIRD spec, IDMC calls only, from the typed registry.
+    @app.get("/openapi-idmc.json", include_in_schema=False)
+    def openapi_idmc() -> dict[str, object]:
+        return idmc_openapi.build()
+
+    @app.get("/docs-idmc", include_in_schema=False)
+    def docs_idmc() -> HTMLResponse:
+        return get_swagger_ui_html(
+            openapi_url="/openapi-idmc.json", title="IDMC calls made by tx-mdm"
         )
 
     @app.exception_handler(IdmcRateLimitedError)

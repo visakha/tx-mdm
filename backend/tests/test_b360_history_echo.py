@@ -87,6 +87,7 @@ def test_echo_is_runnable_and_has_no_secret(api: TestClient) -> None:
     read = next(c for c in data["calls"] if "_showContentMeta=true" in c["url"])
     assert read["url"].endswith(f"/entity/zlv_guest/{A}?_showContentMeta=true")
     assert read["session_headers"] == ["IDS-SESSION-ID"]
+    assert read["call_id"] == "b360-read-master"  # 0.9.14: same registry id as /docs-idmc
     assert data["login"]["username"] == "tester"
     assert "IDS-SESSION-ID: $sid" in data["powershell"]
     assert "$env:IDMC_PASSWORD" in data["powershell"]

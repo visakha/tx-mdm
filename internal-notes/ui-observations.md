@@ -626,3 +626,9 @@ the chip-row Listboxes instead.
   execCommand("copy").
 - Cypress screenshots of both forms: NOT taken in this patch (see report).
 
+## v0.9.14 (2026-11-23 ~03:35 CST): third API docs link
+- Title bar: "API docs" (/docs) | "API docs (typed)" (/docs-typed) | "API docs IDMC" (/docs-idmc,
+  aria "OpenAPI docs for IDMC calls", testid `api-docs-idmc-link`), each opens Swagger UI in a new
+  tab. The IDMC page lists only Informatica endpoints, grouped by tag: Login, CDI and taskflows,
+  Business 360 jobs, Business 360 metadata, Business 360 records; each operation has its own server.
+

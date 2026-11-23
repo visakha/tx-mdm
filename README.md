@@ -283,7 +283,8 @@ agent can call the backend directly.
 
 ## Copy IDMC curl (0.9.12.4)
 
-Every IDMC-backed screen has a "Copy IDMC curl" button. It shows (inline) and copies a script that
+Every IDMC-backed screen has a "Copy IDMC curl" button (0.9.13.1: it copies straight to the
+clipboard and only says "Text copied to the clipboard."; "bash" next to it copies the bash variant). It copies a script that
 runs against IDMC itself, not this app: step 1 logs in, the next steps are the exact IDMC calls the
 backend made for that screen. Set the password first, in the same window:
 
@@ -293,6 +294,19 @@ $env:IDMC_PASSWORD = "<your password>"
 
 bash: `export IDMC_PASSWORD='<your password>'`. The script never contains your session id or
 password. Write calls (Merge, Add, Edit) are marked "WRITES to IDMC": copying runs nothing.
+
+## IDMC calls only: /docs-idmc (0.9.14)
+
+Three separate specs: `/openapi.json` (`/docs`, our API), `/openapi-typed.json` (`/docs-typed`, our
+API typed per business entity) and `/openapi-idmc.json` (`/docs-idmc`, title-bar "API docs IDMC"):
+ONLY the Informatica IDMC endpoints this backend calls - server per host, method, path, query,
+request / response shapes as far as tx-mdm models them, auth header and the doc source (PDF page,
+KB, Postman, or UNVERIFIED-DOC). Built from `backend/app/common/idmc_registry.py`, the same registry
+every outbound call and Copy IDMC curl use. Save it to a file without a running backend:
+
+```
+cd backend && .venv/bin/python -c "import json; from app.common.idmc_openapi import build; print(json.dumps(build(), indent=2))" > openapi-idmc.json
+```
 
 ## Which Informatica calls are used
 
