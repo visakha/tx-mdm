@@ -70,15 +70,17 @@ class MatchKind(StrEnum):
 @dataclass(frozen=True)
 class NameRule[T]:
     """One row of a naming-convention table: names matching (kind, value) mean `meaning`.
-    Matching ignores case. The table order is the precedence: first match wins."""
+    Matching ignores case unless exact_case (0.9.17: his own Design assets, lowercase "m_").
+    The table order is the precedence: first match wins."""
 
     kind: MatchKind
     value: str
     meaning: T
+    exact_case: bool = False
 
     def matches(self, name: str) -> bool:
-        lowered = name.strip().lower()
-        wanted = self.value.lower()
+        lowered = name.strip() if self.exact_case else name.strip().lower()
+        wanted = self.value if self.exact_case else self.value.lower()
         match self.kind:
             case MatchKind.PREFIX:
                 return lowered.startswith(wanted) and len(lowered) > len(wanted)

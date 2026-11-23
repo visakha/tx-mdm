@@ -63,7 +63,10 @@ def objects(q: str) -> dict[str, Any]:
     if "WORKFLOW" in q:
         return {"objects": [_DESIGN_OBJECTS["FED2"]]}
     if "DTEMPLATE" in q:
-        return {"objects": [_DESIGN_OBJECTS["MAP5"]]}
+        # 0.9.17: two product-style mappings the own-name rule ("m_", exact case) must hide.
+        return {
+            "objects": [_DESIGN_OBJECTS["MAP5"], _DESIGN_OBJECTS["MAP8"], _DESIGN_OBJECTS["MAP9"]]
+        }
     if "DSS" in q:
         return {"objects": [_DESIGN_OBJECTS["DSS1"]]}
     return {"objects": []}
@@ -115,6 +118,12 @@ _DESIGN_OBJECTS: dict[str, dict[str, Any]] = {
         "VVamsi-idmcdev",
         "2026-11-22T21:20:00Z",
     ),
+    # 0.9.17: shipped with the product (his live org lists infacore_* etc.) and an upper-case
+    # "M_" name; both hidden by the own-name rule.
+    "MAP8": _obj(
+        "MAP8", "Add-On Bundles/infacore_parse_name", "DTEMPLATE", "system", "2025-01-01T00:00:00Z"
+    ),
+    "MAP9": _obj("MAP9", "Default/M_Upper_Case", "DTEMPLATE", "fake.dev", "2026-11-01T00:00:00Z"),
     "DSS1": _obj("DSS1", "Default/dss_copy_guests", "DSS", "fake.dev", "2026-11-10T08:00:00Z"),
 }
 

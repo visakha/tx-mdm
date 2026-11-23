@@ -15,6 +15,10 @@ router = APIRouter(prefix="/api/design", tags=["design"])
 Service = Annotated[DesignService, Depends(get_design_service)]
 AssetId = Annotated[Identifier128, Path(min_length=1, max_length=128)]
 Refresh = Annotated[bool, Query(description="true = re-read from IDMC (skip tx-mdm's cache).")]
+IncludeAll = Annotated[
+    bool,
+    Query(description="true = every asset; default hides product assets (own-name rule, 0.9.17)."),
+]
 
 
 @router.get(
@@ -31,12 +35,15 @@ def design_types(service: Service) -> AssetTypeList:
     "/assets/{asset_type}",
     response_model=AssetList,
     operation_id="design_assets",
-    summary="All assets of one type: name, path, updated time / by",
+    summary="Assets of one type (his own by name prefix): name, path, updated time / by",
 )
 def design_assets(
-    asset_type: DesignAssetType, service: Service, refresh: Refresh = False
+    asset_type: DesignAssetType,
+    service: Service,
+    refresh: Refresh = False,
+    include_all: IncludeAll = False,
 ) -> AssetList:
-    return service.list_assets(asset_type, refresh)
+    return service.list_assets(asset_type, refresh, include_all)
 
 
 @router.get(

@@ -318,3 +318,8 @@ html[data-theme="dark"] { --system: #f06fcf; }
 .design-list h3, .design-detail h3 { font-size: 15px; margin: 4px 0 8px; }
 .design-uses h4 { font-size: 14px; margin: 12px 0 4px; }
 @media (max-width: 1100px) { .design-columns { grid-template-columns: minmax(0, 1fr); } }
+
+/* 0.9.17 Design lists: keyboard highlight (outline only, no colour coding) */
+.row-nav:focus { outline: 1px dotted currentColor; outline-offset: 2px; }
+.row-nav tr.highlighted { outline: 2px solid currentColor; outline-offset: -2px; }
+.row-nav tr.highlighted td { font-weight: 600; }

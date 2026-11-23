@@ -31,7 +31,8 @@ import {
 } from "./b360/b360Api";
 import { openB360Record } from "./b360/B360DataPanel";
 import type { AssetDetail, AssetList, DesignAssetType } from "./b360/api-types";
-import { designApi, openDesignAsset } from "./design/designApi";
+import { designApi, designCopy, openDesignAsset } from "./design/designApi";
+import { labelledText } from "./shared/rowCopy";
 import { getJson } from "./shared/api";
 import type { RunView } from "./shared/run";
 import {
@@ -96,6 +97,7 @@ export const ACTIONS: readonly ActionInfo[] = [
   { name: "previewB360Merge", args: "(name, businessIds)", description: "B360 Data Merge (M): read 2-10 master records side by side (POST /merge/preview, Read Master Record each). Read-only. Merging itself is a person's Merge button (sends at once, no pop-up).", sideEffect: false },
   { name: "openB360Record", args: "(businessId)", description: "B360 Data: open one record of the open entity; its field groups show stacked below.", sideEffect: false },
   { name: "listDesignAssets", args: "(type)", description: "Design (0.9.15, read-only): all assets of one type (MTT, TASKFLOW, DTEMPLATE, DSS, WORKFLOW, CONNECTION, RUNTIME_ENVIRONMENT) with name, path, updated time / by. Opens the Design notebook on that type.", sideEffect: false },
+  { name: "designAssetCopyText", args: "(type, id)", description: "Design (0.9.17): the exact labelled text Ctrl+C copies for one asset (list row + its detail). Read-only, does not touch the clipboard.", sideEffect: false },
   { name: "getDesignAsset", args: "(type, id)", description: "Design: one asset's metadata - created / updated / by, runtime environment name, what it uses (a taskflow: its mapping tasks with their own metadata). Opens it on the page.", sideEffect: false },
   { name: "lookupMdmJob", args: "(instanceId)", description: "Read any B360 job instance by its full id (status, times, started by, counts, errors).", sideEffect: false },
 ];
@@ -219,6 +221,12 @@ export const txmdm = {
     navigate(DESIGN_ROUTE);
     openDesignAsset(type, id);
     return designApi.detail(type, id);
+  },
+  designAssetCopyText: async (type: DesignAssetType, id: string): Promise<string> => {
+    const [list, detail] = await Promise.all([designApi.list(type), designApi.detail(type, id)]);
+    const asset = list.assets.find((a) => a.id === id);
+    if (asset === undefined) throw new Error(`${type} ${id} is not in the ${list.label} list (own-name rule may hide it).`);
+    return labelledText(designCopy(list.label, asset, detail));
   },
   lookupMdmJob: (instanceId: string): Promise<MdmJobInstance> => mdmMonitorApi.lookup(instanceId),
   getMonitor: (onlyMyTasks = true, rowLimit = 50): Promise<MonitorSnapshot> =>

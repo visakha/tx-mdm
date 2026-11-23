@@ -681,3 +681,23 @@ NOT OBSERVED in a browser (fake IDMC + vitest only). Design notebook page ONLY:
   `design-go-to-idmc-used-by-<id>`).
 - aria-label "Open <type> <name> in IDMC portal"; new tab. Only mapping, mapping task and
   taskflow get links; connections, runtime environments, DSS, linear taskflows show none.
+
+## v0.9.17 (2026-11-23 ~09:00 CST): Design own-name filter + keyboard rows + Ctrl+C
+
+NOT OBSERVED in a browser (fake IDMC + vitest + typecheck only). Vamsi 08:49-08:50 CST.
+- Asset lists of EVERY type: the table wrapper (`design-list-keys`, aria "<label> assets (Up /
+  Down move, Enter opens, Ctrl+C copies the highlighted row)") is one Tab stop. Up / Down /
+  Home / End move the highlight (`tr.highlighted`, aria-selected, data-highlighted="true",
+  data-row-id); outline + bold, no colour. Enter on the wrapper opens the highlighted asset.
+  Clicking a row or its name button highlights AND opens. Highlight resets on type change; a
+  selected asset in the list starts highlighted. Keys from an input never act (none inside).
+- Ctrl+C / Cmd+C (shared `useRowCopy`, now `CopyPayload` = TSV row or labelled lines) copies the
+  highlighted asset as "Label: value" lines: Name, Type, Id, Path, Description, Updated, Updated
+  by, IDMC portal; if that asset's detail is loaded: v2 id, Created, Created by, Runtime
+  environment "name (id)", Mapping, Connection type, Shared, Uses, Used by; else "Detail: not
+  loaded (...)". Text selection wins. Note line under the table (`design-copy-note`).
+- Own-name rule (backend): Mapping m_, Mapping task mt_, Taskflow tf_, exact case. The as-of
+  line reads "14 Mapping assets (yours: names starting with m_; 34 product assets hidden), as
+  of ..." and a list note says the same. Connections / runtime environments / DSS / WORKFLOW
+  unfiltered.
+- Agent: `txmdm.designAssetCopyText(type, id)` returns the same labelled text (no clipboard).

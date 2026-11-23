@@ -1,9 +1,9 @@
 """App version and the top three things in it. GET /api/about returns exactly this."""
 
-VERSION = "0.9.16"
+VERSION = "0.9.17"
 
 HIGHLIGHTS: tuple[str, str, str] = (
-    'Design notebook: asset name + "Go to IDMC" open the mapping / mapping task / taskflow page.',
-    "Design notebook: CDI asset types -> assets -> created/updated/by + runtime environment.",
-    'IDMC portal links: B360 job ids, and "Go to IDMC" beneath each taskflow run id.',
+    "Design notebook: only your own assets - mappings m_, mapping tasks mt_, taskflows tf_.",
+    "Design lists: Up / Down / Home / End move the highlight, Enter opens the asset.",
+    "Design lists: Ctrl+C copies the highlighted asset as labelled lines (with its detail).",
 )

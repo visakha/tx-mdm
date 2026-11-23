@@ -7,18 +7,22 @@
 //                        uses with THEIR created / updated / by / runtime environment, clickable.
 // Read-only (GET only). Explicit Refresh button, no polling. No pop-ups, no colour coding.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@ui-sdk/react/button";
 import type { AssetDetail, AssetList, DesignAssetType, UsedAsset } from "../b360/api-types";
 import { errorText } from "../shared/api";
 import { CopyIdmcCurl } from "../shared/CopyIdmcCurl";
 import { DesignAssetLink } from "../shared/PortalLink";
+import { useRowCopy } from "../shared/rowCopy";
 import { useRibbonTab } from "../shell/sections";
 import {
   asAssetType,
   byText,
   designApi,
+  designCopy,
   detailUrl,
+  isRowKey,
+  moveHighlight,
   listUrl,
   openDesignAsset,
   selectAsset,
@@ -156,6 +160,9 @@ export function DesignPanel({ active }: { active: boolean }): React.JSX.Element 
   const [listError, setListError] = useState<string>("");
   const [detailError, setDetailError] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
+  // 0.9.17: keyboard-highlighted row (Up / Down / Home / End; Enter opens; Ctrl+C copies).
+  const [highlight, setHighlight] = useState<string | null>(null);
+  const tableRef = useRef<HTMLDivElement | null>(null);
 
   const loadList = useCallback((refresh: boolean): void => {
     setLoading(true);
@@ -185,8 +192,52 @@ export function DesignPanel({ active }: { active: boolean }): React.JSX.Element 
   useEffect(() => {
     if (!active) return;
     setList(null);
+    setHighlight(null);
     loadList(false);
   }, [active, loadList]);
+
+  // A selected asset that is in the list starts as the highlighted row.
+  useEffect(() => {
+    if (list === null) return;
+    setHighlight((h) => {
+      if (h !== null && list.assets.some((a) => a.id === h)) return h;
+      return selectedId !== null && list.assets.some((a) => a.id === selectedId) ? selectedId : null;
+    });
+  }, [list, selectedId]);
+
+  useEffect(() => {
+    if (highlight === null || tableRef.current === null) return;
+    const row = tableRef.current.querySelector<HTMLElement>(`[data-row-id="${CSS.escape(highlight)}"]`);
+    row?.scrollIntoView?.({ block: "nearest" });
+  }, [highlight]);
+
+  const currentCopy = useCallback(() => {
+    const asset = list?.assets.find((a) => a.id === highlight);
+    return asset === undefined ? null : designCopy(list?.label ?? type, asset, detail);
+  }, [list, highlight, detail, type]);
+  const rowCopy = useRowCopy(currentCopy);
+
+  const onListKeyDown = (e: React.KeyboardEvent<HTMLDivElement>): void => {
+    const target = e.target as HTMLElement;
+    if (target.closest("input, textarea, select, [contenteditable='true']") !== null) return;
+    if (list === null) return;
+    if (isRowKey(e.key)) {
+      e.preventDefault();
+      setHighlight(moveHighlight(list.assets.map((a) => a.id), highlight, e.key));
+      return;
+    }
+    if (e.key === "Enter" && highlight !== null && target === e.currentTarget) {
+      e.preventDefault();
+      selectAsset(type, highlight);
+      return;
+    }
+    rowCopy.onKeyDown(e);
+  };
+
+  const pick = (id: string): void => {
+    setHighlight(id);
+    selectAsset(type, id);
+  };
 
   useEffect(() => {
     if (!active) return;
@@ -209,7 +260,11 @@ export function DesignPanel({ active }: { active: boolean }): React.JSX.Element 
         {list !== null && (
           <span className="muted small" data-testid="design-as-of">
             {" "}
-            {list.assets.length} {label} assets, as of {whenText(list.as_of)}
+            {list.assets.length} {label} assets
+            {(list.hidden_count ?? 0) > 0 && list.name_filter !== null && list.name_filter !== undefined
+              ? ` (yours: names starting with ${list.name_filter.value}; ${list.hidden_count ?? 0} product assets hidden)`
+              : ""}
+            , as of {whenText(list.as_of)}
             {list.from_cache ? " (from tx-mdm cache; Refresh re-reads IDMC)" : ""}
           </span>
         )}
@@ -222,7 +277,15 @@ export function DesignPanel({ active }: { active: boolean }): React.JSX.Element 
           {listError !== "" && <p className="warn-text" data-testid="design-list-error">{listError}</p>}
           {list !== null && list.assets.length === 0 && <p className="muted">No assets of this type.</p>}
           {list !== null && list.assets.length > 0 && (
-            <div className="table-wrap">
+            <div
+              className="table-wrap row-nav"
+              ref={tableRef}
+              tabIndex={0}
+              data-testid="design-list-keys"
+              aria-label={`${label} assets (Up / Down move, Enter opens, Ctrl+C copies the highlighted row)`}
+              onKeyDown={onListKeyDown}
+              onCopy={rowCopy.onCopy}
+            >
               <table className="monitor" aria-label={`${label} assets table`}>
                 <thead>
                   <tr>
@@ -236,17 +299,19 @@ export function DesignPanel({ active }: { active: boolean }): React.JSX.Element 
                   {list.assets.map((a) => (
                     <tr
                       key={a.id}
-                      className={`clickable${a.id === selectedId ? " selected" : ""}`}
-                      aria-selected={a.id === selectedId}
+                      className={`clickable${a.id === selectedId ? " selected" : ""}${a.id === highlight ? " highlighted" : ""}`}
+                      aria-selected={a.id === highlight}
+                      data-highlighted={a.id === highlight ? "true" : undefined}
+                      data-row-id={a.id}
                       data-testid={`design-asset-${a.id}`}
-                      onClick={() => selectAsset(type, a.id)}
+                      onClick={() => pick(a.id)}
                     >
                       <td>
                         <Button
                           className="row-open"
                           aria-label={`Open ${label} ${a.name}`}
                           data-testid={`design-open-${a.id}`}
-                          onClick={() => selectAsset(type, a.id)}
+                          onClick={() => pick(a.id)}
                         >
                           {a.name}
                         </Button>
@@ -262,6 +327,11 @@ export function DesignPanel({ active }: { active: boolean }): React.JSX.Element 
                 </tbody>
               </table>
             </div>
+          )}
+          {list !== null && list.assets.length > 0 && (
+            <p className="muted small" data-testid="design-copy-note">
+              {rowCopy.note !== "" ? rowCopy.note : "Up / Down move the highlight, Enter opens, Ctrl+C (Cmd+C) copies the highlighted asset."}
+            </p>
           )}
           {(list?.notes ?? []).map((n) => (
             <p key={n} className="muted small">

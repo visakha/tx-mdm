@@ -22,6 +22,7 @@ from app.common.portal import PortalLinks
 from app.design.client import DesignClient, RefType
 from app.design.endpoints import MAX_CHILD_DETAILS
 from app.design.models import (
+    OWN_NAME_RULES,
     TYPE_RULES,
     AssetDetail,
     AssetList,
@@ -31,6 +32,7 @@ from app.design.models import (
     DesignAssetType,
     ListSource,
     MappingRef,
+    NameFilterInfo,
     RuntimeEnvironmentRef,
     UsedAsset,
 )
@@ -131,7 +133,9 @@ class DesignService:
 
     # ---- list ----
 
-    def list_assets(self, t: DesignAssetType, refresh: bool) -> AssetList:
+    def list_assets(
+        self, t: DesignAssetType, refresh: bool, include_all: bool = False
+    ) -> AssetList:
         rule = TYPE_RULES[t]
         notes: list[str] = []
         match rule.lists:
@@ -147,12 +151,27 @@ class DesignService:
                 assets = [self._runtime_summary(r) for r in self._runtimes(refresh).values()]
         if not assets:
             notes.append(f"IDMC returned no {rule.label} assets for this user.")
+        own = OWN_NAME_RULES.get(t)
+        kept = assets if own is None or include_all else [a for a in assets if own.matches(a.name)]
+        hidden = len(assets) - len(kept)
+        if hidden > 0:
+            notes.append(
+                f"{hidden} product {rule.label} assets hidden (names not starting with "
+                f"{own.value if own else ''})."
+            )
         return AssetList(
             type=t,
             label=rule.label,
             as_of=_now(),
-            assets=sorted(assets, key=lambda a: a.path.lower()),
+            assets=sorted(kept, key=lambda a: a.path.lower()),
             from_cache=cached,
+            name_filter=None
+            if own is None
+            else NameFilterInfo(
+                kind=own.kind, value=own.value, exact_case=own.exact_case, applied=not include_all
+            ),
+            shown_count=len(kept),
+            hidden_count=hidden,
             notes=notes,
         )
 

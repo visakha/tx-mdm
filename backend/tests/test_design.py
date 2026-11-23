@@ -215,3 +215,52 @@ def test_design_list_detail_and_uses_carry_portal_url(
         for u in api.get("/api/design/assets/MTT/FED5").json()["uses"]
         if u["type"].upper() == "CONNECTION"
     )
+
+
+# ---- 0.9.17: only his own assets (own-name rule, exact case) ----
+
+
+def test_mapping_list_keeps_only_his_m_prefixed_mappings(api: TestClient) -> None:
+    body = api.get("/api/design/assets/DTEMPLATE").json()
+    assert [a["name"] for a in body["assets"]] == ["m_MDM_ZLV_TTF_Guest_Basic_EGR"]
+    assert body["shown_count"] == 1 and body["hidden_count"] == 2
+    assert body["name_filter"] == {
+        "kind": "PREFIX",
+        "value": "m_",
+        "exact_case": True,
+        "applied": True,
+    }
+    assert any("2 product Mapping assets hidden" in n for n in body["notes"])
+
+
+def test_include_all_returns_product_mappings_too(api: TestClient) -> None:
+    body = api.get("/api/design/assets/DTEMPLATE?include_all=true").json()
+    names = {a["name"] for a in body["assets"]}
+    assert names == {"m_MDM_ZLV_TTF_Guest_Basic_EGR", "infacore_parse_name", "M_Upper_Case"}
+    assert body["hidden_count"] == 0 and body["name_filter"]["applied"] is False
+
+
+def test_types_without_a_rule_show_everything(api: TestClient) -> None:
+    for kind in ("CONNECTION", "RUNTIME_ENVIRONMENT", "DSS", "WORKFLOW"):
+        body = api.get(f"/api/design/assets/{kind}").json()
+        assert body["name_filter"] is None and body["hidden_count"] == 0
+        assert body["shown_count"] == len(body["assets"])
+
+
+def test_own_name_rules_table_is_his_three_prefixes_exact_case() -> None:
+    from app.design.models import OWN_NAME_RULES, DesignAssetType
+
+    assert {t: r.value for t, r in OWN_NAME_RULES.items()} == {
+        DesignAssetType.DTEMPLATE: "m_",
+        DesignAssetType.MTT: "mt_",
+        DesignAssetType.TASKFLOW: "tf_",
+    }
+    assert all(r.exact_case for r in OWN_NAME_RULES.values())
+    tf = OWN_NAME_RULES[DesignAssetType.TASKFLOW]
+    mtt = OWN_NAME_RULES[DesignAssetType.MTT]
+    mapping = OWN_NAME_RULES[DesignAssetType.DTEMPLATE]
+    # his real names (live read 2026-11-23) vs product-style names
+    assert tf.matches("tf_Ldg_MDM_CDI_TTF") and not tf.matches("TF_Sample")
+    assert mtt.matches("mt_m_Stg_MDM_CDI_TTF_CLIENTS") and not mtt.matches("Sample_MTT")
+    assert mapping.matches("m_Tgt_C_S_TTF_Pty") and not mapping.matches("infacore_parse_name")
+    assert not mapping.matches("mt_m_MDM_ZLV_TTF_Guest_Basic") and not mapping.matches("M_x")

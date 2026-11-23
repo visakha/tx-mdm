@@ -73,6 +73,33 @@ Copy IDMC curl. Doc status of each call: `internal-notes/api-facts.md` (Design s
   Typed `portal_url` on AssetSummary, AssetDetail and UsedAsset. Tests: exactly his three samples.
   CODE; pattern UNVERIFIED-DOC.
 
+## Only his own assets + keyboard rows + Ctrl+C (0.9.17, Vamsi voice 08:49-08:50 CST)
+His words: "I want keyboard navigable up and down and when a row highlights, when I do control C,
+all the relevant information should be copied to the clipboard." / "they are both a mix of what I
+have written and what came with the product. What I have written usually starts with ... small
+m underscore. Only keep those." Then for the other types: "Do the same" - mapping tasks "mt_",
+taskflows "tf_" (confirmed 08:50 CST).
+- Own-name rule, per asset type, declarative table `OWN_NAME_RULES` in `app/design/models.py`
+  (a typed `NameRule` PREFIX, exact case): Mapping (DTEMPLATE) "m_", Mapping task (MTT) "mt_",
+  Taskflow (TASKFLOW) "tf_". Connection, Runtime environment, DSS, Linear taskflow: NO rule
+  (no naming convention given) - nothing hidden. Applied in the backend after the (cached) IDMC
+  list; `?include_all=true` returns every asset (no UI control; for checks and agents). CODE
+- AssetList carries `name_filter` (the rule, or null), `shown_count`, `hidden_count`; the page
+  says "N product assets hidden (names not starting with m_)". CODE
+- Live counts before the rule (his org, read 2026-11-23 08:5x CST through his backend): Mapping
+  48 (14 m_ shown, 34 hidden: dsst__*, B2B_Gateway_*, infacore_*, PreviewMapping_*), Mapping task
+  11 (0 hidden), Taskflow 4 (0 hidden). LIVE-READ, filter itself not yet run on his laptop.
+- Every Design asset list (all types): the table is one keyboard stop. Up / Down move the
+  highlighted row, Home / End jump to first / last, Enter opens the highlighted asset (same as a
+  click). A click highlights and opens. The highlighted row has aria-selected / data-highlighted
+  and a visible outline. CODE
+- Ctrl+C (Cmd+C) on the list copies the highlighted asset as labelled lines ("Name: ...", one
+  per line, ASCII only): name, type, id, path, description, updated / by, IDMC portal URL; when
+  that asset's detail is loaded also v2 id, created / by, runtime environment, mapping,
+  connection type, shared, Uses / Used by names. A real text selection wins (normal copy); keys
+  typed in an input never reach the list. One line beneath the table says it was copied. CODE
+- Agent: `txmdm.designAssetCopyText(type, id)` returns the same text. CODE
+
 ## NOT LIVE
 Nothing on this page has run against his org yet: all shapes come from the IICS REST API
 Reference (Nov 2025) and the fake IDMC.

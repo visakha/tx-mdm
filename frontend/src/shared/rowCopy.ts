@@ -34,6 +34,21 @@ export function rowToTsv(row: CopyRow): string {
   return `${row.headers.map(tsvCell).join("\t")}\n${row.cells.map(tsvCell).join("\t")}\n`;
 }
 
+/** 0.9.17 (Design lists): readable labelled lines, "Label: value" one per line. */
+export interface LabelledCopy {
+  lines: readonly (readonly [string, CopyValue])[];
+}
+
+export type CopyPayload = CopyRow | LabelledCopy;
+
+export function labelledText(copy: LabelledCopy): string {
+  return copy.lines.map(([label, value]) => `${tsvCell(label)}: ${tsvCell(value)}`).join("\n") + "\n";
+}
+
+export function payloadText(payload: CopyPayload): string {
+  return "lines" in payload ? labelledText(payload) : rowToTsv(payload);
+}
+
 function hasTextSelection(): boolean {
   const sel = window.getSelection();
   return sel !== null && !sel.isCollapsed && sel.toString() !== "";
@@ -43,7 +58,7 @@ function hasTextSelection(): boolean {
  * Ctrl+C / Cmd+C on a table wrapper copies the highlighted row. A real text selection wins (normal
  * browser copy). Primary path: the copy event's clipboardData; fallback: navigator.clipboard.
  */
-export function useRowCopy(current: () => CopyRow | null): {
+export function useRowCopy(current: () => CopyPayload | null): {
   onKeyDown: (e: React.KeyboardEvent) => void;
   onCopy: (e: React.ClipboardEvent) => void;
   note: string;
@@ -60,7 +75,7 @@ export function useRowCopy(current: () => CopyRow | null): {
       if (hasTextSelection()) return;
       const row = current();
       if (row === null) return;
-      const text = rowToTsv(row);
+      const text = payloadText(row);
       e.preventDefault();
       e.clipboardData.setData("text/plain", text);
       done();
@@ -77,7 +92,7 @@ export function useRowCopy(current: () => CopyRow | null): {
       window.setTimeout(() => {
         if (!pending.current) return; // the copy event handled it
         pending.current = false;
-        const text = rowToTsv(row);
+        const text = payloadText(row);
         void copyText(text).then((r) => (r.ok ? done() : setNote(copyMessage(r, "Row"))));
       }, 0);
     },

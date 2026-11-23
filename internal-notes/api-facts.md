@@ -376,3 +376,8 @@ numbers are the PDF's own). Nothing below is LIVE yet.
 | CDI pod host for the portal = `usw1.dm1-us.informaticacloud.com` (setting idmc_cdi_portal_url) | from his sample only |
 | CDI plain mapping-task (MTT) run portal page | UNKNOWN - no sample given; open gap, not invented |
 | Design asset page (0.9.16, Design notebook page ONLY): `{cdi_pod_host}/diUI/products/integrationDesign/main/{segment}/{v3_object_id}/read`, segment mapping (DTEMPLATE) / mct (MTT) / taskflow (TASKFLOW). His samples: `.../main/mapping/3lQGzXvaemxhMmIA4mOA4j/read` (m_Ldg_MDM_CDI_TTF_CLIENTS), `.../main/mct/6wiCkUCMxiClwr6t1yqVGv/read` (mt_m_Ldg_MDM_CDI_TTF_CLIENTS), `.../main/taskflow/8SYjFqQc4AokqeoEmEDecW/read` (tf_Ldg_MDM_CDI_TTF) | UNVERIFIED-DOC - portal deep links from his browser (03:57 CST), not a documented API. The id is the v3 (federated) object id. Other types (DSS, WORKFLOW, connection, runtime environment): no sample, no link |
+
+- 0.9.17 (2026-11-23 ~08:55 CST, LIVE read through his backend, GET /api/design/assets/*):
+  DTEMPLATE 48 (14 start "m_"; the rest are product: dsst__*, B2B_Gateway_*, infacore_*,
+  PreviewMapping_RULE_SPECIFICATION; several names appear more than once in different folders),
+  MTT 11 (all mt_m_*), TASKFLOW 4 (all tf_*), CONNECTION 6, RUNTIME_ENVIRONMENT 8.

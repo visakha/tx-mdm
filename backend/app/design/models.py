@@ -12,6 +12,8 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
+from app.common.naming import MatchKind, NameRule
+
 
 class DesignAssetType(StrEnum):
     """Asset types of the Design page. v3 values are IDMC's own v3 objects `type` strings."""
@@ -105,6 +107,26 @@ TYPE_RULES: dict[DesignAssetType, TypeRule] = {
 }
 
 
+# 0.9.17 (Vamsi voice 08:49-08:50 CST): "they are both a mix of what I have written and what came
+# with the product ... Only keep those." His own assets by name prefix, exact case. Types without a
+# row show everything (no convention given yet: connections, runtime environments, DSS, WORKFLOW).
+OWN_MEANING = "his own asset"
+OWN_NAME_RULES: dict[DesignAssetType, NameRule[str]] = {
+    DesignAssetType.DTEMPLATE: NameRule(MatchKind.PREFIX, "m_", OWN_MEANING, exact_case=True),
+    DesignAssetType.MTT: NameRule(MatchKind.PREFIX, "mt_", OWN_MEANING, exact_case=True),
+    DesignAssetType.TASKFLOW: NameRule(MatchKind.PREFIX, "tf_", OWN_MEANING, exact_case=True),
+}
+
+
+class NameFilterInfo(BaseModel):
+    """The own-name rule applied to a list (0.9.17)."""
+
+    kind: MatchKind
+    value: str = Field(description='Name prefix of his own assets, exact case (e.g. "m_").')
+    exact_case: bool
+    applied: bool = Field(description="False when include_all=true asked for every asset.")
+
+
 PORTAL_DESCRIPTION = (
     "IDMC portal page of this asset (0.9.16, Design page only): mapping, mapping task and "
     "taskflow; null for other types (no known pattern). UNVERIFIED-DOC: from his browser."
@@ -143,6 +165,11 @@ class AssetList(BaseModel):
     as_of: datetime
     assets: list[AssetSummary]
     from_cache: bool = Field(description="True when served from tx-mdm's cache (Refresh re-reads).")
+    name_filter: NameFilterInfo | None = Field(
+        default=None, description="Own-name rule of this type (0.9.17); null = no rule, all shown."
+    )
+    shown_count: int = Field(default=0, description="Assets in this answer.")
+    hidden_count: int = Field(default=0, description="Assets IDMC listed that the rule hid.")
     notes: list[str] = Field(default_factory=list)
 
 

@@ -60,6 +60,12 @@ export interface AssetList {
   assets: AssetSummary[];
   /** True when served from tx-mdm's cache (Refresh re-reads). */
   from_cache: boolean;
+  /** Own-name rule of this type (0.9.17); null = no rule, all shown. */
+  name_filter?: NameFilterInfo | null;
+  /** Assets in this answer. */
+  shown_count?: number;
+  /** Assets IDMC listed that the rule hid. */
+  hidden_count?: number;
   notes?: string[];
 }
 
@@ -435,6 +441,9 @@ export interface MasterMergeHistory {
   note: string;
 }
 
+export type MatchKind = "PREFIX" | "SUFFIX";
+export const MATCHKIND_VALUES: readonly MatchKind[] = ["PREFIX", "SUFFIX"];
+
 export interface MergeFieldRow {
   field: string;
   label: string;
@@ -512,6 +521,15 @@ export const MERGESTEPSTATUS_VALUES: readonly MergeStepStatus[] = ["OK", "FAILED
 
 export type NameFilterComparator = "STARTS_WITH";
 export const NAMEFILTERCOMPARATOR_VALUES: readonly NameFilterComparator[] = ["STARTS_WITH"];
+
+export interface NameFilterInfo {
+  kind: MatchKind;
+  /** Name prefix of his own assets, exact case (e.g. "m_"). */
+  value: string;
+  exact_case: boolean;
+  /** False when include_all=true asked for every asset. */
+  applied: boolean;
+}
 
 export interface NewGroupRow {
   /** The row's _id (pp. 53, 86). Empty: new row. */
