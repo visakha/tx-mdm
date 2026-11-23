@@ -13,6 +13,7 @@
 //   Session log = the selected run's child task logs (pick the child).
 // The Track run id tab was removed at his request (2026-11-23).
 
+import { GoToIdmc } from "../shared/PortalLink";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@ui-sdk/react/button";
 import { Input } from "@ui-sdk/react/input";
@@ -374,6 +375,10 @@ export function TaskflowsPanel({ route, go, active, domain }: Props): React.JSX.
             {statusLabel(status)}
           </span>
         </p>
+        {/* 0.9.15 Addendum B: directly beneath the run id. */}
+        <p className="go-to-idmc" data-testid="tf-go-to-idmc-line">
+          <GoToIdmc runId={status.run_id} url={status.portal_url} slug="summary" />
+        </p>
       </>
     );
 
@@ -625,7 +630,15 @@ export function TaskflowsPanel({ route, go, active, domain }: Props): React.JSX.
                     data-trackable={row.trackable ? "true" : "false"}
                     title={row.trackable ? "Taskflow run id" : "Child task run number - not a taskflow run id"}
                   >
-                    <td className="nowrap tf-id-cell"><code>{row.run_id ?? "-"}</code></td>
+                    <td className="nowrap tf-id-cell">
+                      <code>{row.run_id ?? "-"}</code>
+                      {row.trackable && row.run_id !== null && (
+                        <>
+                          <br />
+                          <GoToIdmc runId={row.run_id} url={row.portal_url} slug="history" />
+                        </>
+                      )}
+                    </td>
                     <td className="nowrap tf-open-cell">
                       {(() => {
                         // Taskflow rows link to themselves; child rows to their parent run.

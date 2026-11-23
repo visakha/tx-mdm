@@ -62,6 +62,8 @@ export interface TaskflowRunStatus {
   subtasks: SubtaskRun[];
   totals: RunTotals;
   notes: string[];
+  /** 0.9.15: "Go to IDMC" - taskflow run page in the IDMC portal, built by the backend. */
+  portal_url?: string | null;
 }
 
 export interface TaskflowStartResult {
@@ -73,6 +75,8 @@ export interface TaskflowStartResult {
   requested_at: string | null;
   status_path: string;
   parameters: Record<string, string>;
+  /** 0.9.15: "Go to IDMC" - taskflow run page in the IDMC portal, built by the backend. */
+  portal_url?: string | null;
 }
 
 /** The input field every Business 360 / MDM taskflow needs (exact, case-sensitive name).
@@ -122,6 +126,8 @@ export interface HistoryRow {
   rows_failed: number | null;
   error: string;
   started_by: string;
+  /** 0.9.15: "Go to IDMC" - taskflow run page in the IDMC portal, built by the backend. */
+  portal_url?: string | null;
 }
 
 export interface TaskflowHistory {
@@ -155,6 +161,7 @@ export function startedRow(started: TaskflowStartResult): HistoryRow {
     rows_failed: null,
     error: "",
     started_by: "",
+    portal_url: started.portal_url ?? null,
   };
 }
 

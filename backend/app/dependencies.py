@@ -11,6 +11,7 @@ from app.b360data.service import B360DataService
 from app.cdi.client import CdiClient
 from app.cdi.service import CdiService
 from app.common.idmc_session import IdmcHttp, IdmcSession
+from app.common.portal import PortalLinks
 from app.common.runs import RunRegistry
 from app.config import Settings, get_settings
 from app.design.client import DesignClient
@@ -56,7 +57,8 @@ def get_cdi_service() -> CdiService:
     settings = get_settings()
     http = IdmcHttp(get_http_client(), _new_session(settings))
     client = CdiClient(http, settings.idmc_platform_url)
-    return CdiService(client, RunRegistry("cdi"))
+    portal = PortalLinks(settings.idmc_mdm_url, settings.idmc_cdi_portal_url)
+    return CdiService(client, RunRegistry("cdi"), portal)
 
 
 @lru_cache

@@ -26,6 +26,7 @@ from app.cdi.taskflow_runs import (
     with_log_details,
 )
 from app.common.idmc_session import IdmcError, IdmcRateLimitedError
+from app.common.portal import PortalLinks
 from app.common.runs import RunRegistry, RunStatus, RunView, now_utc
 
 TASK_NAME_CACHE_SECONDS = 300  # the Monitor tab refreshes often; the task list rarely changes
@@ -67,9 +68,12 @@ ALLOWED_USERS_HINT = (
 
 
 class CdiService:
-    def __init__(self, client: CdiClient, registry: RunRegistry) -> None:
+    def __init__(
+        self, client: CdiClient, registry: RunRegistry, portal: PortalLinks | None = None
+    ) -> None:
         self._client = client
         self._registry = registry
+        self._portal = portal or PortalLinks("", "")  # 0.9.15: "Go to IDMC" links
         self._handles: dict[str, CdiRunHandle] = {}
         self._task_names: set[str] = set()
         self._task_names_at = 0.0
@@ -213,10 +217,12 @@ class CdiService:
             self._registry.fail(run, str(exc))
             raise TaskflowStartError(502, str(exc)) from exc
         self._handles[run.run_key] = handle
+        run.portal_url = self._portal.cdi_taskflow_run(task.name, handle.run_id)
         self._registry.update_status(
             run, RunStatus.QUEUED, f"Accepted by IDMC, runId {handle.run_id}"
         )
         return TaskflowStartResult(
+            portal_url=run.portal_url,
             run_id=handle.run_id,
             taskflow_name=task.name,
             task_id=task.id,
@@ -259,7 +265,11 @@ class CdiService:
                 children.update(c.name for c in cached.subtasks)
         referenced = set() if children else self._referenced_children(name, notes)
         snapshot = self.monitor(row_limit, only_my_tasks=False)
-        return build_history(name, snapshot, app_runs, children, notes, now_utc(), referenced)
+        history = build_history(name, snapshot, app_runs, children, notes, now_utc(), referenced)
+        for row in history.rows:
+            if row.level == "taskflow" and row.trackable:
+                row.portal_url = self._portal.cdi_taskflow_run(row.task_name, row.run_id)
+        return history
 
     def _referenced_children(self, name: str, notes: list[str]) -> set[str]:
         """0.9.15: child mapping tasks of a taskflow from IDMC's v3 references (Uses), cached
@@ -291,6 +301,7 @@ class CdiService:
             self._close_registry_run(cached)
             return cached
         status = status_from_body(run_id, self._client.taskflow_status(run_id), now_utc())
+        status.portal_url = self._portal.cdi_taskflow_run(status.taskflow_name, status.run_id)
         if status.is_final and details and status.subtasks:
             status = self._add_log_details(status)
         if status.is_final:

@@ -66,7 +66,8 @@ class RunView(BaseModel):
     portal_url: str | None = Field(
         default=None,
         description="0.9.15: IDMC portal page of this run. MDM: jobDetails/{instance id} "
-        "(UNVERIFIED-DOC, from his browser). CDI: always null until he gives the CDI pattern.",
+        "(UNVERIFIED-DOC, from his browser). CDI taskflow: processinstance page (UNVERIFIED-DOC). "
+        "CDI mapping task: always null (no pattern given yet).",
     )
 
 

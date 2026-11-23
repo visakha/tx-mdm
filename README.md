@@ -80,6 +80,7 @@ npm run dev                 # http://localhost:5173, proxies /api to :8000
 | `IDMC_LOGIN_URL` | v3 login host, default `https://dm1-us.informaticacloud.com` |
 | `IDMC_MDM_URL` | Business 360 API host, default `https://usw1-mdm.dm1-us.informaticacloud.com` |
 | `IDMC_PLATFORM_URL` | Optional override; empty = use `baseApiUrl` from the login response |
+| `IDMC_CDI_PORTAL_URL` | 0.9.15: Data Integration portal host for "Go to IDMC" taskflow links; default https://usw1.dm1-us.informaticacloud.com, empty = no links |
 | `MDM_RESOLVER_CACHE_SECONDS` | How long MDM job-id resolution is cached (default 600) |
 | `FRONTEND_ORIGIN` | CORS origin if you skip the Vite proxy |
 | `IDMC_PROXY_URL` | Outbound proxy for IDMC calls; empty = direct |
@@ -304,7 +305,9 @@ environment name. A taskflow lists the mapping tasks it uses with their own meta
 (`GET /api/design/...`, Swagger tag "design"). Spec: `specs/design.md`.
 
 B360 job instance ids now link to the IDMC portal job page (new tab); the URL is built by the
-backend (`app/common/portal.py`).
+backend (`app/common/portal.py`). Taskflow runs get a "Go to IDMC" link beneath the run id
+(Summary + run history), host from `IDMC_CDI_PORTAL_URL` (default
+https://usw1.dm1-us.informaticacloud.com). Plain mapping-task runs: no link yet.
 
 ## IDMC calls only: /docs-idmc (0.9.14)
 

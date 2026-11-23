@@ -660,4 +660,12 @@ IDMC portal links (Vamsi 03:36 CST):
   the table test id), the Result view "Job instance" row (`run-instance-id`, slug run-result),
   and the MDM Runs list items (slug runs; clicking the link does not pick the row).
 - URL only from the backend field `portal_url`; frontend guard test `shared/portal.test.ts`.
-- CDI: no links yet (slot waiting for his sample URL). Taskflow children: no instance id known.
+- CDI taskflow runs (Addendum B, 03:44 CST): link text exactly "Go to IDMC" (he corrected the
+  label to IDMC), aria "Open taskflow run <id> in IDMC portal", new tab:
+  - Taskflows Summary header: own line `tf-go-to-idmc-line` directly beneath "Run id <id>"
+    (`go-to-idmc-summary-<run id>`); the same header shows on the Session log tab.
+  - Run history: under each taskflow run id (`go-to-idmc-history-<run id>`); clicking it does not
+    open the row. Child rows (child run numbers) get no link.
+  - Missing portal_url (e.g. idmc_cdi_portal_url empty) -> no link rendered.
+- CDI plain mapping-task runs: no link (no pattern from him yet - open gap).
+- B360 taskflow children: no MDM instance id known, no link.

@@ -44,6 +44,12 @@ class HistoryRow(BaseModel):
     rows_failed: int | None = Field(default=None, description="Source + target rows failed.")
     error: str = ""
     started_by: str = ""
+    portal_url: str | None = Field(
+        default=None,
+        description='0.9.15: taskflow rows only - IDMC portal page of the run ("Go to IDMC"): '
+        "{cdi_pod_host}/diUI/products/integrationDesign/main/processinstance/{run_id}/"
+        "{name}-{run_id}%7B%7D. UNVERIFIED-DOC (his browser). Built by app/common/portal.py.",
+    )
 
 
 class TaskflowHistory(BaseModel):

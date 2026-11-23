@@ -127,6 +127,12 @@ class TaskflowRunStatus(BaseModel):
     subtasks: list[SubtaskRun] = Field(default_factory=list)
     totals: RunTotals = Field(default_factory=RunTotals)
     notes: list[str] = Field(default_factory=list)
+    portal_url: str | None = Field(
+        default=None,
+        description='0.9.15: IDMC portal page of this taskflow run ("Go to IDMC"): '
+        "{cdi_pod_host}/diUI/products/integrationDesign/main/processinstance/{run_id}/"
+        "{name}-{run_id}%7B%7D. UNVERIFIED-DOC (his browser). Built by app/common/portal.py.",
+    )
 
 
 class TaskflowStartResult(BaseModel):
@@ -141,6 +147,12 @@ class TaskflowStartResult(BaseModel):
     status_path: str
     parameters: dict[str, str] = Field(
         default_factory=dict, description="Input fields sent to the taskflow."
+    )
+    portal_url: str | None = Field(
+        default=None,
+        description='0.9.15: IDMC portal page of this taskflow run ("Go to IDMC"): '
+        "{cdi_pod_host}/diUI/products/integrationDesign/main/processinstance/{run_id}/"
+        "{name}-{run_id}%7B%7D. UNVERIFIED-DOC (his browser). Built by app/common/portal.py.",
     )
 
 

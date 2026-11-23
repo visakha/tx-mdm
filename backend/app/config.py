@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     idmc_login_url: str = "https://dm1-us.informaticacloud.com"
     idmc_mdm_url: str = "https://usw1-mdm.dm1-us.informaticacloud.com"
     idmc_platform_url: str = ""
+    # 0.9.15: Data Integration portal host for "Go to IDMC" taskflow run links (his pod, from
+    # his browser sample 2026-11-23 03:44 CST). Empty = no CDI portal links.
+    idmc_cdi_portal_url: str = "https://usw1.dm1-us.informaticacloud.com"
     mdm_resolver_cache_seconds: int = 600
     frontend_origin: str = "http://localhost:5173"
     http_timeout_seconds: float = 30.0

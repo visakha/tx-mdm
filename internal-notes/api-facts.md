@@ -372,4 +372,6 @@ numbers are the PDF's own). Nothing below is LIVE yet.
 | Fact | Status |
 |---|---|
 | B360 job page: `{mdm_host}/ui-config-app/main/jobDetails/{instance_id}`; his sample `https://usw1-mdm.dm1-us.informaticacloud.com/ui-config-app/main/jobDetails/1309450654674083840` | UNVERIFIED-DOC - a portal deep link taken from his browser (03:36 CST), not a documented API |
-| CDI run / taskflow portal page | UNKNOWN - waiting for his sample; not invented |
+| CDI taskflow run page: `{cdi_pod_host}/diUI/products/integrationDesign/main/processinstance/{run_id}/{taskflow_name}-{run_id}%7B%7D` (trailing %7B%7D = encoded "{}"); his sample `https://usw1.dm1-us.informaticacloud.com/diUI/products/integrationDesign/main/processinstance/1309453033490374656/tf_Ldg_MDM_CDI_TTF-1309453033490374656%7B%7D` | UNVERIFIED-DOC - portal deep link from his browser (03:44 CST), not a documented API |
+| CDI pod host for the portal = `usw1.dm1-us.informaticacloud.com` (setting idmc_cdi_portal_url) | from his sample only |
+| CDI plain mapping-task (MTT) run portal page | UNKNOWN - no sample given; open gap, not invented |

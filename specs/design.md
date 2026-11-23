@@ -51,8 +51,16 @@ Copy IDMC curl. Doc status of each call: `internal-notes/api-facts.md` (Design s
   (`app/common/portal.py`, fields `portal_url` on `MdmJobInstanceView` and `RunView`). CODE;
   URL pattern UNVERIFIED-DOC (from his browser, not a documented API).
 - Taskflow child rows: no MDM job instance id is known for them today, so no link there.
-- CDI runs / taskflows: typed slot `CDI_RUN_PATH = None`; `portal_url` stays null until he gives
-  a sample URL. Not invented.
+- CDI taskflow runs (Addendum B, Vamsi 03:44 CST): "Go to IDMC" link directly beneath the run id
+  on the Taskflows Summary (and Session log) header, and under each taskflow run id in the run
+  history. New tab, aria-label "Open taskflow run <id> in IDMC portal". URL =
+  `{cdi_pod_host}/diUI/products/integrationDesign/main/processinstance/{run_id}/{taskflow_name}-{run_id}%7B%7D`
+  (last segment percent-encoded; "{}" -> %7B%7D), host from setting `idmc_cdi_portal_url`
+  (default https://usw1.dm1-us.informaticacloud.com, his pod). Field `portal_url` on
+  TaskflowRunStatus, TaskflowStartResult, HistoryRow (taskflow rows) and the CDI RunView.
+  Test: exactly his sample `https://usw1.dm1-us.informaticacloud.com/diUI/products/integrationDesign/main/processinstance/1309453033490374656/tf_Ldg_MDM_CDI_TTF-1309453033490374656%7B%7D`. CODE; pattern UNVERIFIED-DOC.
+- CDI plain mapping-task (MTT) runs: NO pattern given - typed slot `MTT_RUN_PATH = None`, no link.
+  OPEN GAP.
 
 ## NOT LIVE
 Nothing on this page has run against his org yet: all shapes come from the IICS REST API
