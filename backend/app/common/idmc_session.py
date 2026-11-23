@@ -94,6 +94,26 @@ class IdmcHttp:
             response = self._send(method, url, session_headers, json, params)
         return _parse(response)
 
+    def request_bytes(
+        self,
+        url: str,
+        session_headers: tuple[str, ...],
+        params: dict[str, Any] | None = None,
+    ) -> tuple[str, bytes]:
+        """GET a non-JSON body (e.g. a session log). Returns (content type, raw bytes).
+
+        Same 401 re-login and 429 hard stop as request().
+        """
+        response = self._send("GET", url, session_headers, None, params, accept="*/*")
+        if response.status_code == 401:
+            self.session.invalidate()
+            response = self._send("GET", url, session_headers, None, params, accept="*/*")
+        if response.status_code == 429:
+            raise IdmcRateLimitedError(429, "rate limited by Informatica; not retrying")
+        if response.status_code >= 400:
+            raise IdmcError(response.status_code, response.text[:500])
+        return response.headers.get("content-type", ""), response.content
+
     def _send(
         self,
         method: str,
@@ -101,9 +121,10 @@ class IdmcHttp:
         session_headers: tuple[str, ...],
         json: Any,
         params: dict[str, Any] | None,
+        accept: str = "application/json",
     ) -> httpx.Response:
         session_id = self.session.current().session_id
-        headers = {"Accept": "application/json", "Content-Type": "application/json"}
+        headers = {"Accept": accept, "Content-Type": "application/json"}
         headers.update({name: session_id for name in session_headers})
         return self._http.request(method, url, headers=headers, json=json, params=params)
 

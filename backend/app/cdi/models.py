@@ -29,8 +29,14 @@ class CdiRunRequest(BaseModel):
     task_name: str = Field(
         description="CdiTask.name, used for display and as the default API name."
     )
-    # Advanced taskflows only: the published API name. Defaults to task_name (UNVERIFIED).
+    # Advanced taskflows only: the published API name. Defaults to task_name (verified live
+    # 2026-11-22: tf_MDM_ZLV_TTF_Guest_Basic's service URL ends in its task name).
     api_name: str | None = None
+    # Advanced taskflows only: Start-step input fields, sent as the JSON body of the rt call.
+    parameters: dict[str, str] | None = Field(
+        default=None,
+        description='Taskflow input fields, exact names, e.g. {"jobInstanceId": "ABC123"}.',
+    )
 
 
 class CdiRunHandle(BaseModel):

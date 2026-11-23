@@ -4,16 +4,27 @@
 import { Tabs, TabsList, TabsTab } from "@ui-sdk/react/tabs";
 import { CdiPanel } from "./cdi/CdiPanel";
 import { MonitorPanel } from "./cdi/MonitorPanel";
+import { TaskflowsPanel } from "./cdi/TaskflowsPanel";
 import { MdmPanel } from "./mdm/MdmPanel";
-import { DEFAULT_ROUTE, MONITOR_ROUTE, useRoute, type Route } from "./shared/routes";
+import {
+  DEFAULT_ROUTE,
+  MONITOR_ROUTE,
+  TASKFLOWS_ROUTE,
+  useRoute,
+  type Route,
+} from "./shared/routes";
 
 export function App(): React.JSX.Element {
   const [route, go] = useRoute();
   const mdmRoute: Route = route.service === "mdm" ? route : DEFAULT_ROUTE;
   const onMonitor = route.screen === "monitor";
+  const onTaskflows = route.screen === "taskflows";
   const cdiRoute: Route =
-    route.service === "cdi" && !onMonitor ? route : { screen: "jobs", service: "cdi" };
-  const tab = onMonitor ? "monitor" : route.service;
+    route.service === "cdi" && !onMonitor && !onTaskflows
+      ? route
+      : { screen: "jobs", service: "cdi" };
+  const tfRoute: Route = onTaskflows ? route : TASKFLOWS_ROUTE;
+  const tab = onMonitor ? "monitor" : onTaskflows ? "taskflows" : route.service;
 
   return (
     <div className="shell">
@@ -26,6 +37,7 @@ export function App(): React.JSX.Element {
           onValueChange={(value) => {
             if (value === "cdi" || value === "mdm") go({ screen: "jobs", service: value });
             if (value === "monitor") go(MONITOR_ROUTE);
+            if (value === "taskflows") go(TASKFLOWS_ROUTE);
           }}
         >
           <TabsList>
@@ -37,6 +49,9 @@ export function App(): React.JSX.Element {
             </TabsTab>
             <TabsTab value="monitor" data-testid="tab-monitor">
               Monitor (CDI)
+            </TabsTab>
+            <TabsTab value="taskflows" data-testid="tab-taskflows">
+              Taskflows (CDI)
             </TabsTab>
           </TabsList>
         </Tabs>
@@ -50,6 +65,9 @@ export function App(): React.JSX.Element {
         </div>
         <div hidden={!onMonitor}>
           <MonitorPanel active={onMonitor} />
+        </div>
+        <div hidden={!onTaskflows}>
+          <TaskflowsPanel route={tfRoute} go={go} active={onTaskflows} />
         </div>
       </main>
     </div>

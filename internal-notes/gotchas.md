@@ -85,3 +85,13 @@ this; `app/main.py` forces stdout/stderr to ASCII with backslash escapes at runt
   (not `VVamsi-IDMCDev`, not all lowercase). After unpublish / fix / publish, the
   /active-bpel/rt/{api_name} call was accepted (runId 1309380263289049088) and went RUNNING.
 - The service URL API name matched the task name, so the api_name default was correct.
+
+## Taskflow input fields must be sent in the rt call (2026-11-22)
+- Run 1309380263289049088 of tf_MDM_ZLV_TTF_Guest_Basic ended SUSPENDED: child
+  mt_m_MDM_ZLV_TTF_Guest_Basic failed "[FATAL] Invalid/Default JobInstanceId is passed as
+  runtime parameter". The start call had sent an empty JSON body `{}`.
+- The taskflow's Start step needs input field `jobInstanceId` (exact case, Vamsi). Send it as
+  a top-level JSON key of `POST {pod}/active-bpel/rt/{api_name}`, e.g. `{"jobInstanceId":
+  "ABC123"}` (shape per Informatica KB curl example; not yet verified live with this field).
+- Backend: `POST /api/cdi/taskflows/{name}/run` body `{"parameters": {"jobInstanceId": ...}}`;
+  `POST /api/cdi/runs` takes the same `parameters`. UI prefills jobInstanceId = ABC123.

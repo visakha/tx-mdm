@@ -4,6 +4,10 @@ Run:  uvicorn dev.fake_idmc:app --port 8900
 Then start the backend with IDMC_LOGIN_URL=http://127.0.0.1:8900,
 IDMC_MDM_URL=http://127.0.0.1:8900 and IDMC_PLATFORM_URL=http://127.0.0.1:8900/saas.
 Jobs finish SUCCESS on the second status check.
+Advanced taskflow tf_demo_advanced (POST /active-bpel/rt/tf_demo_advanced) returns runId
+900000000000000001: RUNNING on the first status check, SUCCESS with two child tasks after.
+Run id 900000000000000002 is a SUSPENDED run with a failed child (a real failure shape).
+Session logs: /saas/api/v2/activity/activityLog/<id>/sessionLog.
 The Monitor tab calls (activityMonitor?details=true, activityLog?rowLimit=N) get a fixed
 demo set: one running taskflow with two child steps, plus a few finished runs.
 """
@@ -12,6 +16,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import FastAPI
+from fastapi.responses import PlainTextResponse
 
 app = FastAPI(title="fake IDMC")
 _checks: dict[str, int] = {}
@@ -42,6 +47,8 @@ def objects(q: str) -> dict[str, Any]:
         }
     if "MTT" in q:
         return {"objects": [{"id": "FED1", "path": "Default/mt_load_customers"}]}
+    if "TASKFLOW" in q:
+        return {"objects": [{"id": "FED3", "path": "Default/tf_demo_advanced"}]}
     if "WORKFLOW" in q:
         return {"objects": [{"id": "FED2", "path": "Default/tf_load_all"}]}
     return {"objects": []}
@@ -143,7 +150,7 @@ def activity_log(rowLimit: int | None = None) -> list[dict[str, Any]]:  # noqa: 
                 "startTimeUtc": _ago(30),
                 "endTimeUtc": _ago(29),
             },
-        ][:rowLimit]
+        ][:rowLimit] + TF_LOG_ROWS
     return [
         {
             "state": 1,
@@ -188,3 +195,114 @@ def read_instance(instance_id: str) -> dict[str, Any]:
             "completedAt": 1763800300000 if done else None,
         },
     }
+
+
+# ---- advanced taskflows -------------------------------------------------------------------
+
+TF_OK = "900000000000000001"
+TF_BAD = "900000000000000002"
+
+
+@app.post("/active-bpel/rt/{api_name}")
+def run_taskflow(api_name: str) -> dict[str, Any]:
+    return {"RunId": TF_OK}
+
+
+def _child(
+    name: str, run_id: str, status: str, ok: int, bad: int, error: str = ""
+) -> dict[str, Any]:
+    return {
+        "assetName": name,
+        "assetType": "MTT",
+        "duration": "42",
+        "startTime": _ago(6),
+        "endTime": _ago(5),
+        "errorMessage": error,
+        "errorRows": str(bad),
+        "location": "Default",
+        "rowsProcessed": str(ok + bad),
+        "runId": run_id,
+        "startedBy": "VVamsi-idmcdev",
+        "status": status,
+        "subtasks": "0",
+        "successRows": str(ok),
+        "updateTime": _ago(5),
+    }
+
+
+@app.get("/active-bpel/services/tf/status/{run_id}")
+def taskflow_status(run_id: str, subtaskDetails: str = "No") -> dict[str, Any]:  # noqa: N803
+    base = {
+        "assetName": "tf_demo_advanced",
+        "assetType": "TASKFLOW",
+        "location": "Default",
+        "runId": int(run_id) if run_id.isdigit() else run_id,
+        "runtimeEnv": "tf_runtime",
+        "startTime": _ago(7),
+        "startedBy": "VVamsi-idmcdev",
+        "updateTime": _ago(4),
+    }
+    if run_id == TF_OK and _bump(run_id) == 1:
+        return base | {"status": "RUNNING", "subtasks": 2, "subtaskDetails": {"details": {}}}
+    if run_id == TF_OK:
+        tasks = [
+            _child("mt_demo_load", "11", "COMPLETED", 1200, 3),
+            _child("mt_demo_stage", "12", "COMPLETED", 1197, 0),
+        ]
+        return base | {
+            "status": "SUCCESS",
+            "endTime": _ago(4),
+            "duration": "180",
+            "errorMessage": "",
+            "subtasks": 2,
+            "subtaskDetails": {"details": {"tasks": tasks}},
+        }
+    if run_id == TF_BAD:
+        error = "[FATAL] Invalid/Default JobInstanceId is passed as runtime parameter"
+        tasks = [_child("mt_demo_load", "13", "FAILED", 0, 0, error)]
+        return base | {
+            "status": "SUSPENDED",
+            "errorMessage": error,
+            "subtasks": 1,
+            "subtaskDetails": {"details": {"tasks": tasks}},
+        }
+    return {"status": "No status available."}
+
+
+TF_LOG_ROWS: list[dict[str, Any]] = [
+    {
+        "id": "LOG11",
+        "objectName": "mt_demo_load",
+        "runId": 11,
+        "state": 1,
+        "successSourceRows": 1203,
+        "failedSourceRows": 0,
+        "successTargetRows": 1200,
+        "failedTargetRows": 3,
+    },
+    {
+        "id": "LOG12",
+        "objectName": "mt_demo_stage",
+        "runId": 12,
+        "state": 1,
+        "successSourceRows": 1197,
+        "successTargetRows": 1197,
+        "failedTargetRows": 0,
+    },
+    {
+        "id": "LOG13",
+        "objectName": "mt_demo_load",
+        "runId": 13,
+        "state": 3,
+        "errorMsg": "[FATAL] Invalid/Default JobInstanceId is passed as runtime parameter",
+    },
+]
+
+
+@app.get("/saas/api/v2/activity/activityLog/{log_id}/sessionLog", response_class=PlainTextResponse)
+def session_log(log_id: str) -> str:
+    return (
+        f"Session log for {log_id}\n"
+        "READER_1_1_1> Reading rows from source...\n"
+        "WRITER_1_*_1> Committed 1200 rows, rejected 3.\n"
+    )

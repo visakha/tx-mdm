@@ -7,6 +7,13 @@
 
 import { cdiApi, type CdiTask } from "./cdi/cdiApi";
 import { monitorApi, type MonitorSnapshot } from "./cdi/monitorApi";
+import {
+  DEFAULT_PARAM_KEY,
+  DEFAULT_PARAM_VALUE,
+  taskflowApi,
+  type TaskflowRunStatus,
+  type TaskflowStartResult,
+} from "./cdi/taskflowApi";
 import { mdmApi, type MdmJob } from "./mdm/mdmApi";
 import { getJson } from "./shared/api";
 import type { RunView } from "./shared/run";
@@ -37,6 +44,10 @@ export const ACTIONS: readonly ActionInfo[] = [
   { name: "openRun", args: "(service, runKey)", description: "Open the results screen for a run (/<service>/runs/:runKey).", sideEffect: false },
   { name: "getRun", args: "(service, runKey)", description: "Read a run's current state (status, counts, errors, log).", sideEffect: false },
   { name: "openMonitor", args: "()", description: "Show the CDI Monitor tab (/monitor).", sideEffect: false },
+  { name: "runTaskflowByName", args: "(name, parameters = { jobInstanceId: 'ABC123' }, apiName?)", description: "Start an advanced taskflow by name with its input fields, after a person confirms; opens /taskflows/runs/:runId. Never retries.", sideEffect: true },
+  { name: "trackTaskflowRun", args: "(runId)", description: "Show one taskflow run by IDMC run id (/taskflows/runs/:runId).", sideEffect: false },
+  { name: "getTaskflowRun", args: "(runId)", description: "Read a taskflow run by IDMC run id: status, times, per-child rows and errors, totals.", sideEffect: false },
+  { name: "getTaskflowSessionLog", args: "(runId, childTask?)", description: "Plain-text session log of one child task of a taskflow run.", sideEffect: false },
   { name: "getMonitor", args: "(onlyMyTasks = true, rowLimit = 50)", description: "Read running CDI jobs (elapsed minutes) + recent history (status, rows, errors, taskflow steps).", sideEffect: false },
 ];
 
@@ -61,6 +72,22 @@ async function runJob(service: Service, jobId: string, apiName?: string): Promis
   return run;
 }
 
+async function runTaskflowByName(
+  name: string,
+  parameters: Record<string, string> = { [DEFAULT_PARAM_KEY]: DEFAULT_PARAM_VALUE },
+  apiName?: string,
+): Promise<TaskflowStartResult> {
+  const shown = Object.entries(parameters)
+    .map(([k, v]) => `${k}=${v}`)
+    .join(", ");
+  if (!window.confirm(`Allow the agent to start taskflow ${name} with ${shown || "no input fields"}?`)) {
+    throw new Error("Run not started: the person declined.");
+  }
+  const started = await taskflowApi.runByName(name, apiName ?? null, parameters);
+  navigate({ screen: "taskflows", service: "cdi", runId: started.run_id });
+  return started;
+}
+
 export const txmdm = {
   describe: (): readonly ActionInfo[] => ACTIONS,
   currentRoute: (): { route: Route; path: string } => {
@@ -78,6 +105,12 @@ export const txmdm = {
   getRun: (service: Service, runKey: string): Promise<RunView> =>
     getJson<RunView>(service === "mdm" ? mdmApi.runUrl(runKey) : cdiApi.runUrl(runKey)),
   openMonitor: (): void => navigate(MONITOR_ROUTE),
+  runTaskflowByName,
+  trackTaskflowRun: (runId: string): void =>
+    navigate({ screen: "taskflows", service: "cdi", runId }),
+  getTaskflowRun: (runId: string): Promise<TaskflowRunStatus> => taskflowApi.status(runId),
+  getTaskflowSessionLog: (runId: string, childTask?: string): Promise<string> =>
+    taskflowApi.sessionLog(runId, childTask ?? null),
   getMonitor: (onlyMyTasks = true, rowLimit = 50): Promise<MonitorSnapshot> =>
     monitorApi.get(onlyMyTasks, rowLimit),
 };

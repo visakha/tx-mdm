@@ -11,10 +11,43 @@ from app.cdi.monitor import (
     entry_from_monitor,
     keep,
 )
+from app.cdi.taskflow_runs import (
+    SubtaskRun,
+    TaskflowRunStatus,
+    TaskflowStartResult,
+    find_log_entry,
+    log_text,
+    status_from_body,
+    totals_of,
+    with_log_details,
+)
 from app.common.idmc_session import IdmcError, IdmcRateLimitedError
 from app.common.runs import RunRegistry, RunStatus, RunView, now_utc
 
 TASK_NAME_CACHE_SECONDS = 300  # the Monitor tab refreshes often; the task list rarely changes
+LOG_LOOKUP_ROWS = 200  # activityLog rows searched for a child task's entry (max 1000)
+
+
+class TaskflowNotFoundError(Exception):
+    """No advanced taskflow with that exact name in the org task list."""
+
+
+class TaskflowStartError(Exception):
+    """IDMC refused the start call. status_code is IDMC's (e.g. 403)."""
+
+    def __init__(self, status_code: int, message: str) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+
+
+class SessionLogNotFoundError(Exception):
+    """No activity log entry (yet) for the requested child task."""
+
+
+ALLOWED_USERS_HINT = (
+    " Hint: add the user to the taskflow Start step > Allowed Users EXACTLY as IDMC spells it "
+    "in this message (case-sensitive), save, publish again."
+)
 
 
 class CdiService:
@@ -24,6 +57,7 @@ class CdiService:
         self._handles: dict[str, CdiRunHandle] = {}
         self._task_names: set[str] = set()
         self._task_names_at = 0.0
+        self._final_status: dict[str, TaskflowRunStatus] = {}  # final runs never change
 
     def list_tasks(self, task_types: list[CdiTaskType]) -> list[CdiTask]:
         return self._client.list_tasks(task_types)
@@ -32,7 +66,9 @@ class CdiService:
         run = self._registry.reserve(request.task_id, request.task_name, request.task_type.value)
         api_name = request.api_name or request.task_name
         try:
-            handle = self._client.start(request.task_id, request.task_type, api_name)
+            handle = self._client.start(
+                request.task_id, request.task_type, api_name, request.parameters
+            )
         except (IdmcError, ValueError, KeyError) as exc:
             # The run did not start. We record the failure and do NOT retry.
             self._registry.fail(run, str(exc))
@@ -115,3 +151,105 @@ class CdiService:
         self._task_names = {t.name for t in tasks}
         self._task_names_at = time.monotonic()
         return self._task_names
+
+    # ---- taskflows by name / by IDMC run id ----------------------------------------------------
+
+    def start_taskflow_by_name(
+        self, name: str, api_name: str | None, parameters: dict[str, str] | None = None
+    ) -> TaskflowStartResult:
+        """Start one advanced taskflow by its exact name. Never retries a failed start."""
+        taskflows = self._client.list_tasks([CdiTaskType.TASKFLOW])
+        task = next((t for t in taskflows if t.name == name), None)
+        if task is None:
+            close = [t.name for t in taskflows if t.name.lower() == name.lower()]
+            hint = f" Did you mean {close[0]}?" if close else ""
+            known = ", ".join(sorted(t.name for t in taskflows)[:20])
+            raise TaskflowNotFoundError(f"No taskflow named {name}.{hint} Known: {known}")
+        api = api_name or task.name
+        run = self._registry.reserve(task.id, task.name, CdiTaskType.TASKFLOW.value)
+        try:
+            handle = self._client.start(task.id, CdiTaskType.TASKFLOW, api, parameters)
+        except IdmcRateLimitedError:
+            self._registry.fail(run, "rate limited by Informatica")
+            raise
+        except IdmcError as exc:
+            self._registry.fail(run, str(exc))
+            hint = ALLOWED_USERS_HINT if exc.status_code == 403 else ""
+            raise TaskflowStartError(exc.status_code, str(exc) + hint) from exc
+        except (ValueError, KeyError) as exc:
+            self._registry.fail(run, str(exc))
+            raise TaskflowStartError(502, str(exc)) from exc
+        self._handles[run.run_key] = handle
+        self._registry.update_status(
+            run, RunStatus.QUEUED, f"Accepted by IDMC, runId {handle.run_id}"
+        )
+        return TaskflowStartResult(
+            run_id=handle.run_id,
+            taskflow_name=task.name,
+            task_id=task.id,
+            api_name=api,
+            run_key=run.run_key,
+            requested_at=run.started_at,
+            status_path=f"/api/cdi/taskflows/runs/{handle.run_id}",
+            parameters=dict(parameters or {}),
+        )
+
+    def taskflow_run_status(self, run_id: str, details: bool) -> TaskflowRunStatus:
+        """Status of any taskflow run by IDMC run id (works after a backend restart too).
+
+        details=True adds, once the run is final, the source/target row split and the
+        activity log id (for the session log) of each child task: one extra activityLog call.
+        Final answers are cached, so polling a finished run costs no IDMC calls.
+        """
+        cached = self._final_status.get(run_id)
+        if cached is not None and (cached.notes or not details or _has_details(cached)):
+            return cached
+        status = status_from_body(run_id, self._client.taskflow_status(run_id), now_utc())
+        if status.is_final and details and status.subtasks:
+            status = self._add_log_details(status)
+        if status.is_final:
+            self._final_status[run_id] = status
+        return status
+
+    def _add_log_details(self, status: TaskflowRunStatus) -> TaskflowRunStatus:
+        try:
+            rows = self._client.recent_jobs(LOG_LOOKUP_ROWS)
+        except IdmcRateLimitedError:
+            raise
+        except IdmcError as exc:
+            return status.model_copy(update={"notes": [f"Activity log unavailable: {exc}"]})
+        subtasks: list[SubtaskRun] = [
+            with_log_details(s, find_log_entry(rows, s.name, s.run_id)) for s in status.subtasks
+        ]
+        notes = [
+            f"{s.name}: no activity log row matched (name + run id {s.run_id}); "
+            "source/target split and session log unavailable."
+            for s in subtasks
+            if s.log_entry_id is None
+        ]
+        return status.model_copy(
+            update={"subtasks": subtasks, "totals": totals_of(subtasks), "notes": notes}
+        )
+
+    def taskflow_session_log(self, run_id: str, subtask: str | None) -> tuple[str, str]:
+        """(child task name, session log text) for one child task of a finished taskflow run."""
+        status = self.taskflow_run_status(run_id, details=True)
+        candidates = [s for s in status.subtasks if subtask is None or s.name == subtask]
+        if not candidates:
+            names = ", ".join(s.name for s in status.subtasks) or "none"
+            raise SessionLogNotFoundError(
+                f"No child task {subtask} in run {run_id}. Children: {names}"
+            )
+        with_log = [s for s in candidates if s.log_entry_id is not None]
+        if not with_log:
+            raise SessionLogNotFoundError(
+                f"No activity log entry yet for {candidates[0].name} in run {run_id} "
+                "(still running, or not in the latest activity log rows)."
+            )
+        chosen = with_log[-1]
+        content_type, content = self._client.session_log(str(chosen.log_entry_id))
+        return chosen.name, log_text(content_type, content)
+
+
+def _has_details(status: TaskflowRunStatus) -> bool:
+    return all(s.log_entry_id is not None for s in status.subtasks)

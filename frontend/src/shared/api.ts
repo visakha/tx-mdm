@@ -23,6 +23,13 @@ export async function postJson<T>(path: string, body: unknown): Promise<T> {
   );
 }
 
+/** GET a plain-text body (e.g. a session log). Errors carry the backend's `detail` text. */
+export async function getText(path: string): Promise<string> {
+  const response = await fetch(path, { headers: { Accept: "text/plain" } });
+  if (response.ok) return response.text();
+  throw new ApiError(response.status, await detailOf(response));
+}
+
 async function handle<T>(response: Response): Promise<T> {
   if (response.ok) {
     return (await response.json()) as T;

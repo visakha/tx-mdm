@@ -19,6 +19,8 @@ export interface CdiRunRequest {
   task_type: CdiTaskType;
   task_name: string;
   api_name: string | null;
+  /** Advanced taskflows: Start-step input fields, e.g. { jobInstanceId: "ABC123" }. */
+  parameters?: Record<string, string>;
 }
 
 export const cdiApi = {

@@ -100,6 +100,9 @@ cd frontend && npm run typecheck && npm test && npm run lint && npm run build
 | POST | `/api/cdi/runs` | Start one CDI task `{task_id, task_type, task_name, api_name?}` |
 | GET | `/api/cdi/runs/{run_key}` | Refresh and return the run |
 | GET | `/api/cdi/monitor?only_my_tasks=true&row_limit=50` | Monitor tab: running jobs (activityMonitor, details=true) + recent history (activityLog) + runs started here. Read-only |
+| POST | `/api/cdi/taskflows/{name}/run` | Start an advanced taskflow BY NAME; body `{"parameters": {"jobInstanceId": "ABC123"}, "api_name": null}` (both optional). Returns IDMC's `run_id` |
+| GET | `/api/cdi/taskflows/runs/{run_id}?details=true` | Status + summary of ANY taskflow run by IDMC run id (works after a restart). Read-only |
+| GET | `/api/cdi/taskflows/runs/{run_id}/session-log?subtask=<child task>` | Session log of one child task, plain text. Read-only |
 | GET | `/api/mdm/jobs` | MDM job definitions (v3 objects) + resolved internal id / kind |
 | POST | `/api/mdm/runs` | Start one MDM job `{asset_id}` |
 | GET | `/api/mdm/runs/{run_key}` | Refresh and return the run |
@@ -109,6 +112,57 @@ Rules built in: one active run per job (a second start gets HTTP 409); a failed 
 recorded and **never retried**; an HTTP 429 from Informatica is a hard stop, shown as-is;
 a 401 triggers one fresh login and one resend of that request (the call never ran, so it is
 not a job retry). The password never goes to the browser and is never echoed in errors.
+
+## Taskflows by name (Taskflows tab)
+
+UI: tab **Taskflows (CDI)** (`/taskflows`). Pick a taskflow, check the input fields
+(`jobInstanceId` = `ABC123` is prefilled - edit it), press **Run** (asks to confirm). The run id
+appears in the URL (`/taskflows/runs/<runId>`) and the view polls every 10 s until final:
+started at, ticking "running for", status, then per child task rows ok/error, source/target
+rows, errors, totals and a **Session log** button per child. Paste any run id and press
+**Track** to follow a run started elsewhere.
+
+PowerShell (backend on port 8000):
+
+```
+# start by name with the jobInstanceId input field (starts a REAL run)
+Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/cdi/taskflows/tf_MDM_ZLV_TTF_Guest_Basic/run" -ContentType "application/json" -Body '{"parameters": {"jobInstanceId": "ABC123"}}'
+# -> {"run_id":"1309380263289049088","taskflow_name":"tf_MDM_ZLV_TTF_Guest_Basic","task_id":"...","api_name":"tf_MDM_ZLV_TTF_Guest_Basic","run_key":"...","requested_at":"...","status_path":"/api/cdi/taskflows/runs/1309380263289049088","parameters":{"jobInstanceId":"ABC123"}}
+
+# status + summary by run id (read-only)
+curl.exe -s "http://127.0.0.1:8000/api/cdi/taskflows/runs/1309380263289049088"
+# -> {"run_id":"1309380263289049088","status":"STOPPED","state_text":"SUSPENDED","is_final":true,
+#     "started_at":"...","ended_at":"...","elapsed_minutes":2.5,"error":"...",
+#     "subtasks":[{"name":"mt_m_MDM_ZLV_TTF_Guest_Basic","status":"FAILED","rows_processed":0,
+#       "success_rows":0,"error_rows":0,"rows":{"source_success":...},"error":"[FATAL] ...",
+#       "log_entry_id":"..."}],"totals":{...},"notes":[]}
+
+# session log of one child task (plain text, read-only)
+curl.exe -s "http://127.0.0.1:8000/api/cdi/taskflows/runs/1309380263289049088/session-log?subtask=mt_m_MDM_ZLV_TTF_Guest_Basic"
+```
+
+Status mapping: taskflow RUNNING -> RUNNING, SUCCESS -> SUCCESS, FAILED -> FAILED,
+SUSPENDED -> STOPPED (IDMC's word is kept in `state_text`). Child COMPLETED -> SUCCESS.
+Errors: unknown name -> 404 (with a "Did you mean" hint for case slips); IDMC 403 -> 403 with
+the Allowed Users hint; already running from this backend -> 409. Starts are never retried.
+`POST /api/cdi/runs` also accepts `"parameters": {...}` for TASKFLOW tasks.
+
+- **Doc-verified:** `GET {pod}/active-bpel/services/tf/status/{runId}` and its fields
+  (status, startTime, endTime, errorMessage, subtaskDetails.details.tasks[] with assetName,
+  status, rowsProcessed, successRows, errorRows, errorMessage, runId); `?subtaskDetails=Yes`
+  is required since the April 2026 release (Informatica KB); purged runs answer
+  `{"status": "No status available."}` (shown as UNKNOWN). Session log
+  `GET /api/v2/activity/activityLog/{id}/sessionLog` (may be a ZIP; unzipped as text).
+  Input fields go as top-level JSON keys of the rt POST body (Informatica KB curl example).
+- **Verified live (2026-11-22):** the rt start call with INFA-SESSION-ID returns `RunId`;
+  api name = task name; Allowed Users is case-sensitive.
+- **UNVERIFIED:** that a child's tf-status `runId` equals the activityLog `runId` of that
+  mapping task (used to find the log entry for source/target rows and the session log - when
+  no row matches, a note says so and the Session log button stays disabled); that the
+  activityLog entry `id` is the id the sessionLog call wants.
+- Fake IDMC (`dev/fake_idmc.py`): taskflow `tf_demo_advanced` -> run id 900000000000000001
+  (RUNNING, then SUCCESS with 2 children); 900000000000000002 is a SUSPENDED run with a failed
+  child.
 
 ## Agent interface (for AI agents driving the app)
 
@@ -132,6 +186,9 @@ not a job retry). The password never goes to the browser and is never echoed in 
 | `openRun(service, runKey)` | Open a results screen |
 | `getRun(service, runKey)` | Read a run's status, counts, errors, log |
 | `openMonitor()` / `getMonitor(onlyMyTasks?, rowLimit?)` | Show / read the CDI Monitor (running + history) |
+| `runTaskflowByName(name, parameters = {jobInstanceId: "ABC123"}, apiName?)` | Start a taskflow by name after a person confirms; opens `/taskflows/runs/<runId>` |
+| `trackTaskflowRun(runId)` / `getTaskflowRun(runId)` | Show / read a taskflow run by IDMC run id |
+| `getTaskflowSessionLog(runId, childTask?)` | Plain-text session log of one child task |
 | `currentRoute()` / `describe()` | Where am I / what can I call |
 
 The UI SDK agent bridge (`src/agent.ts`) is registered too; its allow-callback asks before any

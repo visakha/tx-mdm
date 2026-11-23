@@ -7,6 +7,7 @@ OBJECTS = "/public/core/v3/objects"
 JOB_RUN = "/api/v2/job"
 ACTIVITY_MONITOR = "/api/v2/activity/activityMonitor"
 ACTIVITY_LOG = "/api/v2/activity/activityLog"
+SESSION_LOG = "/api/v2/activity/activityLog/{log_id}/sessionLog"
 
 # Advanced taskflows, relative to the pod host (baseApiUrl without /saas)
 TASKFLOW_RUN = "/active-bpel/rt/{api_name}"

@@ -8,6 +8,8 @@
 //   /cdi/jobs/:taskId       one CDI task (with its Run button)
 //   /cdi/runs/:runKey       results screen for one CDI run
 //   /monitor                CDI Monitor tab (running jobs + recent history)
+//   /taskflows              Taskflows tab: run a taskflow by name, or paste a run id
+//   /taskflows/runs/:runId  track one taskflow run by its IDMC run id
 
 import { useCallback, useEffect, useState } from "react";
 
@@ -18,9 +20,13 @@ export type Route =
   | { screen: "job"; service: Service; jobId: string }
   | { screen: "run"; service: Service; runKey: string }
   // The Monitor tab watches CDI jobs, so it carries service "cdi".
-  | { screen: "monitor"; service: "cdi" };
+  | { screen: "monitor"; service: "cdi" }
+  // Taskflows tab: runId is the IDMC run id (null = nothing tracked yet).
+  | { screen: "taskflows"; service: "cdi"; runId: string | null };
 
 export const MONITOR_ROUTE: Route = { screen: "monitor", service: "cdi" };
+
+export const TASKFLOWS_ROUTE: Route = { screen: "taskflows", service: "cdi", runId: null };
 
 export const DEFAULT_ROUTE: Route = { screen: "jobs", service: "mdm" };
 
@@ -28,6 +34,10 @@ export function parseRoute(pathname: string): Route {
   const parts = pathname.split("/").filter((p) => p !== "").map(decodeURIComponent);
   const [service, kind, id] = parts;
   if (service === "monitor" && kind === undefined) return MONITOR_ROUTE;
+  if (service === "taskflows" && kind === undefined) return TASKFLOWS_ROUTE;
+  if (service === "taskflows" && kind === "runs" && id !== undefined) {
+    return { screen: "taskflows", service: "cdi", runId: id };
+  }
   if (service !== "mdm" && service !== "cdi") return DEFAULT_ROUTE;
   if (kind === "jobs" && id === undefined) return { screen: "jobs", service };
   if (kind === "jobs" && id !== undefined) return { screen: "job", service, jobId: id };
@@ -45,6 +55,8 @@ export function formatRoute(route: Route): string {
       return `/${route.service}/runs/${encodeURIComponent(route.runKey)}`;
     case "monitor":
       return "/monitor";
+    case "taskflows":
+      return route.runId === null ? "/taskflows" : `/taskflows/runs/${encodeURIComponent(route.runId)}`;
   }
 }
 

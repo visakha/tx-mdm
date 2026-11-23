@@ -67,7 +67,13 @@ class CdiClient:
 
     # ---- run ---------------------------------------------------------------------------------
 
-    def start(self, task_id: str, task_type: CdiTaskType, api_name: str | None) -> CdiRunHandle:
+    def start(
+        self,
+        task_id: str,
+        task_type: CdiTaskType,
+        api_name: str | None,
+        parameters: dict[str, str] | None = None,
+    ) -> CdiRunHandle:
         match task_type:
             case CdiTaskType.MTT | CdiTaskType.WORKFLOW:
                 body = self._http.request(
@@ -86,7 +92,12 @@ class CdiClient:
                     "POST",
                     self.pod_url() + ep.TASKFLOW_RUN.format(api_name=api_name),
                     ep.V3_HEADERS,
-                    json={},
+                    # Start-step input fields go as top-level JSON keys, named exactly as in
+                    # the taskflow (case-sensitive), e.g. {"jobInstanceId": "ABC123"}.
+                    # VERIFIED shape: Informatica KB "HOW TO: run multiple instances of
+                    # Taskflow concurrently using different parameter files" (curl --data
+                    # '{"Parameter_File_Directory": ..., "Parameter_File_Name": ...}').
+                    json=dict(parameters or {}),
                 )
                 # UNVERIFIED: exact casing of the run id field in the rt response.
                 run_id = body.get("RunId") or body.get("runId")
@@ -129,6 +140,31 @@ class CdiClient:
             params={"rowLimit": max(1, min(row_limit, 1000))},
         )
         return [e for e in body if isinstance(e, dict)] if isinstance(body, list) else []
+
+    # ---- taskflow runs by run id (read-only) -------------------------------------------------
+
+    def taskflow_status(self, run_id: str) -> dict[str, Any]:
+        """Raw tf status body for one run, with subtask details.
+
+        subtaskDetails=Yes: since the April 2026 release the status resource returns only the
+        overall status unless this is set (Informatica KB "Change in behavior for Taskflow
+        Status API"). A list-shaped answer (query-parameter form) is unwrapped to its first item.
+        """
+        body = self._http.request(
+            "GET",
+            self.pod_url() + ep.TASKFLOW_STATUS.format(run_id=run_id),
+            ep.V3_HEADERS,
+            params={"subtaskDetails": "Yes"},
+        )
+        if isinstance(body, list):
+            body = body[0] if body else {}
+        return body if isinstance(body, dict) else {}
+
+    def session_log(self, log_id: str) -> tuple[str, bytes]:
+        """Session log for one activityLog entry: (content type, bytes). May be a ZIP."""
+        return self._http.request_bytes(
+            self.platform_url() + ep.SESSION_LOG.format(log_id=log_id), ep.V2_HEADERS
+        )
 
     def _check_v2(self, handle: CdiRunHandle) -> CdiRunSnapshot:
         monitor = self._http.request(

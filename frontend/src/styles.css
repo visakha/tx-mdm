@@ -63,3 +63,11 @@ main { flex: 1; padding: 16px 20px; }
 .monitor tr.child td { background: #fafbfc; }
 .errors-cell { color: var(--bad); }
 .app-runs { padding-left: 18px; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+
+/* Taskflows tab */
+.param-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.log-box {
+  font-family: ui-monospace, monospace; font-size: 12px; background: #f7f8fa;
+  border: 1px solid var(--line); border-radius: 6px; padding: 8px;
+  max-height: 420px; overflow: auto; white-space: pre-wrap;
+}
