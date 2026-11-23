@@ -16,6 +16,10 @@ import { CDI_TYPE_LABEL, cdiApi, type CdiTask } from "./cdiApi";
 const idOf = (t: CdiTask): string => t.id;
 const textOf = (t: CdiTask): string => `${t.path} ${t.type}`;
 
+// 0.9.4 (his rule): Business 360 taskflows (domain mdm) never show in the CDI notebook.
+const readCdiTasks = (fresh: boolean): Promise<CdiTask[]> =>
+  catalog.tasks.read(fresh).then((all) => all.filter((t) => t.domain !== "mdm"));
+
 export function CdiPanel({
   route,
   go,
@@ -25,7 +29,7 @@ export function CdiPanel({
 }): React.JSX.Element {
   const selectedId = route.screen === "job" ? route.jobId : null;
   const runKey = route.screen === "run" ? route.runKey : null;
-  const picker = usePicker(catalog.tasks.read, idOf, textOf, selectedId);
+  const picker = usePicker(readCdiTasks, idOf, textOf, selectedId);
   const onStarted = useCallback(
     (run: RunView) => go({ screen: "run", service: "cdi", runKey: run.run_key }),
     [go],

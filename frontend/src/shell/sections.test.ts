@@ -5,6 +5,7 @@ describe("OneNote shell model", () => {
   it("maps every route to its left-pane section", () => {
     expect(sectionOf({ screen: "monitor", service: "cdi" }, null)).toBe("cdi-monitor");
     expect(sectionOf({ screen: "taskflows", service: "cdi", runId: "1" }, null)).toBe("cdi-taskflows");
+    expect(sectionOf({ screen: "taskflows", service: "mdm", runId: null }, null)).toBe("mdm-taskflows");
     expect(sectionOf({ screen: "run", service: "mdm", runKey: "k" }, null)).toBe("mdm-runs");
     expect(sectionOf({ screen: "kind", service: "mdm", kind: "Egress" }, null)).toBe("mdm-egress");
     expect(sectionOf({ screen: "job", service: "mdm", jobId: "a" }, "Ingress")).toBe("mdm-ingress");
@@ -14,7 +15,7 @@ describe("OneNote shell model", () => {
   it("search filters sections by label or notebook", () => {
     expect(matchSections("egress").map((s) => s.id)).toEqual(["mdm-egress"]);
     expect(matchSections("cdi").length).toBe(4);
-    expect(matchSections("").length).toBe(9);
+    expect(matchSections("").length).toBe(10);
     expect(sectionOf({ screen: "mdm-monitor", service: "mdm" }, null)).toBe("mdm-running");
   });
 

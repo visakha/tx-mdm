@@ -12,6 +12,8 @@ export interface CdiTask {
   type: CdiTaskType;
   description: string;
   updated_at: string | null;
+  /** mdm = Business 360 taskflow (tf_MDM_*, *_EGR, *_IGR; needs jobInstanceId). Set by the backend. */
+  domain: "cdi" | "mdm";
 }
 
 export interface CdiRunRequest {
@@ -19,7 +21,7 @@ export interface CdiRunRequest {
   task_type: CdiTaskType;
   task_name: string;
   api_name: string | null;
-  /** Advanced taskflows: Start-step input fields, e.g. { jobInstanceId: "ABC123" }. */
+  /** Advanced taskflows: Start-step input fields, e.g. { jobInstanceId: "<id>" } (MDM taskflows only). */
   parameters?: Record<string, string>;
 }
 

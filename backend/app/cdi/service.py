@@ -13,6 +13,7 @@ from app.cdi.monitor import (
     keep,
 )
 from app.cdi.taskflow_history import TaskflowHistory, build_history
+from app.cdi.taskflow_kind import parameter_problem
 from app.cdi.taskflow_runs import (
     SubtaskRun,
     TaskflowRunStatus,
@@ -41,6 +42,10 @@ class TaskflowStartError(Exception):
     def __init__(self, status_code: int, message: str) -> None:
         super().__init__(message)
         self.status_code = status_code
+
+
+class TaskflowParameterError(Exception):
+    """Input fields break the MDM/CDI taskflow naming rule (taskflow_kind). Never sent to IDMC."""
 
 
 class TerminateError(Exception):
@@ -74,6 +79,10 @@ class CdiService:
         return self._client.list_tasks(task_types)
 
     def start(self, request: CdiRunRequest) -> RunView:
+        if request.task_type is CdiTaskType.TASKFLOW:
+            problem = parameter_problem(request.task_name, request.parameters)
+            if problem is not None:
+                raise TaskflowParameterError(problem)
         run = self._registry.reserve(request.task_id, request.task_name, request.task_type.value)
         api_name = request.api_name or request.task_name
         try:
@@ -176,6 +185,9 @@ class CdiService:
             hint = f" Did you mean {close[0]}?" if close else ""
             known = ", ".join(sorted(t.name for t in taskflows)[:20])
             raise TaskflowNotFoundError(f"No taskflow named {name}.{hint} Known: {known}")
+        problem = parameter_problem(task.name, parameters)
+        if problem is not None:
+            raise TaskflowParameterError(problem)
         api = api_name or task.name
         # Not exclusive: several runs of one taskflow may be in flight (his parallel starts).
         # If IDMC refuses a concurrent instance, its own status + text come back unchanged.

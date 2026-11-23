@@ -14,6 +14,8 @@ describe("routes", () => {
     ["/mdm/egress", { screen: "kind", service: "mdm", kind: "Egress" }],
     ["/taskflows", { screen: "taskflows", service: "cdi", runId: null }],
     ["/taskflows/runs/1309380263289049088", { screen: "taskflows", service: "cdi", runId: "1309380263289049088" }],
+    ["/mdm/taskflows", { screen: "taskflows", service: "mdm", runId: null }],
+    ["/mdm/taskflows/runs/1309401025769136128", { screen: "taskflows", service: "mdm", runId: "1309401025769136128" }],
   ];
 
   it.each(cases)("parses and formats %s both ways", (path, route) => {

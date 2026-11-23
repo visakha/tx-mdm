@@ -11,6 +11,7 @@ from app.cdi.service import (
     CdiService,
     SessionLogNotFoundError,
     TaskflowNotFoundError,
+    TaskflowParameterError,
     TaskflowStartError,
     TerminateError,
 )
@@ -52,7 +53,10 @@ def list_tasks(
     "A failed start is returned as a FAILED run and is never retried.",
 )
 def start_run(request: CdiRunRequest, service: Service) -> RunView:
-    return service.start(request)
+    try:
+        return service.start(request)
+    except TaskflowParameterError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get(
@@ -99,8 +103,10 @@ def monitor(
     summary="Start an advanced taskflow by its name",
     description="Looks the name up in the org task list (exact, case-sensitive), calls its "
     "published URL /active-bpel/rt/{api_name} (api_name defaults to the name) and returns "
-    'IDMC\'s run id. Body (optional): {"parameters": {"jobInstanceId": "ABC123"}} - '
-    "Start-step input fields, exact names. 404 unknown name. Several runs of one taskflow "
+    'IDMC\'s run id. Body (optional): {"parameters": {"jobInstanceId": "<id>"}} - '
+    "Start-step input fields, exact names. MDM taskflows (tf_MDM_*, *_EGR, *_IGR) MUST send "
+    "jobInstanceId; CDI taskflows (e.g. tf_Ldg_*, tf_Stg_*) must NOT - else 400, IDMC not "
+    "called. 404 unknown name. Several runs of one taskflow "
     "may be started in parallel (no 409 from this backend); IDMC's own "
     "status (e.g. 403 Allowed Users) on a refused start. Never retried.",
 )
@@ -115,6 +121,8 @@ def run_taskflow_by_name(
         )
     except TaskflowNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except TaskflowParameterError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except TaskflowStartError as exc:
         code = exc.status_code if 400 <= exc.status_code < 500 else 502
         raise HTTPException(status_code=code, detail=str(exc)) from exc

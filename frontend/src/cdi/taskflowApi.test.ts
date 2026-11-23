@@ -17,10 +17,10 @@ describe("taskflow helpers", () => {
   it("turns parameter rows into the taskflow JSON body, exact key case", () => {
     expect(
       paramsOf([
-        { key: "jobInstanceId", value: "ABC123" },
+        { key: "jobInstanceId", value: "J1" },
         { key: " ", value: "ignored" },
       ]),
-    ).toEqual({ jobInstanceId: "ABC123" });
+    ).toEqual({ jobInstanceId: "J1" });
   });
 });
 

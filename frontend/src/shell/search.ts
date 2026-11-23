@@ -5,7 +5,7 @@ import type { CdiTask } from "../cdi/cdiApi";
 import type { MdmJob } from "../mdm/mdmApi";
 import type { Route } from "../shared/routes";
 
-export type HitKind = "task" | "taskflow" | "ingress" | "egress" | "mdm-job";
+export type HitKind = "task" | "taskflow" | "mdm-taskflow" | "ingress" | "egress" | "mdm-job";
 
 export interface SearchHit {
   /** Unique listbox value, e.g. "task:4H16HBEOd4ekHq2fXGZ9kI". */
@@ -38,7 +38,7 @@ export function searchItems(text: string, tasks: readonly CdiTask[], jobs: reado
   const hits: SearchHit[] = [
     ...tasks.map((t): SearchHit =>
       t.type === "TASKFLOW"
-        ? { value: `taskflow:${t.id}`, kind: "taskflow", name: t.name, where: folderOf(t.path, t.name), route: { screen: "taskflows", service: "cdi", runId: null }, taskflowName: t.name }
+        ? { value: `taskflow:${t.id}`, kind: t.domain === "mdm" ? "mdm-taskflow" : "taskflow", name: t.name, where: folderOf(t.path, t.name), route: { screen: "taskflows", service: t.domain === "mdm" ? "mdm" : "cdi", runId: null }, taskflowName: t.name }
         : { value: `task:${t.id}`, kind: "task", name: t.name, where: folderOf(t.path, t.name), route: { screen: "job", service: "cdi", jobId: t.id }, taskflowName: null },
     ),
     ...jobs.map((j): SearchHit => ({ value: `job:${j.asset_id}`, kind: mdmKind(j), name: j.name, where: folderOf(j.path, j.name), route: { screen: "job", service: "mdm", jobId: j.asset_id }, taskflowName: null })),
@@ -52,7 +52,8 @@ export function searchItems(text: string, tasks: readonly CdiTask[], jobs: reado
 
 export const HIT_LABEL: Record<HitKind, string> = {
   task: "CDI task",
-  taskflow: "Taskflow",
+  taskflow: "CDI taskflow",
+  "mdm-taskflow": "MDM taskflow",
   ingress: "MDM ingress",
   egress: "MDM egress",
   "mdm-job": "MDM job",
@@ -62,13 +63,24 @@ export const HIT_LABEL: Record<HitKind, string> = {
 
 const PICK_EVENT = "txmdm:pick-taskflow";
 
-export function pickTaskflow(name: string): void {
-  window.dispatchEvent(new CustomEvent<string>(PICK_EVENT, { detail: name }));
+interface PickDetail {
+  name: string;
+  domain: "cdi" | "mdm";
 }
 
-export function onPickTaskflow(handler: (name: string) => void): () => void {
+/** domain picks which Taskflows panel takes it: CDI notebook or Business 360 notebook (0.9.4). */
+export function pickTaskflow(name: string, domain: "cdi" | "mdm" = "cdi"): void {
+  window.dispatchEvent(new CustomEvent<PickDetail>(PICK_EVENT, { detail: { name, domain } }));
+}
+
+export function onPickTaskflow(handler: (name: string, domain: "cdi" | "mdm") => void): () => void {
   const listener = (event: Event): void => {
-    if (event instanceof CustomEvent && typeof event.detail === "string") handler(event.detail);
+    if (!(event instanceof CustomEvent)) return;
+    const detail: unknown = event.detail;
+    if (typeof detail === "object" && detail !== null && "name" in detail && "domain" in detail) {
+      const { name, domain } = detail as PickDetail;
+      handler(name, domain);
+    }
   };
   window.addEventListener(PICK_EVENT, listener);
   return () => window.removeEventListener(PICK_EVENT, listener);

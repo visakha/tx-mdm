@@ -86,3 +86,18 @@ GET /api/v2/activity/activityMonitor and activityLog list a taskflow's child map
 (type MTT, e.g. mt_m_MDM_ZLV_TTF_Guest_Basic_EGR, run_id = the mapping task's run number such as
 "9"), not the taskflow itself: no TASKFLOW-named rows in either list while
 tf_MDM_ZLV_TTF_Guest_Basic_EGR (run 1309401025769136128) was running.
+
+## MDM vs CDI taskflows: naming rule (Vamsi, 2026-11-23 00:41 CST)
+
+- Business 360 / MDM taskflow: the name starts with `tf_MDM_`, or ends with `_EGR` (egress)
+  or `_IGR` (ingress). Case doesn't matter. These need the Start-step input field
+  `jobInstanceId` (exact name) with a real value.
+- CDI taskflow: everything else, in particular `tf_Ldg_*` and `tf_Stg_*`, even when the name
+  contains MDM (e.g. `tf_Stg_MDM_CDI_TTF`). These must NOT get `jobInstanceId`.
+- Seen live 2026-11-23 06:39Z: `tf_Stg_MDM_CDI_TTF` started with a pre-filled
+  `jobInstanceId` answered `IDMC 400 Validation failed, extra: jobInstanceId`.
+- The rule lives in ONE place, `backend/app/cdi/taskflow_kind.py`. `GET /api/cdi/tasks`
+  tags every item with `domain` ("mdm" | "cdi"). Only TASKFLOW items are classified; mapping
+  tasks and linear taskflows are always "cdi".
+- Guard: `POST /api/cdi/taskflows/{name}/run` and `POST /api/cdi/runs` answer 400 without
+  calling IDMC when an mdm taskflow lacks `jobInstanceId`, or a cdi taskflow carries it.

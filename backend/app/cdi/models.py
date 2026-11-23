@@ -5,6 +5,8 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
+from app.cdi.taskflow_kind import TaskDomain
+
 
 class CdiTaskType(StrEnum):
     MTT = "MTT"  # mapping task, run through /api/v2/job
@@ -21,6 +23,11 @@ class CdiTask(BaseModel):
     type: CdiTaskType
     description: str = ""
     updated_at: datetime | None = None
+    domain: TaskDomain = Field(
+        default=TaskDomain.CDI,
+        description="mdm = Business 360 taskflow (tf_MDM_*, *_EGR, *_IGR; needs jobInstanceId), "
+        "else cdi. See app/cdi/taskflow_kind.py.",
+    )
 
 
 class CdiRunRequest(BaseModel):
@@ -35,7 +42,8 @@ class CdiRunRequest(BaseModel):
     # Advanced taskflows only: Start-step input fields, sent as the JSON body of the rt call.
     parameters: dict[str, str] | None = Field(
         default=None,
-        description='Taskflow input fields, exact names, e.g. {"jobInstanceId": "ABC123"}.',
+        description='Taskflow input fields, exact names, e.g. {"jobInstanceId": "<id>"} '
+        "(MDM taskflows only).",
     )
 
 

@@ -264,3 +264,34 @@ What changed:
 Not tested in a browser. Cypress specs that may now be stale: taskflows_fake.cy.js,
 taskflows_layout.cy.js and onenote.cy.js. The Open column moved and the Track wording was
 removed.
+
+## v0.9.4 (2026-11-23): MDM taskflows moved to the Business 360 notebook
+
+His words (voice, 00:41-00:43 CST): the job instance id applies only to Business 360 / MDM
+taskflows (tf_MDM_*, *_EGR, *_IGR). "In the CDI when I click on the task flows I see the task
+flows associated with MDM also. They should not be there in the first place." CDI taskflows
+are separate from the B360 ingress / egress jobs.
+
+- Left pane, Business 360 (MDM) notebook: a new section "Taskflows (jobInstanceId)"
+  (section id mdm-taskflows, route /mdm/taskflows, run deep link /mdm/taskflows/runs/:id) sits
+  right after Ingress jobs / Egress jobs. It has the same Run / Summary / Session log tabs,
+  history, Clear buttons and Abort as the CDI one (the same TaskflowsPanel with domain="mdm",
+  panel test id mdm-taskflows-panel, data-domain=mdm).
+- MDM Run tab: the input field row jobInstanceId is there and EMPTY (no ABC123 any more). Run
+  stays disabled until it has a value, with the hint "Business 360 taskflow: type the
+  jobInstanceId value to enable Run." (tf-jobid-hint).
+- CDI notebook, Taskflows section (/taskflows, data-domain=cdi): only CDI taskflows (tf_Ldg_*,
+  tf_Stg_*, ...). There are no input field rows by default, with the hint "CDI taskflow: no
+  input fields needed" (tf-no-fields-hint). "Add field" still works for other fields.
+- CDI Tasks picker (cdi-tasks): MDM taskflows are filtered out. No MDM taskflow appears
+  anywhere in the CDI notebook.
+- Left-pane search: an MDM taskflow shows as "MDM taskflow" and opens the Business 360
+  Taskflows section with it picked. A CDI taskflow shows as "CDI taskflow".
+- Agent bridge: runTaskflowByName defaults to no parameters (pass { jobInstanceId: "<id>" } for
+  MDM ones). openTaskflowSummary / openTaskflowLog take (runId, domain = "cdi").
+  openNavSection knows mdm-taskflows.
+- Backend guard: a wrong field set gets a 400 with a plain message, and IDMC is never called.
+
+Not tested in a browser. Cypress specs likely stale: taskflows_fake.cy.js,
+taskflows_layout.cy.js and onenote.cy.js (they expect the MDM taskflow in the CDI list and an
+ABC123 pre-fill). search_items.cy.js may be stale too.

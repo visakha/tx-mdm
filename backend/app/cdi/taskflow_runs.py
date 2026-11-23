@@ -151,8 +151,9 @@ class TaskflowRunRequest(BaseModel):
     parameters: dict[str, str] | None = Field(
         default=None,
         description="Start-step input fields, exact (case-sensitive) names, sent as the JSON "
-        'body of the rt call. Example: {"jobInstanceId": "ABC123"}.',
-        examples=[{"jobInstanceId": "ABC123"}],
+        'body of the rt call. MDM taskflows (tf_MDM_*, *_EGR, *_IGR) need {"jobInstanceId": '
+        '"<id>"}; CDI taskflows take none.',
+        examples=[{"jobInstanceId": "<id>"}],
     )
 
 

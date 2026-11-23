@@ -10,8 +10,10 @@
 //   /cdi/runs, /mdm/runs    runs started from this backend (left pane "Runs")
 //   /mdm/ingress, /mdm/egress  MDM job list filtered to one kind (left pane)
 //   /monitor                CDI Monitor tab (running jobs + recent history)
-//   /taskflows              Taskflows tab: run a taskflow by name, or paste a run id
-//   /taskflows/runs/:runId  track one taskflow run by its IDMC run id
+//   /taskflows              CDI Taskflows (tf_Ldg_*, tf_Stg_*, ...): run by name + history
+//   /taskflows/runs/:runId  one CDI taskflow run by its IDMC run id
+//   /mdm/taskflows          Business 360 taskflows (tf_MDM_*, *_EGR, *_IGR; need jobInstanceId)
+//   /mdm/taskflows/runs/:runId  one B360 taskflow run
 //   /mdm/running            Business 360 Currently running (any starter) + lookup by id
 
 import { useCallback, useEffect, useState } from "react";
@@ -29,13 +31,16 @@ export type Route =
   // The Monitor tab watches CDI jobs, so it carries service "cdi".
   | { screen: "monitor"; service: "cdi" }
   // Taskflows tab: runId is the IDMC run id (null = nothing tracked yet).
-  | { screen: "taskflows"; service: "cdi"; runId: string | null }
+  // service tells which notebook: cdi taskflows or Business 360 (MDM) taskflows (0.9.4).
+  | { screen: "taskflows"; service: Service; runId: string | null }
   // Business 360 Currently running: every b360.* / c360.* job in the org.
   | { screen: "mdm-monitor"; service: "mdm" };
 
 export const MONITOR_ROUTE: Route = { screen: "monitor", service: "cdi" };
 
 export const TASKFLOWS_ROUTE: Route = { screen: "taskflows", service: "cdi", runId: null };
+
+export const MDM_TASKFLOWS_ROUTE: Route = { screen: "taskflows", service: "mdm", runId: null };
 
 export const MDM_MONITOR_ROUTE: Route = { screen: "mdm-monitor", service: "mdm" };
 
@@ -50,6 +55,10 @@ export function parseRoute(pathname: string): Route {
     return { screen: "taskflows", service: "cdi", runId: id };
   }
   if (service === "mdm" && kind === "running" && id === undefined) return MDM_MONITOR_ROUTE;
+  if (service === "mdm" && kind === "taskflows" && id === undefined) return MDM_TASKFLOWS_ROUTE;
+  if (service === "mdm" && kind === "taskflows" && id === "runs" && parts[3] !== undefined) {
+    return { screen: "taskflows", service: "mdm", runId: parts[3] };
+  }
   if (service === "mdm" && kind === "ingress" && id === undefined) {
     return { screen: "kind", service: "mdm", kind: "Ingress" };
   }
@@ -81,7 +90,10 @@ export function formatRoute(route: Route): string {
     case "mdm-monitor":
       return "/mdm/running";
     case "taskflows":
-      return route.runId === null ? "/taskflows" : `/taskflows/runs/${encodeURIComponent(route.runId)}`;
+    {
+      const base = route.service === "mdm" ? "/mdm/taskflows" : "/taskflows";
+      return route.runId === null ? base : `${base}/runs/${encodeURIComponent(route.runId)}`;
+    }
   }
 }
 

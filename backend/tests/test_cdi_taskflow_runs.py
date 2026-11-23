@@ -20,6 +20,7 @@ from tests.conftest import PLATFORM
 POD = PLATFORM.removesuffix("/saas")
 NOW = datetime(2026, 11, 23, 5, 0, tzinfo=UTC)
 RUN = "1309380263289049088"
+JOB = {"parameters": {"jobInstanceId": "J1"}}  # MDM taskflows must send it (0.9.4)
 
 SUSPENDED = {
     "assetName": "tf_MDM_ZLV_TTF_Guest_Basic",
@@ -189,14 +190,14 @@ def test_parallel_starts_of_one_taskflow_are_allowed(idmc: respx.MockRouter, idm
     idmc.get(f"{PLATFORM}/api/v2/activity/activityLog").respond(200, json=LOG_ROWS)
     client = _app(idmc_http)
     url = "/api/cdi/taskflows/tf_MDM_ZLV_TTF_Guest_Basic/run"
-    assert client.post(url).status_code == 200
+    assert client.post(url, json=JOB).status_code == 200
     # 0.9.1: he starts runs in parallel; this backend no longer answers 409 (IDMC decides).
-    assert client.post(url).status_code == 200
+    assert client.post(url, json=JOB).status_code == 200
     client.get(f"/api/cdi/taskflows/runs/{RUN}")
-    assert client.post(url).status_code == 200
+    assert client.post(url, json=JOB).status_code == 200
     # same run id again (cached final status) must close the new local run too
     client.get(f"/api/cdi/taskflows/runs/{RUN}")
-    assert client.post(url).status_code == 200
+    assert client.post(url, json=JOB).status_code == 200
 
 
 def test_live_suspended_shape_no_end_time_and_json_error():
@@ -223,13 +224,13 @@ def test_terminate_sends_runid_list_and_closes_local_run(
     put = idmc.put(f"{POD}/active-bpel/services/tf/terminate").respond(204)
     client = _app(idmc_http)
     url = "/api/cdi/taskflows/tf_MDM_ZLV_TTF_Guest_Basic/run"
-    assert client.post(url).status_code == 200
+    assert client.post(url, json=JOB).status_code == 200
     response = client.post(f"/api/cdi/taskflows/runs/{RUN}/terminate")
     assert response.status_code == 200
     assert response.json()["terminated"] is True
     assert json.loads(put.calls.last.request.content) == {"runid": [RUN]}
     assert put.calls.last.request.headers["INFA-SESSION-ID"]
-    assert client.post(url).status_code == 200  # local run closed -> no 409
+    assert client.post(url, json=JOB).status_code == 200  # local run closed -> no 409
 
 
 def test_terminate_invalid_id_500_is_502_with_text(idmc: respx.MockRouter, idmc_http: IdmcHttp):

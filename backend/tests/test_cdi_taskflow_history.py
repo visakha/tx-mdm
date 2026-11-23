@@ -90,7 +90,13 @@ def test_history_endpoint_lists_parallel_app_runs(idmc, idmc_http):  # type: ign
     idmc.get(f"{PLATFORM}/api/v2/activity/activityMonitor").respond(200, json=[])
     idmc.get(f"{PLATFORM}/api/v2/activity/activityLog").respond(200, json=[])
     client = _app(idmc_http)
-    assert client.post("/api/cdi/taskflows/tf_MDM_ZLV_TTF_Guest_Basic/run").status_code == 200
+    assert (
+        client.post(
+            "/api/cdi/taskflows/tf_MDM_ZLV_TTF_Guest_Basic/run",
+            json={"parameters": {"jobInstanceId": "J1"}},
+        ).status_code
+        == 200
+    )
     body = client.get("/api/cdi/taskflows/tf_MDM_ZLV_TTF_Guest_Basic/history").json()
     assert body["rows"][0]["run_id"] == RUN
     assert body["rows"][0]["trackable"] is True

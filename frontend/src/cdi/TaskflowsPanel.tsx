@@ -22,8 +22,8 @@ import { catalog } from "../shared/catalog";
 import { RunProgress } from "../shared/RunProgress";
 import { statusTone } from "../shared/run";
 import { onPickTaskflow } from "../shell/search";
-import { ribbonTab, selectRibbonTab, useRibbonTab } from "../shell/sections";
-import type { Route } from "../shared/routes";
+import { ribbonTab, selectRibbonTab, useRibbonTab, type SectionId } from "../shell/sections";
+import { formatRoute, type Route, type Service } from "../shared/routes";
 import type { CdiTask } from "./cdiApi";
 import { elapsedText, minutesText } from "./monitorApi";
 import {
@@ -34,8 +34,7 @@ import {
   startedRow,
   type HistoryRow,
   type TaskflowHistory,
-  DEFAULT_PARAM_KEY,
-  DEFAULT_PARAM_VALUE,
+  JOB_INSTANCE_ID,
   paramsOf,
   statusLabel,
   taskflowApi,
@@ -66,19 +65,27 @@ interface Props {
   route: Route;
   go: (route: Route) => void;
   active: boolean;
+  /** 0.9.4: cdi = CDI notebook (tf_Ldg_*, tf_Stg_*, no jobInstanceId); mdm = Business 360
+   * notebook (tf_MDM_*, *_EGR, *_IGR; jobInstanceId required). Decided by the backend. */
+  domain: Service;
 }
 
-export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element {
-  const runId = route.screen === "taskflows" ? route.runId : null;
-  const tab = useRibbonTab("cdi-taskflows");
+export function TaskflowsPanel({ route, go, active, domain }: Props): React.JSX.Element {
+  const sectionId: SectionId = domain === "mdm" ? "mdm-taskflows" : "cdi-taskflows";
+  const isMdm = domain === "mdm";
+  const runId = route.screen === "taskflows" && route.service === domain ? route.runId : null;
+  const tab = useRibbonTab(sectionId);
 
   // ---- taskflow list + run by name ----
   const [taskflows, setTaskflows] = useState<CdiTask[]>([]);
   const [listError, setListError] = useState<string | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
-  const [params, setParams] = useState<ParamRow[]>([
-    { key: DEFAULT_PARAM_KEY, value: DEFAULT_PARAM_VALUE },
-  ]);
+  // MDM taskflows: jobInstanceId row, EMPTY (he types the real id). CDI taskflows: no rows.
+  const [params, setParams] = useState<ParamRow[]>(() =>
+    isMdm ? [{ key: JOB_INSTANCE_ID, value: "" }] : [],
+  );
+  const jobIdMissing =
+    isMdm && (params.find((p) => p.key.trim() === JOB_INSTANCE_ID)?.value.trim() ?? "") === "";
   const [starting, setStarting] = useState<boolean>(false);
   const [startError, setStartError] = useState<string | null>(null);
 
@@ -86,22 +93,23 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
     if (!active || taskflows.length > 0) return;
     catalog.tasks
       .read()
-      .then((all) => setTaskflows(all.filter((t) => t.type === "TASKFLOW")))
+      .then((all) => setTaskflows(all.filter((t) => t.type === "TASKFLOW" && t.domain === domain)))
       .catch((err: unknown) => setListError(errorText(err)));
-  }, [active, taskflows.length]);
+  }, [active, taskflows.length, domain]);
 
   // A press on a taskflow in the left-pane search picks it here and opens the Run tab.
   useEffect(
     () =>
-      onPickTaskflow((name) => {
+      onPickTaskflow((name, pickedDomain) => {
+        if (pickedDomain !== domain) return;
         setPicked(name);
-        selectRibbonTab("cdi-taskflows", "run");
+        selectRibbonTab(sectionId, "run");
       }),
-    [],
+    [domain, sectionId],
   );
 
   const runPicked = useCallback((): void => {
-    if (picked === null) return;
+    if (picked === null || jobIdMissing) return;
     const body = paramsOf(params);
     const shown = Object.entries(body)
       .map(([k, v]) => `${k}=${v}`)
@@ -118,7 +126,7 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
       })
       .catch((err: unknown) => setStartError(errorText(err)))
       .finally(() => setStarting(false));
-  }, [picked, params]);
+  }, [picked, params, jobIdMissing]);
 
   // ---- run history of the picked taskflow (detail pane under the Run form) ----
   const [history, setHistory] = useState<TaskflowHistory | null>(null);
@@ -219,15 +227,15 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
     (row: HistoryRow, where: "summary" | "log", childName: string | null = null): void => {
       if (!row.trackable || row.run_id === null) return;
       setPendingLogChild(where === "log" ? childName : null);
-      go({ screen: "taskflows", service: "cdi", runId: row.run_id });
-      selectRibbonTab("cdi-taskflows", where);
+      go({ screen: "taskflows", service: domain, runId: row.run_id });
+      selectRibbonTab(sectionId, where);
     },
-    [go],
+    [go, domain, sectionId],
   );
   const clearSelected = useCallback((): void => {
     setPendingLogChild(null);
-    go({ screen: "taskflows", service: "cdi", runId: null });
-  }, [go]);
+    go({ screen: "taskflows", service: domain, runId: null });
+  }, [go, domain]);
 
   // ---- tracking one run id ----
   const [status, setStatus] = useState<TaskflowRunStatus | null>(null);
@@ -249,10 +257,10 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
     setLogText("");
     setAbortNote(null);
     // A deep link /taskflows/runs/:id (or the agent's openTaskflowSummary) opens its Summary.
-    if (runId !== null && ribbonTab("cdi-taskflows") === "run") {
-      selectRibbonTab("cdi-taskflows", "summary");
+    if (runId !== null && ribbonTab(sectionId) === "run") {
+      selectRibbonTab(sectionId, "summary");
     }
-  }, [runId]);
+  }, [runId, sectionId]);
 
   useEffect(() => {
     if (runId === null || !active || stopped) return;
@@ -383,11 +391,11 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
   );
 
   return (
-    <div className="panel tf-panel" data-testid="taskflows-panel" data-tab={tab}>
+    <div className="panel tf-panel" data-testid={isMdm ? "mdm-taskflows-panel" : "taskflows-panel"} data-domain={domain} data-tab={tab}>
       {tab === "run" && (
         <section className="picker" aria-label="Run taskflow by name">
           <div className="tf-run-box" data-testid="tf-run-box">
-            <h2>Run taskflow by name</h2>
+            <h2>{isMdm ? "Run Business 360 taskflow by name" : "Run CDI taskflow by name"}</h2>
             {listError !== null && (
               <p className="warn-text" data-testid="tf-list-error">
                 {listError}
@@ -441,11 +449,21 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
               aria-label={picked === null ? "Pick a taskflow first" : `Run ${picked}`}
               data-testid="tf-run"
               data-agent-confirm={`Starts taskflow ${picked ?? "(none picked)"} on the live IDMC org`}
-              disabled={picked === null || starting}
+              disabled={picked === null || starting || jobIdMissing}
               onClick={runPicked}
             >
               {starting ? "Starting..." : "Run"}
             </Button>
+            {jobIdMissing && (
+              <p className="muted" data-testid="tf-jobid-hint">
+                Business 360 taskflow: type the {JOB_INSTANCE_ID} value to enable Run.
+              </p>
+            )}
+            {!isMdm && params.length === 0 && (
+              <p className="muted" data-testid="tf-no-fields-hint">
+                CDI taskflow: no input fields needed (no {JOB_INSTANCE_ID}).
+              </p>
+            )}
               </>
             )}
             {startError !== null && (
@@ -556,7 +574,7 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
                           <>
                             <a
                               className="tf-link"
-                              href={`/taskflows/runs/${target.run_id}`}
+                              href={formatRoute({ screen: "taskflows", service: domain, runId: target.run_id })}
                               data-testid={`tf-history-summary-${tid}`}
                               title={row.trackable ? "Open this run's Summary" : `Opens the Summary of taskflow run ${target.run_id}`}
                               onClick={(e) => {
@@ -569,7 +587,7 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
                             {" | "}
                             <a
                               className="tf-link"
-                              href={`/taskflows/runs/${target.run_id}`}
+                              href={formatRoute({ screen: "taskflows", service: domain, runId: target.run_id })}
                               data-testid={`tf-history-log-${tid}`}
                               title={row.trackable ? "Open this run's Session log" : `Opens the Session log of taskflow run ${target.run_id} at ${row.task_name}`}
                               onClick={(e) => {
@@ -709,7 +727,7 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
                           disabled={child.log_entry_id === null}
                           onClick={() => {
                             openLog(child);
-                            selectRibbonTab("cdi-taskflows", "log");
+                            selectRibbonTab(sectionId, "log");
                           }}
                         >
                           Open log

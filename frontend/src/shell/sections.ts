@@ -15,6 +15,7 @@ export type SectionId =
   | "mdm-all"
   | "mdm-ingress"
   | "mdm-egress"
+  | "mdm-taskflows"
   | "mdm-running"
   | "mdm-runs";
 
@@ -38,6 +39,7 @@ export const SECTIONS: readonly Section[] = [
   { id: "mdm-all", notebook: "MDM", label: "All jobs", route: { screen: "jobs", service: "mdm" }, legacyTestId: "tab-mdm", color: "teal" },
   { id: "mdm-ingress", notebook: "MDM", label: "Ingress jobs", route: { screen: "kind", service: "mdm", kind: "Ingress" }, legacyTestId: null, color: "orange" },
   { id: "mdm-egress", notebook: "MDM", label: "Egress jobs", route: { screen: "kind", service: "mdm", kind: "Egress" }, legacyTestId: null, color: "red" },
+  { id: "mdm-taskflows", notebook: "MDM", label: "Taskflows (jobInstanceId)", route: { screen: "taskflows", service: "mdm", runId: null }, legacyTestId: null, color: "purple" },
   { id: "mdm-running", notebook: "MDM", label: "Currently running", route: { screen: "mdm-monitor", service: "mdm" }, legacyTestId: null, color: "green" },
   { id: "mdm-runs", notebook: "MDM", label: "Runs", route: { screen: "runs", service: "mdm" }, legacyTestId: null, color: "gray" },
 ];
@@ -55,7 +57,7 @@ export function sectionOf(route: Route, lastMdmKind: MdmKindFilter | null): Sect
     case "mdm-monitor":
       return "mdm-running";
     case "taskflows":
-      return "cdi-taskflows";
+      return route.service === "mdm" ? "mdm-taskflows" : "cdi-taskflows";
     case "runs":
     case "run":
       return route.service === "cdi" ? "cdi-runs" : "mdm-runs";
@@ -108,6 +110,11 @@ export const RIBBON: Record<SectionId, readonly RibbonTab[]> = {
   "mdm-egress": [
     { id: "jobs", label: "Jobs" },
     { id: "run", label: "Run" },
+  ],
+  "mdm-taskflows": [
+    { id: "run", label: "Run" },
+    { id: "summary", label: "Summary" },
+    { id: "log", label: "Session log" },
   ],
   "mdm-running": [
     { id: "all", label: "Everything" },

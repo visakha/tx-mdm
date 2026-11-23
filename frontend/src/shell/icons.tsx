@@ -41,6 +41,7 @@ export const SECTION_ICON: Record<SectionId, IconName> = {
   "mdm-all": "jobs",
   "mdm-ingress": "ingress",
   "mdm-egress": "egress",
+  "mdm-taskflows": "taskflow",
   "mdm-running": "monitor",
   "mdm-runs": "runs",
 };
@@ -48,6 +49,7 @@ export const SECTION_ICON: Record<SectionId, IconName> = {
 export const HIT_ICON: Record<HitKind, IconName> = {
   task: "task",
   taskflow: "taskflow",
+  "mdm-taskflow": "taskflow",
   ingress: "ingress",
   egress: "egress",
   "mdm-job": "jobs",

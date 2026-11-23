@@ -17,7 +17,7 @@ import { MonitorPanel } from "./cdi/MonitorPanel";
 import { TaskflowsPanel } from "./cdi/TaskflowsPanel";
 import { MdmPanel } from "./mdm/MdmPanel";
 import { MdmMonitorPanel } from "./mdm/MdmMonitorPanel";
-import { TASKFLOWS_ROUTE, useRoute, type MdmKindFilter, type Route } from "./shared/routes";
+import { MDM_TASKFLOWS_ROUTE, TASKFLOWS_ROUTE, useRoute, type MdmKindFilter, type Route } from "./shared/routes";
 import type { CdiTask } from "./cdi/cdiApi";
 import type { MdmJob } from "./mdm/mdmApi";
 import { catalog } from "./shared/catalog";
@@ -38,7 +38,7 @@ import {
 const HINTS: Record<string, string> = {
   "cdi-tasks/tasks": "Pick a CDI task on the left of the page, then press Run.",
   "cdi-tasks/run": "The selected task, full width. Press Run to start it (one run at a time).",
-  "cdi-taskflows/run": "Pick a taskflow, check its input fields (jobInstanceId), press Run. Scroll down for its runs: Summary / Session log per run.",
+  "cdi-taskflows/run": "CDI taskflows only (tf_Ldg_*, tf_Stg_*): pick one, press Run - no jobInstanceId. Scroll down for its runs: Summary / Session log per run.",
   "cdi-taskflows/summary": "The selected run: status, progress bar, Last refresh, Abort while running, per child task rows ok / failed and errors.",
   "cdi-taskflows/log": "The selected run's session log. Pick a child task when there are several.",
   "cdi-monitor/all": "Running now, recent history and runs started here. Refreshes every 15 s.",
@@ -47,6 +47,9 @@ const HINTS: Record<string, string> = {
   "cdi-monitor/app": "Only runs started from this app.",
   "cdi-runs/list": "Runs started from this backend. Pick one to see its result.",
   "cdi-runs/result": "Result of the selected run.",
+  "mdm-taskflows/run": "Business 360 taskflows (tf_MDM_*, *_EGR, *_IGR): pick one, type its jobInstanceId, press Run. Scroll down for its runs.",
+  "mdm-taskflows/summary": "The selected B360 taskflow run: status, progress bar, Last refresh, Abort while running, child task rows.",
+  "mdm-taskflows/log": "The selected B360 taskflow run's session log. Pick a child task when there are several.",
   "mdm-running/all": "Every Business 360 job running in the org (any starter), recent finished, lookup. Refreshes every 15 s.",
   "mdm-running/running": "Only B360 jobs running right now, whoever started them.",
   "mdm-running/recent": "Only recently finished B360 jobs.",
@@ -107,7 +110,8 @@ export function App(): React.JSX.Element {
   const isMdmList = section === "mdm-all" || section === "mdm-ingress" || section === "mdm-egress";
   const cdiRoute: Route = route.service === "cdi" && (route.screen === "jobs" || route.screen === "job" || route.screen === "run") ? route : { screen: "jobs", service: "cdi" };
   const mdmRoute: Route = route.service === "mdm" && route.screen !== "runs" && route.screen !== "mdm-monitor" ? route : { screen: "jobs", service: "mdm" };
-  const tfRoute: Route = route.screen === "taskflows" ? route : TASKFLOWS_ROUTE;
+  const tfRoute: Route = route.screen === "taskflows" && route.service === "cdi" ? route : TASKFLOWS_ROUTE;
+  const mdmTfRoute: Route = route.screen === "taskflows" && route.service === "mdm" ? route : MDM_TASKFLOWS_ROUTE;
   const mdmKind: MdmKindFilter | null =
     section === "mdm-ingress" ? "Ingress" : section === "mdm-egress" ? "Egress" : null;
   const visibleSections = matchSections(search);
@@ -151,7 +155,7 @@ export function App(): React.JSX.Element {
                   const hit = hits.find((h) => h.value === value);
                   if (hit === undefined) return;
                   go(hit.route);
-                  if (hit.taskflowName !== null) pickTaskflow(hit.taskflowName);
+                  if (hit.taskflowName !== null) pickTaskflow(hit.taskflowName, hit.kind === "mdm-taskflow" ? "mdm" : "cdi");
                 }}
               >
                 {hits.slice(0, MAX_HITS).map((hit) => (
@@ -251,7 +255,10 @@ export function App(): React.JSX.Element {
           <MdmMonitorPanel active={section === "mdm-running"} />
         </div>
         <div hidden={section !== "cdi-taskflows"}>
-          <TaskflowsPanel route={tfRoute} go={go} active={section === "cdi-taskflows"} />
+          <TaskflowsPanel route={tfRoute} go={go} active={section === "cdi-taskflows"} domain="cdi" />
+        </div>
+        <div hidden={section !== "mdm-taskflows"}>
+          <TaskflowsPanel route={mdmTfRoute} go={go} active={section === "mdm-taskflows"} domain="mdm" />
         </div>
         <div hidden={!(section === "cdi-runs" && tab === "list")}>
           <RunsPanel service="cdi" active={section === "cdi-runs" && tab === "list"} go={go} />

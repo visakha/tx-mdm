@@ -74,10 +74,11 @@ export interface TaskflowStartResult {
   parameters: Record<string, string>;
 }
 
-/** The taskflow input field tf_MDM_ZLV_TTF_Guest_Basic needs (exact, case-sensitive name). */
-export const DEFAULT_PARAM_KEY = "jobInstanceId";
-/** Starting value Vamsi chose (2026-11-22). Edit it in the UI before Run. */
-export const DEFAULT_PARAM_VALUE = "ABC123";
+/** The input field every Business 360 / MDM taskflow needs (exact, case-sensitive name).
+ * MDM taskflows: tf_MDM_*, *_EGR, *_IGR (rule lives in backend app/cdi/taskflow_kind.py; the
+ * backend tags each task with domain). CDI taskflows (tf_Ldg_*, tf_Stg_*) must NOT get it. 0.9.4:
+ * no pre-filled value any more - he types the real id. */
+export const JOB_INSTANCE_ID = "jobInstanceId";
 
 export interface ParamRow {
   key: string;

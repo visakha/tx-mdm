@@ -3,8 +3,8 @@ import type { CdiTask } from "../cdi/cdiApi";
 import type { MdmJob } from "../mdm/mdmApi";
 import { searchItems } from "./search";
 
-const task = (id: string, name: string, type: CdiTask["type"], folder = "ZL_Vamsi/ZLV_CDI"): CdiTask => ({
-  id, name, type, path: `${folder}/${name}`, description: "", updated_at: null,
+const task = (id: string, name: string, type: CdiTask["type"], folder = "ZL_Vamsi/ZLV_CDI", domain: CdiTask["domain"] = "cdi"): CdiTask => ({
+  id, name, type, path: `${folder}/${name}`, description: "", updated_at: null, domain,
 });
 const job = (id: string, name: string, kind: MdmJob["kind"]): MdmJob => ({
   asset_id: id, name, path: `ZL_Vamsi/ZLV_MDM/${name}`, description: "", updated_at: null,
@@ -13,7 +13,8 @@ const job = (id: string, name: string, kind: MdmJob["kind"]): MdmJob => ({
 
 const TASKS = [
   task("t1", "mt_m_MDM_ZLV_TTF_Guest_Basic", "MTT"),
-  task("t2", "tf_MDM_ZLV_TTF_Guest_Basic", "TASKFLOW"),
+  task("t2", "tf_MDM_ZLV_TTF_Guest_Basic", "TASKFLOW", "ZL_Vamsi/ZLV_CDI", "mdm"),
+  task("t4", "tf_Stg_MDM_CDI_TTF", "TASKFLOW", "MDM_TTF/CDI_STG"),
   task("t3", "mt_m_Ldg_MDM_CDI_TTF_CLIENTS", "MTT", "MDM_TTF/CDI_LDG"),
 ];
 const JOBS = [job("j1", "Egress ZLV Guest basic Src_TTF", "Egress"), job("j2", "zlv_ingr_guest-basic", "Ingress")];
@@ -21,13 +22,19 @@ const JOBS = [job("j1", "Egress ZLV Guest basic Src_TTF", "Egress"), job("j2", "
 describe("left-pane item search", () => {
   it("finds tasks, taskflows and jobs by name, any case", () => {
     const hits = searchItems("guest", TASKS, JOBS);
-    expect(hits.map((h) => h.kind).sort()).toEqual(["egress", "ingress", "task", "taskflow"]);
+    expect(hits.map((h) => h.kind).sort()).toEqual(["egress", "ingress", "mdm-taskflow", "task"]);
   });
 
-  it("needs every typed word; sends taskflows to the Taskflows section with the name", () => {
+  it("needs every typed word; sends MDM taskflows to the Business 360 Taskflows section", () => {
     const [hit] = searchItems("tf_mdm guest", TASKS, JOBS);
-    expect(hit?.kind).toBe("taskflow");
+    expect(hit?.kind).toBe("mdm-taskflow");
     expect(hit?.taskflowName).toBe("tf_MDM_ZLV_TTF_Guest_Basic");
+    expect(hit?.route).toEqual({ screen: "taskflows", service: "mdm", runId: null });
+  });
+
+  it("sends CDI taskflows (tf_Stg_*) to the CDI Taskflows section", () => {
+    const [hit] = searchItems("tf_stg", TASKS, JOBS);
+    expect(hit?.kind).toBe("taskflow");
     expect(hit?.route).toEqual({ screen: "taskflows", service: "cdi", runId: null });
   });
 

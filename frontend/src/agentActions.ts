@@ -8,8 +8,6 @@
 import { cdiApi, type CdiTask } from "./cdi/cdiApi";
 import { monitorApi, type MonitorSnapshot } from "./cdi/monitorApi";
 import {
-  DEFAULT_PARAM_KEY,
-  DEFAULT_PARAM_VALUE,
   announceTaskflowStart,
   taskflowApi,
   type TaskflowHistory,
@@ -52,7 +50,7 @@ export const ACTIONS: readonly ActionInfo[] = [
   { name: "currentRoute", args: "()", description: "Current screen as a Route + its URL path.", sideEffect: false },
   { name: "openSection", args: "(service: 'mdm' | 'cdi')", description: "Show the job list of a section.", sideEffect: false },
   { name: "layout", args: "()", description: "OneNote layout: left-pane sections, the selected section, its ribbon tabs and the selected tab.", sideEffect: false },
-  { name: "openNavSection", args: "(sectionId)", description: "Select a left-pane section (cdi-tasks, cdi-taskflows, cdi-monitor, cdi-runs, mdm-all, mdm-ingress, mdm-egress, mdm-running, mdm-runs).", sideEffect: false },
+  { name: "openNavSection", args: "(sectionId)", description: "Select a left-pane section (cdi-tasks, cdi-taskflows, cdi-monitor, cdi-runs, mdm-all, mdm-ingress, mdm-egress, mdm-taskflows, mdm-running, mdm-runs).", sideEffect: false },
   { name: "selectRibbonTab", args: "(tabId)", description: "Select a ribbon tab of the current section (see layout()).", sideEffect: false },
   { name: "listMdmJobs", args: "()", description: "MDM job definitions from the metadata API (with runnable flag).", sideEffect: false },
   { name: "listCdiTasks", args: "()", description: "CDI tasks from the metadata API.", sideEffect: false },
@@ -61,10 +59,10 @@ export const ACTIONS: readonly ActionInfo[] = [
   { name: "openRun", args: "(service, runKey)", description: "Open the results screen for a run (/<service>/runs/:runKey).", sideEffect: false },
   { name: "getRun", args: "(service, runKey)", description: "Read a run's current state (status, counts, errors, log).", sideEffect: false },
   { name: "openMonitor", args: "()", description: "Show the CDI Monitor tab (/monitor).", sideEffect: false },
-  { name: "runTaskflowByName", args: "(name, parameters = { jobInstanceId: 'ABC123' }, apiName?)", description: "Start an advanced taskflow by name with its input fields, after a person confirms; stays on the Run tab and puts the run on top of the history (open it with openTaskflowSummary / openTaskflowLog). Parallel starts allowed. Never retries.", sideEffect: true },
+  { name: "runTaskflowByName", args: "(name, parameters = {}, apiName?)", description: "Start an advanced taskflow by name with its input fields. Business 360 taskflows (tf_MDM_*, *_EGR, *_IGR; task domain mdm) NEED { jobInstanceId: '<real id>' }; CDI taskflows (tf_Ldg_*, tf_Stg_*) must get none - the backend answers 400 otherwise. after a person confirms; stays on the Run tab and puts the run on top of the history (open it with openTaskflowSummary / openTaskflowLog). Parallel starts allowed. Never retries.", sideEffect: true },
   { name: "getTaskflowHistory", args: "(name, rowLimit = 100)", description: "Run history of one taskflow (Run tab detail): running first, then recent; taskflow rows from this app are trackable, child task rows are not.", sideEffect: false },
-  { name: "openTaskflowSummary", args: "(runId)", description: "Open the Summary tab of one taskflow run by IDMC run id (/taskflows/runs/:runId): status, progress, child rows, Abort.", sideEffect: false },
-  { name: "openTaskflowLog", args: "(runId)", description: "Open the Session log tab of one taskflow run by IDMC run id.", sideEffect: false },
+  { name: "openTaskflowSummary", args: "(runId, domain = 'cdi')", description: "Open the Summary tab of one taskflow run by IDMC run id (/taskflows/runs/:runId): status, progress, child rows, Abort.", sideEffect: false },
+  { name: "openTaskflowLog", args: "(runId, domain = 'cdi')", description: "Open the Session log tab of one taskflow run by IDMC run id.", sideEffect: false },
   { name: "getTaskflowRun", args: "(runId)", description: "Read a taskflow run by IDMC run id: status, times, per-child rows and errors, totals.", sideEffect: false },
   { name: "terminateTaskflow", args: "(runId)", description: "Terminate (abort) a running taskflow by IDMC run id, after a person confirms. Never retried.", sideEffect: true },
   { name: "getTaskflowSessionLog", args: "(runId, childTask?)", description: "Plain-text session log of one child task of a taskflow run.", sideEffect: false },
@@ -97,7 +95,7 @@ async function runJob(service: Service, jobId: string, apiName?: string): Promis
 
 async function runTaskflowByName(
   name: string,
-  parameters: Record<string, string> = { [DEFAULT_PARAM_KEY]: DEFAULT_PARAM_VALUE },
+  parameters: Record<string, string> = {},
   apiName?: string,
 ): Promise<TaskflowStartResult> {
   const shown = Object.entries(parameters)
@@ -164,13 +162,13 @@ export const txmdm = {
     getJson<RunView>(service === "mdm" ? mdmApi.runUrl(runKey) : cdiApi.runUrl(runKey)),
   openMonitor: (): void => navigate(MONITOR_ROUTE),
   runTaskflowByName,
-  openTaskflowSummary: (runId: string): void => {
-    navigate({ screen: "taskflows", service: "cdi", runId });
-    selectRibbonTab("cdi-taskflows", "summary");
+  openTaskflowSummary: (runId: string, domain: "cdi" | "mdm" = "cdi"): void => {
+    navigate({ screen: "taskflows", service: domain, runId });
+    selectRibbonTab(domain === "mdm" ? "mdm-taskflows" : "cdi-taskflows", "summary");
   },
-  openTaskflowLog: (runId: string): void => {
-    navigate({ screen: "taskflows", service: "cdi", runId });
-    selectRibbonTab("cdi-taskflows", "log");
+  openTaskflowLog: (runId: string, domain: "cdi" | "mdm" = "cdi"): void => {
+    navigate({ screen: "taskflows", service: domain, runId });
+    selectRibbonTab(domain === "mdm" ? "mdm-taskflows" : "cdi-taskflows", "log");
   },
   terminateTaskflow,
   getTaskflowHistory: (name: string, rowLimit = 100): Promise<TaskflowHistory> =>
