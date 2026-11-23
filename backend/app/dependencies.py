@@ -91,4 +91,5 @@ def get_design_service() -> DesignService:
     """Read-only Design notebook (0.9.15): CDI asset metadata on the platform host, own session."""
     settings = get_settings()
     http = IdmcHttp(get_http_client(), _new_session(settings))
-    return DesignService(DesignClient(http, settings.idmc_platform_url))
+    portal = PortalLinks(settings.idmc_mdm_url, settings.idmc_cdi_portal_url)
+    return DesignService(DesignClient(http, settings.idmc_platform_url), portal)

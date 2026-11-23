@@ -33,3 +33,34 @@ export function GoToIdmc({ runId, url, slug }: { runId: string; url: string | nu
     </a>
   );
 }
+
+/** 0.9.16 (Vamsi 03:57 CST, Design notebook page ONLY): a design asset's name as a link to its
+ * IDMC portal page, plus a "Go to IDMC" variant. URL from the backend's typed portal_url only;
+ * no URL -> plain name / nothing. */
+export function DesignAssetLink({
+  name,
+  typeLabel,
+  url,
+  slug,
+  goTo = false,
+}: {
+  name: string;
+  typeLabel: string;
+  url: string | null | undefined;
+  slug: string;
+  goTo?: boolean;
+}): React.JSX.Element | null {
+  if (url === null || url === undefined || url === "") return goTo ? null : <>{name}</>;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`Open ${typeLabel} ${name} in IDMC portal`}
+      data-testid={`${goTo ? "design-go-to-idmc" : "design-portal-link"}-${slug}`}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {goTo ? "Go to IDMC" : name}
+    </a>
+  );
+}

@@ -62,6 +62,17 @@ Copy IDMC curl. Doc status of each call: `internal-notes/api-facts.md` (Design s
 - CDI plain mapping-task (MTT) runs: NO pattern given - typed slot `MTT_RUN_PATH = None`, no link.
   OPEN GAP.
 
+## Design asset portal links (0.9.16, Vamsi 03:57 CST: "applicable to the design notebook page only")
+- Design detail heading: the asset name is a link to its IDMC portal page, with "Go to IDMC"
+  beneath it; list rows and the Uses / Used by rows get "Go to IDMC" under the name (the name
+  button still opens the detail in tx-mdm). New tab, rel noopener, aria-label
+  "Open <type> <name> in IDMC portal". Not added to any other page (vitest guard).
+- URL = `{cdi_pod_host}/diUI/products/integrationDesign/main/{segment}/{v3_object_id}/read`;
+  segment from the declarative table `DESIGN_ASSET_SEGMENTS` in `app/common/portal.py`:
+  DTEMPLATE -> mapping, MTT -> mct, TASKFLOW -> taskflow. Any other type -> null, no link.
+  Typed `portal_url` on AssetSummary, AssetDetail and UsedAsset. Tests: exactly his three samples.
+  CODE; pattern UNVERIFIED-DOC.
+
 ## NOT LIVE
 Nothing on this page has run against his org yet: all shapes come from the IICS REST API
 Reference (Nov 2025) and the fake IDMC.

@@ -48,6 +48,8 @@ export interface AssetDetail {
   uses?: UsedAsset[];
   /** v3 references refType=usedBy (mappings only). */
   used_by?: UsedAsset[];
+  /** IDMC portal page of this asset (0.9.16, Design page only): mapping, mapping task and taskflow; null for other types (no known pattern). UNVERIFIED-DOC: from his browser. */
+  portal_url?: string | null;
   notes?: string[];
 }
 
@@ -71,6 +73,8 @@ export interface AssetSummary {
   description?: string;
   updated_at?: string | null;
   updated_by?: string;
+  /** IDMC portal page of this asset (0.9.16, Design page only): mapping, mapping task and taskflow; null for other types (no known pattern). UNVERIFIED-DOC: from his browser. */
+  portal_url?: string | null;
 }
 
 export interface AssetTypeInfo {
@@ -783,4 +787,6 @@ export interface UsedAsset {
   updated_by?: string;
   runtime_environment?: RuntimeEnvironmentRef | null;
   detail_note?: string;
+  /** IDMC portal page of this asset (0.9.16, Design page only): mapping, mapping task and taskflow; null for other types (no known pattern). UNVERIFIED-DOC: from his browser. */
+  portal_url?: string | null;
 }

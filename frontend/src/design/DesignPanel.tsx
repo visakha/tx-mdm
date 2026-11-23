@@ -12,6 +12,7 @@ import { Button } from "@ui-sdk/react/button";
 import type { AssetDetail, AssetList, DesignAssetType, UsedAsset } from "../b360/api-types";
 import { errorText } from "../shared/api";
 import { CopyIdmcCurl } from "../shared/CopyIdmcCurl";
+import { DesignAssetLink } from "../shared/PortalLink";
 import { useRibbonTab } from "../shell/sections";
 import {
   asAssetType,
@@ -69,6 +70,9 @@ function UsedTable({ title, rows, slug }: { title: string; rows: readonly UsedAs
                     ) : (
                       u.name
                     )}
+                    <div className="small">
+                      <DesignAssetLink name={u.name} typeLabel={u.type} url={u.portal_url} slug={`${slug}-${u.id}`} goTo />
+                    </div>
                     {u.detail_note !== undefined && u.detail_note !== "" && <p className="muted small">{u.detail_note}</p>}
                   </td>
                   <td>{u.type}</td>
@@ -112,7 +116,12 @@ function Detail({ detail }: { detail: AssetDetail }): React.JSX.Element {
   }
   return (
     <div className="design-detail" data-testid="design-detail" data-asset={detail.id}>
-      <h3>Detail: {detail.name}</h3>
+      <h3>
+        Detail: <DesignAssetLink name={detail.name} typeLabel={detail.label} url={detail.portal_url} slug={`detail-${detail.id}`} />
+      </h3>
+      <div className="small">
+        <DesignAssetLink name={detail.name} typeLabel={detail.label} url={detail.portal_url} slug={`detail-${detail.id}`} goTo />
+      </div>
       <table className="monitor kv" aria-label={`Metadata of ${detail.name}`}>
         <tbody>
           {rows.map(([k, v]) => (
@@ -241,6 +250,9 @@ export function DesignPanel({ active }: { active: boolean }): React.JSX.Element 
                         >
                           {a.name}
                         </Button>
+                        <div className="small">
+                          <DesignAssetLink name={a.name} typeLabel={label} url={a.portal_url} slug={`row-${a.id}`} goTo />
+                        </div>
                       </td>
                       <td>{a.path}</td>
                       <td>{whenText(a.updated_at)}</td>

@@ -18,6 +18,7 @@ from app.common.idmc_registry import (
     V3ReferenceRow,
 )
 from app.common.idmc_session import IdmcError, IdmcRateLimitedError
+from app.common.portal import PortalLinks
 from app.design.client import DesignClient, RefType
 from app.design.endpoints import MAX_CHILD_DETAILS
 from app.design.models import (
@@ -71,8 +72,9 @@ def mapping_task_names(refs: list[V3ReferenceRow]) -> list[str]:
 
 
 class DesignService:
-    def __init__(self, client: DesignClient) -> None:
+    def __init__(self, client: DesignClient, portal: PortalLinks | None = None) -> None:
         self._client = client
+        self._portal = portal or PortalLinks("", "")  # 0.9.16: Design asset portal links
         self._runtime: dict[str, RuntimeEnvironmentWire] = {}
         self._runtime_at = 0.0
         self._lists: dict[DesignAssetType, tuple[float, list[V3ObjectRow]]] = {}
@@ -135,7 +137,7 @@ class DesignService:
         match rule.lists:
             case ListSource.V3_OBJECTS:
                 rows, cached = self._v3_rows(t, refresh)
-                assets = [self._summary(t, r) for r in rows]
+                assets = [self._summary(t, r, self._portal) for r in rows]
             case ListSource.V2_CONNECTION:
                 cached = False
                 assets = [self._connection_summary(c) for c in self._client.connections()]
@@ -155,8 +157,9 @@ class DesignService:
         )
 
     @staticmethod
-    def _summary(t: DesignAssetType, row: V3ObjectRow) -> AssetSummary:
+    def _summary(t: DesignAssetType, row: V3ObjectRow, portal: PortalLinks) -> AssetSummary:
         return AssetSummary(
+            portal_url=portal.design_asset(t.value, row.id),
             id=row.id,
             name=name_of(row.path, row.id),
             path=row.path,
@@ -217,6 +220,7 @@ class DesignService:
 
     def _base(self, t: DesignAssetType, row: V3ObjectRow) -> AssetDetail:
         return AssetDetail(
+            portal_url=self._portal.design_asset(t.value, row.id),
             type=t,
             label=TYPE_RULES[t].label,
             as_of=_now(),
@@ -253,6 +257,7 @@ class DesignService:
                 open_id=open_id,
                 description=ref.description or "",
                 updated_at=ref.updateTime,
+                portal_url=self._portal.design_asset(ref.type, ref.id),
             )
             if kind is DesignAssetType.MTT:
                 if detailed < MAX_CHILD_DETAILS:

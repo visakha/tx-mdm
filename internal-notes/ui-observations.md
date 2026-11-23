@@ -669,3 +669,15 @@ IDMC portal links (Vamsi 03:36 CST):
   - Missing portal_url (e.g. idmc_cdi_portal_url empty) -> no link rendered.
 - CDI plain mapping-task runs: no link (no pattern from him yet - open gap).
 - B360 taskflow children: no MDM instance id known, no link.
+
+## v0.9.16 (2026-11-23 ~04:05 CST): Design asset links to the IDMC portal
+
+NOT OBSERVED in a browser (fake IDMC + vitest only). Design notebook page ONLY:
+- Detail heading "Detail: <name>": name is a link (`design-portal-link-detail-<id>`), and a
+  "Go to IDMC" line right beneath (`design-go-to-idmc-detail-<id>`).
+- Asset list rows: "Go to IDMC" under the name button (`design-go-to-idmc-row-<id>`); the name
+  button still opens the detail in tx-mdm; clicking the link does not select the row.
+- Uses / Used by rows: "Go to IDMC" under the name (`design-go-to-idmc-uses-<id>`,
+  `design-go-to-idmc-used-by-<id>`).
+- aria-label "Open <type> <name> in IDMC portal"; new tab. Only mapping, mapping task and
+  taskflow get links; connections, runtime environments, DSS, linear taskflows show none.

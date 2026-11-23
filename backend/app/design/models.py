@@ -105,6 +105,12 @@ TYPE_RULES: dict[DesignAssetType, TypeRule] = {
 }
 
 
+PORTAL_DESCRIPTION = (
+    "IDMC portal page of this asset (0.9.16, Design page only): mapping, mapping task and "
+    "taskflow; null for other types (no known pattern). UNVERIFIED-DOC: from his browser."
+)
+
+
 class AssetTypeInfo(BaseModel):
     type: DesignAssetType
     label: str
@@ -128,6 +134,7 @@ class AssetSummary(BaseModel):
     description: str = ""
     updated_at: datetime | None = None
     updated_by: str = ""
+    portal_url: str | None = Field(default=None, description=PORTAL_DESCRIPTION)
 
 
 class AssetList(BaseModel):
@@ -174,6 +181,7 @@ class UsedAsset(BaseModel):
     updated_by: str = ""
     runtime_environment: RuntimeEnvironmentRef | None = None
     detail_note: str = ""
+    portal_url: str | None = Field(default=None, description=PORTAL_DESCRIPTION)
 
 
 class AssetDetail(BaseModel):
@@ -198,4 +206,5 @@ class AssetDetail(BaseModel):
     used_by: list[UsedAsset] = Field(
         default_factory=list, description="v3 references refType=usedBy (mappings only)."
     )
+    portal_url: str | None = Field(default=None, description=PORTAL_DESCRIPTION)
     notes: list[str] = Field(default_factory=list)

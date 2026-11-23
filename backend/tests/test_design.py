@@ -185,3 +185,33 @@ def test_taskflow_history_children_come_from_references(
     assert history.child_tasks == [CHILD]
     assert history.child_names_source == "references" and not history.child_names_guessed
     assert not any("is a guess" in n for n in history.notes)
+
+
+def test_design_list_detail_and_uses_carry_portal_url(
+    idmc: respx.MockRouter, idmc_http: IdmcHttp, calls: Calls
+) -> None:
+    """0.9.16: typed portal_url on list rows, the detail and the taskflow's mapping-task rows."""
+    from app.common.portal import PortalLinks
+
+    host = "https://usw1.dm1-us.informaticacloud.com"
+    base = f"{host}/diUI/products/integrationDesign/main"
+    idmc.route(url__startswith=PLATFORM).mock(side_effect=_forward(calls, None))
+    app = create_app()
+    service = DesignService(DesignClient(idmc_http, PLATFORM), PortalLinks("", host))
+    app.dependency_overrides[get_design_service] = lambda: service
+    api = TestClient(app)
+    listed = api.get("/api/design/assets/MTT").json()["assets"]
+    assert all(a["portal_url"] == f"{base}/mct/{a['id']}/read" for a in listed)
+    tf = api.get("/api/design/assets/TASKFLOW/FED4").json()
+    assert tf["portal_url"] == f"{base}/taskflow/FED4/read"
+    [child] = tf["uses"]
+    assert child["portal_url"] == f"{base}/mct/FED5/read"
+    mapping = api.get("/api/design/assets/DTEMPLATE/MAP5").json()
+    assert mapping["portal_url"] == f"{base}/mapping/MAP5/read"
+    conn = api.get("/api/design/assets/CONNECTION/0100000B000000000002").json()
+    assert conn["portal_url"] is None  # no sample from him: never guessed
+    assert all(
+        u["portal_url"] is None
+        for u in api.get("/api/design/assets/MTT/FED5").json()["uses"]
+        if u["type"].upper() == "CONNECTION"
+    )

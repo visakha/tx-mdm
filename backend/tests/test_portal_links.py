@@ -107,3 +107,48 @@ def test_taskflow_status_start_and_runs_carry_go_to_idmc(
     status = client.get(f"/api/cdi/taskflows/runs/{RUN}?details=false").json()
     name = status["taskflow_name"]
     assert status["portal_url"].endswith(f"/processinstance/{RUN}/{name}-{RUN}%7B%7D")
+
+
+# ---- 0.9.16: Design notebook asset pages (his three samples, 03:57 CST) ----
+
+DESIGN_SAMPLES = [
+    (
+        "DTEMPLATE",
+        "3lQGzXvaemxhMmIA4mOA4j",
+        "https://usw1.dm1-us.informaticacloud.com/diUI/products/integrationDesign/main/"
+        "mapping/3lQGzXvaemxhMmIA4mOA4j/read",
+    ),
+    (
+        "MTT",
+        "6wiCkUCMxiClwr6t1yqVGv",
+        "https://usw1.dm1-us.informaticacloud.com/diUI/products/integrationDesign/main/"
+        "mct/6wiCkUCMxiClwr6t1yqVGv/read",
+    ),
+    (
+        "TASKFLOW",
+        "8SYjFqQc4AokqeoEmEDecW",
+        "https://usw1.dm1-us.informaticacloud.com/diUI/products/integrationDesign/main/"
+        "taskflow/8SYjFqQc4AokqeoEmEDecW/read",
+    ),
+]
+
+
+def test_exactly_his_three_design_samples() -> None:
+    links = PortalLinks(HIS_HOST, CDI_HOST)
+    for asset_type, object_id, expected in DESIGN_SAMPLES:
+        assert links.design_asset(asset_type, object_id) == expected
+        assert links.design_asset(asset_type.lower(), object_id) == expected  # IDMC case-insens.
+    assert (
+        PortalLinks(HIS_HOST, CDI_HOST + "/").design_asset(*DESIGN_SAMPLES[1][:2])
+        == (DESIGN_SAMPLES[1][2])
+    )
+
+
+def test_design_unknown_type_bad_id_or_no_host_gives_no_link() -> None:
+    links = PortalLinks(HIS_HOST, CDI_HOST)
+    for other in ("DSS", "WORKFLOW", "CONNECTION", "RUNTIME_ENVIRONMENT", "Connection", ""):
+        assert links.design_asset(other, "6wiCkUCMxiClwr6t1yqVGv") is None
+    assert links.design_asset("MTT", None) is None
+    assert links.design_asset(None, "6wiCkUCMxiClwr6t1yqVGv") is None
+    assert links.design_asset("MTT", "a/../b") is None
+    assert PortalLinks(HIS_HOST, "").design_asset("MTT", "6wiCkUCMxiClwr6t1yqVGv") is None

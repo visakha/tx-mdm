@@ -12,6 +12,14 @@ B. CDI taskflow run (process instance) page, his exact sample:
     {taskflow_name}-{run_id}{}      (the last segment percent-encoded, so "{}" -> %7B%7D)
 
 Plain mapping-task (MTT) runs: he has given NO pattern - mtt_run() always returns None.
+
+C. 0.9.16 (Vamsi 03:57 CST, "applicable to the design notebook page only"): design asset pages
+  in Data Integration, his exact samples:
+    .../diUI/products/integrationDesign/main/mapping/3lQGzXvaemxhMmIA4mOA4j/read  (mapping)
+    .../diUI/products/integrationDesign/main/mct/6wiCkUCMxiClwr6t1yqVGv/read      (mapping task)
+    .../diUI/products/integrationDesign/main/taskflow/8SYjFqQc4AokqeoEmEDecW/read (taskflow)
+  = {cdi_pod_host}/diUI/products/integrationDesign/main/{segment}/{v3_object_id}/read
+  segment comes from DESIGN_ASSET_SEGMENTS (keyed by IDMC's v3 type); any other type -> None.
 """
 
 from urllib.parse import quote
@@ -27,6 +35,13 @@ CDI_PROCESS_INSTANCE_PATH = (
 CDI_INSTANCE_SUFFIX = "{}"  # literal braces after "<name>-<run id>"; encoded as %7B%7D
 MTT_RUN_PATH: str | None = None  # typed slot: no pattern from Vamsi yet, never guessed
 MAX_ID = 128
+DESIGN_ASSET_PATH = "/diUI/products/integrationDesign/main/{segment}/{object_id}/read"
+# Declarative: IDMC v3 object type -> portal path segment. Only types he gave a sample for.
+DESIGN_ASSET_SEGMENTS: dict[str, str] = {
+    "DTEMPLATE": "mapping",
+    "MTT": "mct",
+    "TASKFLOW": "taskflow",
+}
 
 
 def _segment(value: str) -> str:
@@ -61,3 +76,13 @@ class PortalLinks:
     def mtt_run(self, run_id: str | None) -> str | None:
         """Slot for plain mapping-task runs (pattern not known yet: always None)."""
         return None if MTT_RUN_PATH is None or run_id is None else None
+
+    def design_asset(self, asset_type: str | None, object_id: str | None) -> str | None:
+        """Design page asset in Data Integration (v3 object id). Unknown type -> None."""
+        if self._cdi is None or asset_type is None or object_id is None:
+            return None
+        segment = DESIGN_ASSET_SEGMENTS.get(asset_type.upper())
+        if segment is None or not is_identifier(object_id, MAX_ID):
+            return None
+        path = DESIGN_ASSET_PATH.format(segment=segment, object_id=_segment(object_id))
+        return str(self._cdi.copy_with(raw_path=path.encode("ascii"), query=None, fragment=None))
