@@ -108,6 +108,8 @@ export interface EntityRecord {
   last_updated?: string | null;
   /** _meta.updatedBy */
   updated_by?: string | null;
+  /** 0.9.10: every _meta value the reply carried (SYSTEM). */
+  system_values?: SystemValue[];
 }
 
 export type EntityScope = "focus" | "all";
@@ -151,6 +153,17 @@ export interface FormField {
   input: FormInput;
   /** True when the metadata marks the field mandatory. */
   required: boolean;
+  /** PICKLIST only: values IDMC returned (see options_source). */
+  options?: PicklistOption[];
+  /** PICKLIST only: where options came from (NONE = left empty). */
+  options_source?: PicklistSource | null;
+}
+
+export interface FormGroup {
+  name: string;
+  label: string;
+  cardinality: Cardinality;
+  fields: FormField[];
 }
 
 export type FormInput = "TEXT" | "INTEGER" | "DECIMAL" | "CHECKBOX" | "DATE" | "DATETIME";
@@ -162,8 +175,12 @@ export interface FormSchema {
   /** Name of the dynamic Pydantic model (pydantic.create_model). */
   model_name: string;
   fields: FormField[];
-  /** Field groups not offered in the form yet (root fields only in 0.9.8). */
+  /** 0.9.10: field groups, each a repeatable block. */
+  groups?: FormGroup[];
+  /** Field groups not offered in the form (empty since 0.9.10). */
   skipped_groups: string[];
+  /** How picklist options were found. */
+  picklist_note?: string;
   /** model_json_schema() of the dynamic model as pretty JSON text, for reference. */
   json_schema_text: string;
 }
@@ -195,15 +212,53 @@ export const LOOKUPMODE_VALUES: readonly LookupMode[] = ["SEARCH", "BUSINESS_ID"
 export type NameFilterComparator = "STARTS_WITH";
 export const NAMEFILTERCOMPARATOR_VALUES: readonly NameFilterComparator[] = ["STARTS_WITH"];
 
+export interface NewGroupRow {
+  /** The row's _id (pp. 53, 86). Empty: new row. */
+  row_id?: string | null;
+  /** Fields of this row, keyed by field name. */
+  values: Record<string, string | number | boolean | null>;
+}
+
+export interface NewGroupRows {
+  /** FieldGroup.name */
+  group: string;
+  rows: NewGroupRow[];
+}
+
 export interface NewRecord {
   /** sourcePKey. Empty: the backend makes TXMDM-<yyyymmddHHMMSS>-<n>. */
   source_pkey?: string | null;
   /** Root fields, keyed by field name. */
   values: Record<string, string | number | boolean | null>;
+  /** 0.9.10: field group rows (any group in the metadata). */
+  groups?: NewGroupRows[];
 }
 
 export type OriginSource = "METADATA" | "DOCUMENTED";
 export const ORIGINSOURCE_VALUES: readonly OriginSource[] = ["METADATA", "DOCUMENTED"];
+
+export interface PatchOp {
+  op: PatchOperation;
+  path: string;
+  value?: string | number | boolean | Record<string, string | number | boolean | null> | (Record<string, string | number | boolean | Record<string, string | number | boolean | null> | null>)[] | null;
+  /** Shown inline on the Edit page (old -> new); not sent. */
+  old?: string | number | boolean | null;
+  /** Shown inline on the Edit page (old -> new); not sent. */
+  new?: string | number | boolean | null;
+  /** True when the path shape is in the reference; False = UNVERIFIED shape. */
+  verified: boolean;
+}
+
+export type PatchOperation = "add" | "replace" | "remove";
+export const PATCHOPERATION_VALUES: readonly PatchOperation[] = ["add", "replace", "remove"];
+
+export interface PicklistOption {
+  code: string;
+  name: string;
+}
+
+export type PicklistSource = "OBSERVED_IN_RECORDS" | "NONE";
+export const PICKLISTSOURCE_VALUES: readonly PicklistSource[] = ["OBSERVED_IN_RECORDS", "NONE"];
 
 export interface RecordPage {
   entity: BusinessEntity;
@@ -220,10 +275,55 @@ export interface RecordPage {
   /** Set when mode is BUSINESS_ID. */
   business_id?: string | null;
   note?: string;
+  /** 0.9.10: _meta keys present in these records, origin SYSTEM, reply order. */
+  system_columns?: EntityField[];
 }
 
 export type SortOrder = "NEWEST_FIRST" | "OLDEST_FIRST";
 export const SORTORDER_VALUES: readonly SortOrder[] = ["NEWEST_FIRST", "OLDEST_FIRST"];
+
+export interface SourceKey {
+  source_system: string;
+  source_pkey: string;
+}
+
+export interface SourceRecord {
+  entity: string;
+  source_system: string;
+  source_pkey: string;
+  /** _meta.businessId: the master record it belongs to. */
+  business_id: string;
+  /** Root fields; picklists as their Code. */
+  values: Record<string, string | number | boolean | null>;
+  /** Field group rows with their _id. */
+  groups: NewGroupRows[];
+  /** _meta.lastUpdateDate */
+  last_updated?: string | null;
+  /** _meta.sourceLastUpdatedDate (p. 81) */
+  source_last_updated?: string | null;
+  updated_by?: string | null;
+  /** _meta.xrefType (p. 83) */
+  xref_type?: string | null;
+  /** _meta.states: base, consolidation, validation ... */
+  states?: Record<string, string>;
+  unknown_keys?: string[];
+  /** Every xref _meta value the reply carried (SYSTEM). */
+  system_values?: SystemValue[];
+}
+
+export interface SourceRecordList {
+  entity: BusinessEntity;
+  business_id: string;
+  /** Read Source Records by Master Record (p. 70). */
+  members: SourceKey[];
+  /** Read Source Record per member (p. 80). */
+  records: SourceRecord[];
+  /** Members not read (over the cap, or a read failed). */
+  not_read?: SourceKey[];
+  note?: string;
+  /** xref _meta keys present in these records (SYSTEM). */
+  system_columns?: EntityField[];
+}
 
 export interface SourceSystemList {
   /** [sources] allowed in b360_entities.toml, exact case. Only these can be sent. */
@@ -239,4 +339,30 @@ export interface SourceSystemList {
   discovery_note: string;
   /** The metadata call that was tried. */
   source: string;
+}
+
+export interface SystemValue {
+  /** _meta key, nested ones dotted (states.consolidation). */
+  name: string;
+  value: string | number | boolean | null;
+  origin?: FieldOrigin;
+}
+
+export interface UpdateSourceRequest {
+  /** The record as loaded (Read Source Record). */
+  original: NewRecord;
+  /** The record as edited in the form. */
+  updated: NewRecord;
+  /** True: only build the operations, send nothing. */
+  dry_run?: boolean;
+}
+
+export interface UpdateSourceResponse {
+  entity: string;
+  source_system: string;
+  source_pkey: string;
+  ops: PatchOp[];
+  sent: boolean;
+  approval_required?: boolean | null;
+  note: string;
 }

@@ -24,3 +24,4 @@ frontend/dist/
 # Cypress output
 frontend/cypress/screenshots/
 frontend/cypress/videos/
+frontend/cypress/results/

@@ -244,3 +244,47 @@ All from the B360 REST API Reference (Oct 2026). Search: `POST {mdm}/search/publ
   `systemField`, `isSystem`) or named with a leading `_` are SYSTEM; plus the documented system items not
   in the reply (`_meta` group pp. 56-57, validationType / validationState / recordStateIndicator /
   `_indexValidationError.code`) marked `origin_source = DOCUMENTED`.
+
+## Live facts from the 0.9.9 bridge test (read-only, 2026-11-23 ~02:00 CST)
+
+- **LIVE**: source-system discovery `GET {mdm}/metadata/api/v2/objects/sourceSystem` (UNDOCUMENTED) works on
+  his org and lists rdm.system.default, b360.default.system, c360.default.system, zlv_ttf, zlv_eci.
+- **LIVE**: Search API filter STARTS_WITH on `zlv_guest.first_name` works (the `<prefix>.<field>` shape).
+- **LIVE**: Create Master Record with sourceSystem zlv_ttf: both 5-record Send batches landed (zlv_guest 31 hits).
+- **LIVE** metadata: system fields validationType, validationState, recordStateIndicator,
+  _indexValidationError.code; `_meta` group businessId, id, businessEntity, state, validation, consolidation,
+  searchIndex, score, createdBy, creationDate, updatedBy, lastUpdateDate, changeList.
+- **OPEN (live)**: his created records show ffr_first_name / ffr_last_name NULL in the master although the
+  preview filled them. ("ffr" = freeform reason, his words 02:01 CST: free text for when that field's
+  validation fails.) **CODE**: `test_create_body_carries_every_filled_field` proves tx-mdm puts every filled
+  root field in the Create body by its metadata name. So the NULL most likely comes from IDMC itself
+  (survivorship / trust on the ffr_ fields, or validation-owned fields) - UNVERIFIED. Next check: open the
+  record's source in Records (S) (Read Source Record): if the xref has the ffr_ values and the master does
+  not, it is survivorship; if the xref is NULL too, IDMC dropped them on create.
+
+## Source records, edit, field groups (0.9.10, 2026-11-23 01:40-02:00 CST)
+
+Reference: internal-docs/B360_October2026_Business360_REST-API_Reference_en.pdf.
+
+| Call | Pages | Used for | Status |
+|---|---|---|---|
+| Read Source Records by Master Record `GET .../entity-member/{entity}/{businessId}` -> `{content:[{sourcePKey, sourceSystem}]}` | 70-71 | Records (S) member list | DOC, CODE |
+| Read Source Record `GET .../entity-xref/{entity}/{sourceSystem}/{sourcePKey}` | 80-84 | Records (S) rows, Edit load | DOC, CODE |
+| Update Source Record Field `PATCH .../entity-xref/...` body `[{op, path, value}]`, reply `{approvalRequired}` | 88-90 | Edit Save | DOC, CODE |
+| Update Source Record `PUT` (replaces, CREATES if missing) | 85-88 | NOT used | DOC |
+
+- **PATCH over PUT**: PATCH sends only what changed and cannot create a record by accident; PUT replaces
+  the whole record and creates it when missing.
+- Documented PATCH paths: `firstName`, `Phone[<_id>].phoneNumber`, `PostalAddress[<_id>]` (whole row).
+  UNVERIFIED shapes we also build: field `remove`, add a group row (path `<group>`, value `[row]`), remove a
+  row (`<group>[<_id>]`). Each op carries `verified` and the Edit page shows "UNVERIFIED".
+- "Currently, source records aren't searchable" (p. 82): there is no documented list of all source
+  records, so Records (S) is master-driven (or one sourceSystem + sourcePKey lookup). Not faked.
+- Picklist values: NO documented call lists a picklist's allowed values (PDF and Postman). Options are the
+  distinct {Code, Name} pairs seen in up to 50 of the entity's own records (one Search call); none seen =
+  options_source NONE, field left empty. Never invented.
+- Create body with groups follows pp. 52-54 (`"Phone":[{"_id", "phoneType":{"Code"}, ...}]`); new row `_id`
+  = uuid4 hex. UNVERIFIED on his org until x_phone rows land.
+- Metadata (S) is derived: same entity metadata + xref `_meta` fields documented on pp. 80-84
+  (sourceSystem, sourcePrimaryKey, xrefType, sourceLastUpdatedDate, populationName ...). No separate
+  source-metadata call is documented.

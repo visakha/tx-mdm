@@ -126,10 +126,7 @@ export function TaskflowsPanel({ route, go, active, domain }: Props): React.JSX.
   const runPicked = useCallback((): void => {
     if (picked === null || jobIdMissing) return;
     const body = paramsOf(params);
-    const shown = Object.entries(body)
-      .map(([k, v]) => `${k}=${v}`)
-      .join(", ");
-    if (!window.confirm(`Start taskflow ${picked} with ${shown || "no input fields"}?`)) return;
+    // 0.9.10 (owner decision 2026-11-23 01:53 CST): no pop-up for persons or agents.
     setStarting(true);
     setStartError(null);
     taskflowApi
@@ -341,7 +338,7 @@ export function TaskflowsPanel({ route, go, active, domain }: Props): React.JSX.
   const [abortNote, setAbortNote] = useState<string | null>(null);
   const abortRun = useCallback((): void => {
     if (runId === null) return;
-    if (!window.confirm(`Terminate (abort) taskflow run ${runId}? This stops the live run.`)) return;
+    // 0.9.10 (owner decision 2026-11-23 01:53 CST): no pop-up for persons or agents.
     setAborting(true);
     setAbortNote(null);
     taskflowApi

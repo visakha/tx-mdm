@@ -283,3 +283,15 @@ main { flex: 1; padding: 16px 20px; }
 .sort-head:disabled { cursor: default; opacity: 0.6; }
 @media (prefers-color-scheme: dark) { :root { --system: #f06fcf; } }
 html[data-theme="dark"] { --system: #f06fcf; }
+
+/* 0.9.10 (Vamsi 01:47 CST "I want a scrollbar"): master and source tables in their own scroll box -
+   horizontal when wider than the pane, vertical capped at about 10 rows, header row sticky. */
+.records-scroll { overflow: auto; max-width: 100%; max-height: 24rem; border: 1px solid var(--line); }
+.records-scroll table { margin: 0; }
+.records-scroll thead th { position: sticky; top: 0; z-index: 1; background: #ffffff; box-shadow: 0 1px 0 var(--line); }
+/* 0.9.10 (01:48 CST): system (_meta) columns in the data, same magenta as the Metadata tab. */
+.system-col { color: var(--system); }
+/* 0.9.10: agent-facing pickers (SDK Listbox) shown as a compact chip row. */
+.record-picker, .field-list { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; padding: 0; list-style: none; }
+.record-picker [role="option"], .field-list [role="option"] { font-size: 0.8em; padding: 1px 6px; border: 1px solid var(--line); border-radius: 3px; cursor: pointer; }
+.record-picker [aria-selected="true"] { border-color: var(--one); }

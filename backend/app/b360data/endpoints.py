@@ -47,3 +47,17 @@ MAX_PAGE = 1000  # 10,000-record search window (maxRecords note p. 26)
 LAST_UPDATE_FIELD = "_meta.lastUpdateDate"
 # Read Master Record by Business ID, pp. 56-58: GET .../entity/<businessEntity>/<businessId>
 READ_RECORD = "/business-entity/public/api/v1/entity/{guid}/{business_id}"
+
+# 0.9.10 Source (xref) records, all in the B360 REST API Reference (Oct 2026):
+#   Read Source Records by Master Record, p. 70-71: GET .../entity-member/<entity>/<businessId>
+#     -> {"content": [{"sourcePKey", "sourceSystem"}]}
+#   Read Source Record, pp. 80-84: GET .../entity-xref/<entity>/<sourceSystem>/<sourcePKey>
+#   Update Source Record Field, pp. 88-90: PATCH same URI, body [{op, path, value}]
+#     (chosen over Update Source Record PUT, pp. 85-88, which replaces the whole record and
+#     CREATES one when it does not exist).
+#   No documented call lists ALL source records of an entity ("Currently, source records aren't
+#   searchable", p. 82), so Records (S) is master-driven plus a sourceSystem + sourcePKey lookup.
+ENTITY_MEMBER = "/business-entity/public/api/v1/entity-member/{guid}/{business_id}"
+ENTITY_XREF = "/business-entity/public/api/v1/entity-xref/{guid}/{source_system}/{source_pkey}"
+MAX_SOURCES_READ = 20  # Read Source Record calls per master record, one at a time
+PICKLIST_SAMPLE = 50  # records read (one Search API call) to observe real picklist values

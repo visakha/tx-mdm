@@ -425,3 +425,62 @@ Business ID, a Last updated column sortable server side (only that one), and sys
   Record by Business ID, metadata v2). Not faked in the UI. Caveats: the Last updated SORT and the custom-entity
   filter prefix are documented shapes not yet proven on his org; "(documented)" system items come from the
   API reference, not from the org's metadata reply.
+
+## v0.9.10 (2026-11-23): Master vs Source tabs, source edit, field groups, no pop-ups
+
+### No pop-ups anywhere (owner decision 2026-11-23 01:53 CST)
+
+Vamsi 01:51-01:53 CST: "remove all those pop-ups ... we don't need those pop-ups", then "Take it out."
+for the agent-permission asks too.
+
+- Nothing pops up, for a person or an agent: Run (CDI task, MDM job, taskflow), Abort, Save (create and
+  edit) and Send to B360 act at once; the result or error shows inline on the same page.
+- Removed: window.confirm in AddRecordsView send, TaskflowsPanel start and terminate, agent.ts allow()
+  (now always yes), agentActions.ts runJob / runTaskflowByName / terminateTaskflow.
+- Kept: `data-agent-confirm` sentences on those buttons, as descriptive labels the agent sees in
+  snapshot(); they no longer block.
+- Guard: `frontend/src/noPopups.test.ts` fails on any window.confirm / alert / prompt call in
+  frontend/src (no exceptions). Cypress taskflows_fake.cy.js fails if a confirm ever fires.
+
+### Tabs (ribbon): Records (M) | Metadata (M) | Records (S) | Metadata (S) | Add records (S) | Edit records (S)
+
+- **Records (M)**: master list in its own scroll box `b360-records-scroll` (Vamsi 01:47 CST "I want a
+  scrollbar"): horizontal scroll when wide, about 10 rows high (24rem), header row sticky. Above the table a
+  chip row "Open master record" (SDK Listbox `b360-record-picker`) - clicking a chip or a table row opens the
+  detail; the chip row is what an agent uses. System (_meta) columns follow the configured columns, magenta
+  (`system-col`, data-origin SYSTEM), values exactly as the API returned them; the detail ends with a magenta
+  "System fields (_meta)" block. Filters are SDK Inputs (Filter First name / Last name / Business ID), Apply /
+  Clear / Previous page / Next page / Sort by Last updated are SDK Buttons.
+- **Metadata (M)**: configured fields normal colour; two magenta groups, each with a one-line muted note
+  (Vamsi 01:56-01:58 CST): "System fields" = business-facing, data-influenced (validationType,
+  validationState, recordStateIndicator, _indexValidationError.code); "Record system metadata (_meta)" =
+  purely system-owned, no user control (businessId, id, businessEntity, created / updated by and dates ...).
+  Each table has an SDK Listbox "<group> field list" chip row (name, type, system / mandatory) for agents.
+- **Records (S)**: the same master list on top ("Pick a master record"); below, the picked master's source
+  records (Read Source Records by Master Record + Read Source Record each, max 20) in their own scroll box
+  `b360-sources-scroll`, xref system columns magenta, chip row "Open source record". Lookup row: Source system
+  (SDK Select, [sources] allowed) + sourcePKey + Open. Detail stacked: root fields, each group with `_id`, xref
+  _meta in magenta, button "Edit this source record" -> Edit tab with it loaded. No "all source records" list:
+  B360 says source records aren't searchable (p. 82).
+- **Metadata (S)**: same view, muted note says it is derived (same entity metadata + documented xref _meta
+  fields; no separate call exists).
+- **Add records (S)**: as 0.9.8 plus field groups (any group from metadata, e.g. x_phone): Type it shows a
+  block per group (add / remove rows); Generate makes 1-2 rows per MANY group, picklist codes only from
+  values seen in real records; preview shows group rows under each record, editable and removable.
+  Save / Send go at once, result inline.
+- **Edit records (S)**: Source system + sourcePKey + Open (or "Edit this source record"). Typed form
+  prefilled (root fields + group rows). "Show changes" = dry run: table Operation / Path / Old / New / Path
+  shape (documented or UNVERIFIED) inline. Save is enabled only after Show changes and sends exactly those
+  changes as ONE PATCH; result note inline ("IDMC says approval is required" when approvalRequired). Any edit
+  clears the diff. No master-record edit anywhere.
+
+### Agent check (fake IDMC only)
+
+`frontend/cypress/e2e/agent_b360_fake.cy.js` drives only window.agent snapshot()/act()/query(): open ZLV
+Guest (left pane Listbox), Next page, Filter First name "Anna" + Apply, Metadata (M), Add records (S) ->
+Generate mode -> 2 rows. Passed 2026-11-23 ~02:08 CST; every label was found. Snapshot: 6 components / 1535
+chars at start, 15 / 3284 on Records (M), 15 / 4247 on Metadata (M), 57 / 9362 after generating 2 rows.
+`window.agentReady` resolves once snapshot() lists something (`<html data-agent-ready="true">`); the
+shell is ready first, the entity list a few seconds later - wait for the label you need.
+Still not in the snapshot by design: tables themselves (own markup, labelled with aria-label); agents use
+the chip-row Listboxes instead.

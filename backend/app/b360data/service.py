@@ -24,21 +24,32 @@ from app.b360data.models import (
     CreateResult,
     DiscoveryStatus,
     EntityScope,
+    FieldDataType,
     FocusEntityStatus,
     FormSchema,
     GeneratedRows,
     GenerateRequest,
     LookupMode,
     NameFilterComparator,
+    PatchOperation,
     RecordPage,
     SortOrder,
+    SourceKey,
+    SourceRecord,
+    SourceRecordList,
     SourceSystemList,
+    UpdateSourceRequest,
+    UpdateSourceResponse,
 )
 from app.common.idmc_session import IdmcError, IdmcHttp, IdmcRateLimitedError
 
 
 class B360InputError(ValueError):
     """A request the backend refuses before calling IDMC (shown as 400)."""
+
+
+class SourceRecordNotFoundError(LookupError):
+    """Read Source Record answered 404: no such sourceSystem + sourcePKey."""
 
 
 class SourceNotAllowedError(ValueError):
@@ -143,11 +154,13 @@ class B360DataService:
         if seen_prefix:
             self._prefix[guid] = seen_prefix
         hits = result.hits
+        records = [wire.record_from_search(r, entity) for r in raw]
         return RecordPage(
             entity=entity,
             hits=hits,
-            records=[wire.record_from_search(r, entity) for r in raw],
+            records=records,
             unknown_keys=wire.unknown_keys(raw, entity),
+            system_columns=wire.system_columns([r.system_values for r in records]),
             page=page,
             page_size=limit,
             total_pages=max(1, math.ceil((hits or 0) / limit)),
@@ -198,10 +211,12 @@ class B360DataService:
             if exc.status_code not in (400, 404):
                 raise
             raw, note = [], f"No active master record with business ID {business_id} ({exc})."
+        records = [wire.record_from_search(r, entity) for r in raw]
         return RecordPage(
             entity=entity,
             hits=len(raw),
-            records=[wire.record_from_search(r, entity) for r in raw],
+            records=records,
+            system_columns=wire.system_columns([r.system_values for r in records]),
             unknown_keys=wire.unknown_keys(raw, entity),
             page=1,
             page_size=limit,
@@ -240,11 +255,179 @@ class B360DataService:
             source="GET " + ep.SOURCE_SYSTEMS + " (undocumented, UNVERIFIED)",
         )
 
+    def picklist_options(self, entity: BusinessEntity) -> forms.PicklistOptions:
+        """Real picklist values: distinct {Code, Name} in up to 50 of the entity's own records
+        (one Search API call). Only when the entity has a picklist field. 429 passed through;
+        any other error -> no options (fields left empty, never invented)."""
+        picks = (FieldDataType.PICKLIST, FieldDataType.DEPENDENT_PICKLIST)
+        fields = [*entity.fields, *(f for g in entity.field_groups for f in g.fields)]
+        if not any(f.data_type in picks for f in fields):
+            return {}
+        body = {
+            "entityType": entity.name,
+            "search": "*",
+            "pageSize": ep.PICKLIST_SAMPLE,
+            "recordOffset": 0,
+            "recordsToReturn": ep.PICKLIST_SAMPLE,
+        }
+        try:
+            reply: object = self._http.request(
+                "POST", self._mdm_url + ep.SEARCH, ep.MDM_HEADERS, json=body
+            )
+        except IdmcRateLimitedError:
+            raise
+        except IdmcError:
+            return {}
+        return wire.picklist_options(wire.search_response(reply).records, entity)
+
     def form_schema(self, guid: str) -> FormSchema:
-        return forms.form_schema(self.metadata(guid))
+        entity = self.metadata(guid)
+        return forms.form_schema(entity, self.picklist_options(entity))
 
     def generate(self, guid: str, request: GenerateRequest) -> GeneratedRows:
-        return testdata.generate(self.metadata(guid), request.count, request.seed, datetime.now())
+        entity = self.metadata(guid)
+        return testdata.generate(
+            entity, request.count, request.seed, datetime.now(), self.picklist_options(entity)
+        )
+
+    # ------------------------------------------------------------------ 0.9.10 source records
+
+    def source_metadata(self, guid: str) -> BusinessEntity:
+        return wire.source_view(self.metadata(guid))
+
+    def _xref_url(self, guid: str, source_system: str, source_pkey: str) -> str:
+        return self._mdm_url + ep.ENTITY_XREF.format(
+            guid=quote(guid, safe="."),
+            source_system=quote(source_system, safe="."),
+            source_pkey=quote(source_pkey, safe=""),
+        )
+
+    def source_record(self, guid: str, source_system: str, source_pkey: str) -> SourceRecord:
+        """Read Source Record (pp. 80-84). 404 -> SourceRecordNotFoundError. Never retried."""
+        entity = self.metadata(guid)
+        try:
+            reply: object = self._http.request(
+                "GET", self._xref_url(guid, source_system, source_pkey), ep.MDM_HEADERS
+            )
+        except IdmcRateLimitedError:
+            raise
+        except IdmcError as exc:
+            if exc.status_code == 404:
+                raise SourceRecordNotFoundError(
+                    f"no source record {source_system} / {source_pkey} in {guid} ({exc})"
+                ) from exc
+            raise
+        return wire.source_record(reply, entity, source_system, source_pkey)
+
+    def source_records(self, guid: str, business_id: str) -> SourceRecordList:
+        """Read Source Records by Master Record (p. 70), then Read Source Record for each member
+        (p. 80), one at a time, at most 20. 429 stops everything (passed through)."""
+        entity = self.metadata(guid)
+        url = self._mdm_url + ep.ENTITY_MEMBER.format(
+            guid=quote(guid, safe="."), business_id=quote(business_id, safe="")
+        )
+        try:
+            reply: object = self._http.request("GET", url, ep.MDM_HEADERS)
+        except IdmcRateLimitedError:
+            raise
+        except IdmcError as exc:
+            if exc.status_code not in (400, 404):
+                raise
+            return SourceRecordList(
+                entity=entity,
+                business_id=business_id,
+                members=[],
+                records=[],
+                note=f"No master record {business_id} ({exc}).",
+            )
+        members = wire.source_members(reply)
+        records: list[SourceRecord] = []
+        not_read: list[SourceKey] = []
+        for n, member in enumerate(members):
+            if n >= ep.MAX_SOURCES_READ:
+                not_read.append(member)
+                continue
+            try:
+                body: object = self._http.request(
+                    "GET",
+                    self._xref_url(guid, member.source_system, member.source_pkey),
+                    ep.MDM_HEADERS,
+                )
+            except IdmcRateLimitedError:
+                raise
+            except IdmcError:
+                not_read.append(member)
+                continue
+            records.append(
+                wire.source_record(body, entity, member.source_system, member.source_pkey)
+            )
+        note = f"{len(members)} source record(s) contribute to {business_id}."
+        if not_read:
+            note += f" {len(not_read)} not read (over {ep.MAX_SOURCES_READ} or the read failed)."
+        return SourceRecordList(
+            entity=entity,
+            business_id=business_id,
+            members=members,
+            records=records,
+            not_read=not_read,
+            note=note,
+            system_columns=wire.system_columns([r.system_values for r in records]),
+        )
+
+    def update_source(
+        self, guid: str, source_system: str, source_pkey: str, request: UpdateSourceRequest
+    ) -> UpdateSourceResponse:
+        """Update Source Record Field (PATCH, pp. 88-90) with only what changed. One call.
+
+        dry_run (default) builds the operations and sends nothing (the Edit page shows
+        them, old -> new). Allowed source only (else 400); edited values must fit the dynamic
+        models (else 422). 429 passed through, never retried."""
+        sources = entity_scope.focus_config().sources
+        if not sources.is_allowed(source_system):
+            raise SourceNotAllowedError(
+                f"source system {source_system!r} is not in [sources] allowed of "
+                f"{entity_scope.config_path().name} (allowed: {', '.join(sources.allowed)}). "
+                "Nothing was sent."
+            )
+        entity = self.metadata(guid)
+        new_values = forms.validate_values(entity, request.updated.values, 0)
+        new_groups = forms.validate_groups(entity, request.updated.groups, 0)
+        ops = forms.patch_ops(entity, request.original, new_values, new_groups)
+        base = UpdateSourceResponse(
+            entity=guid,
+            source_system=source_system,
+            source_pkey=source_pkey,
+            ops=ops,
+            sent=False,
+            note="",
+        )
+        if request.dry_run:
+            return base.model_copy(
+                update={"note": f"Dry run: {len(ops)} change(s) would be sent. Nothing was sent."}
+            )
+        if not ops:
+            return base.model_copy(update={"note": "Nothing changed. Nothing was sent."})
+        body = [
+            o.model_dump(
+                include={"op", "path"}
+                if o.op is PatchOperation.REMOVE
+                else {"op", "path", "value"},
+                mode="json",
+            )
+            for o in ops
+        ]
+        reply: object = self._http.request(
+            "PATCH", self._xref_url(guid, source_system, source_pkey), ep.MDM_HEADERS, json=body
+        )
+        data = wire.as_json(reply)
+        approval = data.get("approvalRequired") if isinstance(data, dict) else None
+        return base.model_copy(
+            update={
+                "sent": True,
+                "approval_required": approval if isinstance(approval, bool) else None,
+                "note": f"Sent {len(ops)} change(s) with Update Source Record Field (PATCH).",
+            }
+        )
 
     def create(self, guid: str, request: CreateRequest) -> CreateResponse:
         """Create Master Record, one call per record, in order, never in parallel, never retried.
@@ -265,8 +448,9 @@ class B360DataService:
         prepared: list[tuple[str, dict[str, object]]] = []
         for index, record in enumerate(request.records):
             values = forms.validate_values(entity, record.values, index)
+            groups = forms.validate_groups(entity, record.groups, index)
             pkey = record.source_pkey or testdata.make_source_pkey(stamp, index + 1)
-            prepared.append((pkey, forms.wire_body(entity, values)))
+            prepared.append((pkey, forms.wire_body(entity, values, groups)))
         pkeys = [p for p, _ in prepared]
         if len(set(pkeys)) != len(pkeys):
             raise DuplicateSourcePKeyError("two records share a sourcePKey. Nothing was sent.")

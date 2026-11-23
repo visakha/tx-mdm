@@ -132,9 +132,13 @@ export const RIBBON: Record<SectionId, readonly RibbonTab[]> = {
     { id: "result", label: "Result" },
   ],
   "b360-data": [
-    { id: "records", label: "Records" },
-    { id: "metadata", label: "Metadata" },
-    { id: "add", label: "Add records" },
+    // 0.9.10: (M) = master / golden records, (S) = source (xref) records. Adds are always source.
+    { id: "records", label: "Records (M)" },
+    { id: "metadata", label: "Metadata (M)" },
+    { id: "sources", label: "Records (S)" },
+    { id: "source-metadata", label: "Metadata (S)" },
+    { id: "add", label: "Add records (S)" },
+    { id: "edit", label: "Edit records (S)" },
   ],
 };
 

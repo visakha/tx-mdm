@@ -503,6 +503,17 @@ _B360_ENTITIES: dict[str, dict[str, Any]] = {
             _f("first_name", "First Name", searchable=True),
             _f("last_name", "Last Name", searchable=True),
             _fg("Stay", "Stays", [_f("hotel", "Hotel"), _f("nights", "Nights", "IntegerField")]),
+            # like his live x_phone (read 2026-11-23 01:40 CST): MANY, 2 integers, picklist, bool
+            _fg(
+                "x_phone",
+                "Phone",
+                [
+                    _f("cntry_cd", "Country code", "IntegerField"),
+                    _f("ph_num", "Phone number", "IntegerField"),
+                    _f("ph_typ", "Phone type", "LookupField"),
+                    _f("no_mrkt_calls", "No marketing calls", "BooleanField"),
+                ],
+            ),
         ],
     },
 }
@@ -565,6 +576,26 @@ def _fake_records(guid: str) -> list[dict[str, Any]]:
                     f"{prefix}.first_name": ["Anna", "Ben", "Carla"][i % 3] + str(i),
                     f"{prefix}.last_name": "Smith" if i % 2 else "Jones",
                     f"{prefix}.Stay": [{"hotel": "Leander Inn", "nights": i}],
+                    # FAKE picklist codes (fake IDMC only): odd records have a phone row
+                    **(
+                        {
+                            f"{prefix}.x_phone": [
+                                {
+                                    "_id": f"ph{i:03d}",
+                                    "cntry_cd": 1,
+                                    "ph_num": 5125550000 + i,
+                                    "ph_typ": (
+                                        {"Code": "MOB", "Name": "Mobile"}
+                                        if i % 3
+                                        else {"Code": "HOME", "Name": "Home"}
+                                    ),
+                                    "no_mrkt_calls": False,
+                                }
+                            ]
+                        }
+                        if i % 2
+                        else {}
+                    ),
                 }
             )
     return rows
@@ -685,3 +716,111 @@ def create_master_record(
     record.update({f"{prefix}.{key}": value for key, value in body.items()})
     rows.append(record)
     return {"approvalRequired": False, "id": business_id, "businessId": business_id}
+
+
+# ---- 0.9.10 source (xref) records ------------------------------------------------------------
+# Every fake master record has two source records: zlv_ttf / TTF-<n> and zlv_eci / ECI-<n>.
+_XREF_EDITS: dict[tuple[str, str, str], dict[str, Any]] = {}
+PATCHES: list[list[dict[str, Any]]] = []  # bodies the fake received, for tests
+
+
+def _xref_seed(guid: str) -> dict[tuple[str, str, str], dict[str, Any]]:
+    out: dict[tuple[str, str, str], dict[str, Any]] = {}
+    for record in _all_records(guid):
+        meta = record.get("_meta", {})
+        bid = str(meta.get("businessId"))
+        n = bid[-2:]
+        plain = {k.split(".", 1)[1]: v for k, v in record.items() if "." in k}
+        for system, pkey in (("zlv_ttf", f"TTF-{n}"), ("zlv_eci", f"ECI-{n}")):
+            out[(guid, system, pkey)] = {
+                **json.loads(json.dumps(plain)),
+                "_meta": {
+                    "businessId": bid,
+                    "businessEntity": guid,
+                    "sourceSystem": system,
+                    "sourcePrimaryKey": pkey,
+                    "xrefType": "DATA",
+                    "lastUpdateDate": meta.get("lastUpdateDate"),
+                    "sourceLastUpdatedDate": meta.get("lastUpdateDate"),
+                    "updatedBy": "fake.loader",
+                    "states": {"base": "ACTIVE", "consolidation": "CONSOLIDATED"},
+                },
+            }
+    return out
+
+
+def _xref(guid: str, system: str, pkey: str) -> dict[str, Any] | None:
+    key = (guid, system, pkey)
+    if key in _XREF_EDITS:
+        return _XREF_EDITS[key]
+    return _xref_seed(guid).get(key)
+
+
+@app.get("/business-entity/public/api/v1/entity-member/{guid}/{business_id}", response_model=None)
+def entity_members(guid: str, business_id: str) -> dict[str, Any] | JSONResponse:
+    """Read Source Records by Master Record (p. 70-71)."""
+    members = [
+        {"sourcePKey": pkey, "sourceSystem": system}
+        for (g, system, pkey), rec in _xref_seed(guid).items()
+        if g == guid and rec["_meta"]["businessId"] == business_id
+    ]
+    if not members:
+        return JSONResponse(status_code=404, content={"message": f"no master {business_id}"})
+    return {"content": members}
+
+
+@app.get("/business-entity/public/api/v1/entity-xref/{guid}/{system}/{pkey}", response_model=None)
+def read_source_record(guid: str, system: str, pkey: str) -> dict[str, Any] | JSONResponse:
+    """Read Source Record (pp. 80-84): plain keys, groups with _id, xref _meta."""
+    if "RATE429" in pkey:
+        return JSONResponse(status_code=429, content={"message": "Too many requests"})
+    record = _xref(guid, system, pkey)
+    if record is None:
+        return JSONResponse(status_code=404, content={"message": f"no source {system}/{pkey}"})
+    return record
+
+
+def _apply(record: dict[str, Any], op: dict[str, Any]) -> None:
+    path = str(op.get("path"))
+    kind = op.get("op")
+    if "[" in path:
+        group, rest = path.split("[", 1)
+        row_id, _, field = rest.partition("]")
+        rows = record.setdefault(group, [])
+        row = next((r for r in rows if r.get("_id") == row_id), None)
+        if row is None:
+            return
+        if not field:
+            rows.remove(row)
+        elif kind == "remove":
+            row.pop(field.lstrip("."), None)
+        else:
+            row[field.lstrip(".")] = op.get("value")
+    elif kind == "add" and isinstance(op.get("value"), list):
+        record.setdefault(path, []).extend(op["value"])
+    elif kind == "remove":
+        record.pop(path, None)
+    else:
+        record[path] = op.get("value")
+
+
+@app.patch("/business-entity/public/api/v1/entity-xref/{guid}/{system}/{pkey}", response_model=None)
+def update_source_record_field(
+    guid: str,
+    system: str,
+    pkey: str,
+    body: list[dict[str, Any]] = Body(default_factory=list),  # noqa: B008
+) -> dict[str, Any] | JSONResponse:
+    """Update Source Record Field (pp. 88-90): [{op, path, value}]."""
+    if "RATE429" in pkey:
+        return JSONResponse(status_code=429, content={"message": "Too many requests"})
+    record = _xref(guid, system, pkey)
+    if record is None:
+        return JSONResponse(status_code=404, content={"message": f"no source {system}/{pkey}"})
+    record = json.loads(json.dumps(record))
+    for op in body:
+        _apply(record, op)
+    record["_meta"]["lastUpdateDate"] = int(time.time() * 1000)
+    _XREF_EDITS[(guid, system, pkey)] = record
+    PATCHES.append(body)
+    return {"approvalRequired": False}

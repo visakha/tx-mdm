@@ -40,7 +40,7 @@ describe("Left-pane item search (fake IDMC)", () => {
     cy.get('[data-testid="tf-item-tf_demo_advanced"]').should("have.attr", "aria-selected", "true");
   });
 
-  it("Run and Abort carry UI SDK confirm marks for agents", () => {
+  it("Run and Abort carry UI SDK data-agent-confirm labels (descriptive only, no pop-up)", () => {
     cy.visit("/taskflows");
     cy.get('[data-testid="tf-run"]').should("have.attr", "data-agent-confirm").and("contain", "live IDMC org");
   });

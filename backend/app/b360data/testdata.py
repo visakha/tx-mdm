@@ -9,7 +9,13 @@ Rules (by field name, then by data type), one place:
   - clns_<x>  ("cleansed"): the row's own <x> value, upper-cased, letters and digits only.
   - ffr_<x>   ("fuzzy-friendly"): the row's own <x> value, lower-cased, letters and digits only.
     Chosen by the builder (2026-11-23); Vamsi has not said what ffr means. Change it here.
+  - INTEGER phone number (name has "phone" or starts "ph_"): a 10-digit number;
+    INTEGER country code (name has "cntry" / "country"): 1.
+  - PICKLIST: one of the Codes IDMC itself returned for that field (forms.PICKLIST_NOTE); none
+    known -> left empty. Codes are never invented.
   - anything else: by FieldDataType (word / number / decimal / true-false / date / date-time).
+  - 0.9.10 field groups (any group in the metadata): MANY -> 1-2 rows per record, ONE -> 1 row,
+    each field by the same rules.
 Rows go through the entity's dynamic Pydantic model (app.b360data.forms) before they are returned.
 """
 
@@ -27,6 +33,8 @@ from app.b360data.models import (
     FieldValue,
     GeneratedFieldRule,
     GeneratedRows,
+    NewGroupRow,
+    NewGroupRows,
     NewRecord,
 )
 
@@ -83,7 +91,25 @@ def _hint(name: str) -> tuple[str, str] | None:
     return None
 
 
-def rule_for(field: EntityField) -> str:
+def _is_phone_number(name: str) -> bool:
+    lowered = name.lower()
+    return "phone" in lowered or lowered.startswith("ph_")
+
+
+def _is_country_code(name: str) -> bool:
+    lowered = name.lower()
+    return "cntry" in lowered or "country" in lowered
+
+
+def rule_for(field: EntityField, codes: list[str] | None = None) -> str:
+    if field.data_type in (FieldDataType.PICKLIST, FieldDataType.DEPENDENT_PICKLIST):
+        if codes:
+            return "one of the Codes IDMC returned: " + ", ".join(codes)
+        return "left empty: no documented call lists this picklist's values and none seen yet"
+    if field.data_type is FieldDataType.INTEGER and _is_country_code(field.name):
+        return "country code 1"
+    if field.data_type is FieldDataType.INTEGER and _is_phone_number(field.name):
+        return "Faker random 10-digit number"
     derived = _derived(field.name)
     if derived is not None:
         return f"this row's {derived[0]}, {derived[1]}"
@@ -93,9 +119,15 @@ def rule_for(field: EntityField) -> str:
     return _BY_TYPE.get(field.data_type, "Faker word()")
 
 
-def _fresh(fake: Faker, field: EntityField) -> FieldValue:
+def _fresh(fake: Faker, field: EntityField, codes: list[str] | None = None) -> FieldValue:
     hint = _hint(field.name)
     match field.data_type:
+        case FieldDataType.PICKLIST | FieldDataType.DEPENDENT_PICKLIST:
+            return str(fake.random_element(codes)) if codes else None
+        case FieldDataType.INTEGER if _is_country_code(field.name):
+            return 1
+        case FieldDataType.INTEGER if _is_phone_number(field.name):
+            return int(fake.random_int(2_000_000_000, 9_999_999_999))
         case FieldDataType.INTEGER:
             return int(fake.random_int(1, 1000))
         case FieldDataType.DOUBLE | FieldDataType.DECIMAL:
@@ -117,35 +149,82 @@ def _cleanse(value: FieldValue, upper: bool) -> str:
     return text.upper() if upper else text.lower()
 
 
+def _row(
+    fake: Faker, fields: list[EntityField], codes: dict[str, list[str]]
+) -> dict[str, FieldValue]:
+    """Plain fields first, so clns_/ffr_ copies can use the row's own value."""
+    by_name = {f.name.lower(): f for f in fields}
+    values: dict[str, FieldValue] = {}
+    for field in fields:
+        if _derived(field.name) is None:
+            values[field.name] = _fresh(fake, field, codes.get(field.name))
+    for field in fields:
+        derived = _derived(field.name)
+        if derived is None:
+            continue
+        base_field = by_name.get(derived[0].lower())
+        base = values.get(base_field.name) if base_field else None
+        if base is None:
+            base = _fresh(fake, field)
+        values[field.name] = _cleanse(base, upper=field.name.lower().startswith("clns_"))
+    return values
+
+
 def generate(
-    entity: BusinessEntity, count: int, seed: int | None, stamp: datetime
+    entity: BusinessEntity,
+    count: int,
+    seed: int | None,
+    stamp: datetime,
+    options: forms.PicklistOptions | None = None,
 ) -> GeneratedRows:
     fake = Faker("en_US")
     if seed is not None:
         fake.seed_instance(seed)
-    by_name = {f.name.lower(): f for f in entity.fields}
+    opts = options or {}
+
+    def codes_for(group: str) -> dict[str, list[str]]:
+        return {field: [o.code for o in found] for (g, field), found in opts.items() if g == group}
+
+    root_codes = codes_for("")
     rows: list[NewRecord] = []
     for n in range(1, count + 1):
-        values: dict[str, FieldValue] = {}
-        # plain fields first, so clns_/ffr_ copies can use the row's own value
-        for field in entity.fields:
-            if _derived(field.name) is None:
-                values[field.name] = _fresh(fake, field)
-        for field in entity.fields:
-            derived = _derived(field.name)
-            if derived is None:
-                continue
-            base_field = by_name.get(derived[0].lower())
-            base = values.get(base_field.name) if base_field else None
-            if base is None:
-                base = _fresh(fake, field)
-            values[field.name] = _cleanse(base, upper=field.name.lower().startswith("clns_"))
+        values = _row(fake, entity.fields, root_codes)
+        groups: list[NewGroupRows] = []
+        for group in entity.field_groups:
+            how_many = int(fake.random_int(1, 2)) if group.cardinality.value == "MANY" else 1
+            group_codes = codes_for(group.name)
+            groups.append(
+                NewGroupRows(
+                    group=group.name,
+                    rows=[
+                        NewGroupRow(values=_row(fake, group.fields, group_codes))
+                        for _ in range(how_many)
+                    ],
+                )
+            )
         cleaned = forms.validate_values(entity, values, n - 1)
-        rows.append(NewRecord(source_pkey=make_source_pkey(stamp, n), values=cleaned))
+        cleaned_groups = forms.validate_groups(entity, groups, n - 1)
+        rows.append(
+            NewRecord(source_pkey=make_source_pkey(stamp, n), values=cleaned, groups=cleaned_groups)
+        )
+    rules = [
+        GeneratedFieldRule(field=f.name, rule=rule_for(f, root_codes.get(f.name)))
+        for f in entity.fields
+    ]
+    for group in entity.field_groups:
+        group_codes = codes_for(group.name)
+        how = "1-2 rows per record" if group.cardinality.value == "MANY" else "1 row"
+        rules.extend(
+            GeneratedFieldRule(
+                field=f"{group.name}.{f.name}",
+                rule=f"{rule_for(f, group_codes.get(f.name))} ({how})",
+            )
+            for f in group.fields
+        )
     return GeneratedRows(
         entity=entity.name,
         rows=rows,
-        rules=[GeneratedFieldRule(field=f.name, rule=rule_for(f)) for f in entity.fields],
+        rules=rules,
         faker_version=FAKER_VERSION,
         note="Preview only: nothing was sent to IDMC. Edit or remove rows, then Send to B360.",
     )

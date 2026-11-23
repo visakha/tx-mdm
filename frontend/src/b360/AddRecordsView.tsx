@@ -8,19 +8,25 @@
 //   Generate: Number of records (1-100) -> Faker rows from the backend (preview, nothing sent),
 //             editable / removable, then Send to B360 = one call per row, in order.
 // Source system: dropdown of [sources] allowed in backend/b360_entities.toml (default zlv_ttf).
-// Every write asks the person to confirm first. 429 / 401 / 403 stop the send; never retried.
+// 0.9.10: tab is "Add records (S)" - every create goes in with a source system (a source record
+// B360 merges into a master). Field groups (any group in the metadata, e.g. x_phone) are a
+// repeatable block in the form and stacked, editable, removable rows under each preview record.
+// Writes go at once on Save / Send (no pop-up, owner decision 01:53 CST); results show inline. 429 / 401 / 403 stop the send; never retried.
 
 import { useEffect, useState } from "react";
 import { Button } from "@ui-sdk/react/button";
 import { errorText } from "../shared/api";
-import type { CreateResult, FormField } from "./api-types";
+import type { CreateResult, NewGroupRow } from "./api-types";
+import { Input } from "@ui-sdk/react/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@ui-sdk/react/select";
+import { FieldInput, GroupRowsEditor } from "./GroupRowsEditor";
 import {
   b360Api,
+  cleanGroups,
   cleanValues,
   clampCount,
   MAX_ADD,
   missingRequired,
-  parseInput,
   type CellValue,
   type CreateResponse,
   type FormSchema,
@@ -29,40 +35,6 @@ import {
 } from "./b360Api";
 
 type Mode = "type" | "generate";
-
-function FieldInput({
-  field,
-  value,
-  onChange,
-  testId,
-}: {
-  field: FormField;
-  value: CellValue;
-  onChange: (v: CellValue) => void;
-  testId: string;
-}): React.JSX.Element {
-  if (field.input === "CHECKBOX") {
-    return (
-      <input
-        type="checkbox"
-        data-testid={testId}
-        checked={value === true}
-        onChange={(e) => onChange(e.target.checked)}
-      />
-    );
-  }
-  const kind =
-    field.input === "DATE" ? "date" : field.input === "DATETIME" ? "datetime-local" : field.input === "TEXT" ? "text" : "number";
-  return (
-    <input
-      type={kind}
-      data-testid={testId}
-      value={value === null || value === undefined ? "" : String(value)}
-      step={field.input === "DECIMAL" ? "any" : undefined}
-      onChange={(e) => onChange(parseInput(e.target.value, field.input))}
-    />
-  );
-}
 
 function ResultTable({ result }: { result: CreateResponse }): React.JSX.Element {
   return (
@@ -114,6 +86,7 @@ export function AddRecordsView({ entity, onSaved }: { entity: string; onSaved: (
   const [source, setSource] = useState<string>("");
   const [mode, setMode] = useState<Mode>("type");
   const [form, setForm] = useState<Record<string, CellValue>>({});
+  const [formGroups, setFormGroups] = useState<Record<string, NewGroupRow[]>>({});
   const [pkey, setPkey] = useState<string>("");
   const [countText, setCountText] = useState<string>("5");
   const [rows, setRows] = useState<NewRecord[]>([]);
@@ -140,8 +113,9 @@ export function AddRecordsView({ entity, onSaved }: { entity: string; onSaved: (
 
   const send = (records: NewRecord[], what: string): void => {
     if (source === "" || records.length === 0) return;
-    if (!window.confirm(`${what}: create ${records.length} record(s) in ${entity} with source system ${source} on the live B360 org?`))
-      return;
+    // 0.9.10 (owner decision 2026-11-23 01:53 CST): no pop-up for persons or agents; the result
+    // shows inline. `what` is kept for the call sites (form vs preview send).
+    void what;
     setBusy(true);
     setError("");
     b360Api
@@ -170,13 +144,18 @@ export function AddRecordsView({ entity, onSaved }: { entity: string; onSaved: (
         <div className="toolbar">
           <label>
             Source system{" "}
-            <select data-testid="b360-add-source" value={source} onChange={(e) => setSource(e.target.value)}>
-              {sources.allowed.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
+            <Select items={sources.allowed} value={source} onValueChange={(v: string | null) => setSource(v ?? "")}>
+              <SelectTrigger aria-label="Add records source system" data-testid="b360-add-source">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {sources.allowed.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </label>
           <span className="muted small" data-testid="b360-add-discovery">
             {sources.discovery_note}
@@ -191,10 +170,10 @@ export function AddRecordsView({ entity, onSaved }: { entity: string; onSaved: (
           </p>
         )}
         <div className="toolbar" role="tablist">
-          <Button data-testid="b360-add-mode-type" aria-pressed={mode === "type"} onClick={() => setMode("type")}>
+          <Button aria-label="Add records mode Type it" data-testid="b360-add-mode-type" aria-pressed={mode === "type"} onClick={() => setMode("type")}>
             Type it
           </Button>
-          <Button data-testid="b360-add-mode-generate" aria-pressed={mode === "generate"} onClick={() => setMode("generate")}>
+          <Button aria-label="Add records mode Generate test data" data-testid="b360-add-mode-generate" aria-pressed={mode === "generate"} onClick={() => setMode("generate")}>
             Generate test data
           </Button>
         </div>
@@ -224,6 +203,7 @@ export function AddRecordsView({ entity, onSaved }: { entity: string; onSaved: (
                       field={f}
                       value={form[f.name] ?? null}
                       testId={`b360-add-field-${f.name}`}
+                      label={`Add form ${f.label}`}
                       onChange={(v) => setForm((old) => ({ ...old, [f.name]: v }))}
                     />
                   </td>
@@ -234,27 +214,53 @@ export function AddRecordsView({ entity, onSaved }: { entity: string; onSaved: (
                   sourcePKey <span className="muted small">(empty: TXMDM-yyyymmddHHMMSS-1)</span>
                 </th>
                 <td>
-                  <input type="text" data-testid="b360-add-pkey" value={pkey} onChange={(e) => setPkey(e.target.value)} />
+                  <Input type="text" aria-label="Add form sourcePKey" data-testid="b360-add-pkey" value={pkey} onValueChange={(v: string) => setPkey(v)} />
                 </td>
               </tr>
             </tbody>
           </table>
-          {schema.skipped_groups.length > 0 && (
-            <p className="muted small">Field groups not in the form yet: {schema.skipped_groups.join(", ")}.</p>
-          )}
+          {(schema.groups ?? []).map((g) => (
+            <GroupRowsEditor
+              key={g.name}
+              group={g}
+              rows={formGroups[g.name] ?? []}
+              testId={`b360-add-group-${g.name}`}
+              scope="Add form"
+              onChange={(next) => setFormGroups((old) => ({ ...old, [g.name]: next }))}
+            />
+          ))}
+          {schema.picklist_note !== "" && <p className="muted small" data-testid="b360-add-picklist-note">{schema.picklist_note}</p>}
           {missing.length > 0 && <p className="muted small">Required: {missing.join(", ")}</p>}
           <div className="toolbar">
             <Button
+              aria-label="Add form Save"
               data-testid="b360-add-save"
-              data-agent-confirm={`Creates one ${entity} master record on the live B360 org`}
+              data-agent-confirm={`Creates one ${entity} source record (and its master) on the live B360 org`}
               disabled={busy || missing.length > 0 || source === ""}
               onClick={() =>
-                send([{ source_pkey: pkey.trim() === "" ? null : pkey.trim(), values: cleanValues(form) }], "Save")
+                send(
+                  [
+                    {
+                      source_pkey: pkey.trim() === "" ? null : pkey.trim(),
+                      values: cleanValues(form),
+                      groups: cleanGroups((schema.groups ?? []).map((g) => ({ group: g.name, rows: formGroups[g.name] ?? [] }))),
+                    },
+                  ],
+                  "Save",
+                )
               }
             >
               {busy ? "Saving..." : "Save"}
             </Button>
-            <Button data-testid="b360-add-clear-form" onClick={() => setForm({})} disabled={busy}>
+            <Button
+              aria-label="Add form Clear form"
+              data-testid="b360-add-clear-form"
+              onClick={() => {
+                setForm({});
+                setFormGroups({});
+              }}
+              disabled={busy}
+            >
               Clear form
             </Button>
           </div>
@@ -272,16 +278,18 @@ export function AddRecordsView({ entity, onSaved }: { entity: string; onSaved: (
           <div className="toolbar">
             <label>
               Number of records (1-{MAX_ADD}){" "}
-              <input
+              <Input
                 type="number"
                 min={1}
                 max={MAX_ADD}
+                aria-label="Generate number of records"
                 data-testid="b360-add-count"
                 value={countText}
-                onChange={(e) => setCountText(e.target.value)}
+                onValueChange={(v: string) => setCountText(v)}
               />
             </label>
             <Button
+              aria-label="Generate test rows"
               data-testid="b360-add-generate-btn"
               disabled={busy}
               onClick={() => {
@@ -302,14 +310,15 @@ export function AddRecordsView({ entity, onSaved }: { entity: string; onSaved: (
               Generate
             </Button>
             <Button
+              aria-label="Send to B360"
               data-testid="b360-add-send"
-              data-agent-confirm={`Creates the previewed ${entity} master records on the live B360 org`}
+              data-agent-confirm={`Creates the previewed ${entity} source records (and their masters) on the live B360 org`}
               disabled={busy || rows.length === 0 || source === ""}
-              onClick={() => send(rows, "Send to B360")}
+              onClick={() => send(rows.map((r) => ({ ...r, groups: cleanGroups(r.groups ?? []) })), "Send to B360")}
             >
               {busy ? "Sending..." : `Send to B360 (${rows.length})`}
             </Button>
-            <Button data-testid="b360-add-clear-preview" onClick={() => setRows([])} disabled={busy || rows.length === 0}>
+            <Button aria-label="Clear preview" data-testid="b360-add-clear-preview" onClick={() => setRows([])} disabled={busy || rows.length === 0}>
               Clear preview
             </Button>
           </div>
@@ -333,7 +342,7 @@ export function AddRecordsView({ entity, onSaved }: { entity: string; onSaved: (
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((row, i) => (
+                  {rows.map((row, i) => [
                     <tr key={row.source_pkey ?? i} data-testid={`b360-add-row-${i}`}>
                       <td>{i + 1}</td>
                       <td>
@@ -345,6 +354,7 @@ export function AddRecordsView({ entity, onSaved }: { entity: string; onSaved: (
                             field={f}
                             value={row.values[f.name] ?? null}
                             testId={`b360-add-cell-${i}-${f.name}`}
+                            label={`Preview row ${String(i + 1)} ${f.label}`}
                             onChange={(v) =>
                               setRows((old) =>
                                 old.map((r, j) => (j === i ? { ...r, values: { ...r.values, [f.name]: v } } : r)),
@@ -354,12 +364,43 @@ export function AddRecordsView({ entity, onSaved }: { entity: string; onSaved: (
                         </td>
                       ))}
                       <td>
-                        <Button data-testid={`b360-add-remove-${i}`} onClick={() => setRows((old) => old.filter((_, j) => j !== i))}>
+                        <Button aria-label={`Preview remove row ${String(i + 1)}`} data-testid={`b360-add-remove-${i}`} onClick={() => setRows((old) => old.filter((_, j) => j !== i))}>
                           Remove
                         </Button>
                       </td>
-                    </tr>
-                  ))}
+                    </tr>,
+                    (schema.groups ?? []).length > 0 && (
+                      <tr key={`${row.source_pkey ?? i}-groups`} className="group-rows-line">
+                        <td />
+                        <td colSpan={schema.fields.length + 2}>
+                          {(schema.groups ?? []).map((g) => (
+                            <GroupRowsEditor
+                              key={g.name}
+                              group={g}
+                              rows={row.groups?.find((b) => b.group === g.name)?.rows ?? []}
+                              testId={`b360-add-preview-${i}-${g.name}`}
+                              scope={`Preview row ${String(i + 1)}`}
+                              onChange={(next) =>
+                                setRows((old) =>
+                                  old.map((r, j) =>
+                                    j === i
+                                      ? {
+                                          ...r,
+                                          groups: [
+                                            ...(r.groups ?? []).filter((b) => b.group !== g.name),
+                                            { group: g.name, rows: next },
+                                          ],
+                                        }
+                                      : r,
+                                  ),
+                                )
+                              }
+                            />
+                          ))}
+                        </td>
+                      </tr>
+                    ),
+                  ])}
                 </tbody>
               </table>
             </div>

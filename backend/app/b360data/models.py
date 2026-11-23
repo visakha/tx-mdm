@@ -128,6 +128,15 @@ class FieldGroupRows(BaseModel):
     rows: list[dict[str, FieldValue]] = Field(description="One map per row, keyed by field name.")
 
 
+class SystemValue(BaseModel):
+    """0.9.10: one system value exactly as the reply's _meta carried it (flattened: states.base).
+    Only keys IDMC actually returned; nothing is invented."""
+
+    name: str = Field(description="_meta key, nested ones dotted (states.consolidation).")
+    value: FieldValue
+    origin: FieldOrigin = FieldOrigin.SYSTEM
+
+
 class EntityRecord(BaseModel):
     business_id: str
     values: dict[str, FieldValue] = Field(description="Top-level fields, keyed by field name.")
@@ -136,6 +145,9 @@ class EntityRecord(BaseModel):
         default=None, description="_meta.lastUpdateDate: last change via any channel (UTC)."
     )
     updated_by: str | None = Field(default=None, description="_meta.updatedBy")
+    system_values: list[SystemValue] = Field(
+        default_factory=list, description="0.9.10: every _meta value the reply carried (SYSTEM)."
+    )
 
 
 class SortOrder(StrEnum):
@@ -176,6 +188,10 @@ class RecordPage(BaseModel):
     mode: LookupMode = LookupMode.SEARCH
     business_id: str | None = Field(default=None, description="Set when mode is BUSINESS_ID.")
     note: str = ""
+    system_columns: list[EntityField] = Field(
+        default_factory=list,
+        description="0.9.10: _meta keys present in these records, origin SYSTEM, reply order.",
+    )
 
 
 # ---------------------------------------------------------------------------------------------
@@ -213,12 +229,42 @@ class FormInput(StrEnum):
     DATETIME = "DATETIME"
 
 
+class PicklistOption(BaseModel):
+    """One picklist value as IDMC returned it ({"Code", "Name"}, pp. 53, 83). Never invented."""
+
+    code: str
+    name: str
+
+
+class PicklistSource(StrEnum):
+    """0.9.10: where a picklist's options came from."""
+
+    OBSERVED_IN_RECORDS = "OBSERVED_IN_RECORDS"  # distinct {Code, Name} in Search API replies
+    NONE = "NONE"  # no documented list call and none observed: left empty, never invented
+
+
 class FormField(BaseModel):
     name: str
     label: str
     data_type: FieldDataType
     input: FormInput
     required: bool = Field(description="True when the metadata marks the field mandatory.")
+    options: list[PicklistOption] = Field(
+        default_factory=list,
+        description="PICKLIST only: values IDMC returned (see options_source).",
+    )
+    options_source: PicklistSource | None = Field(
+        default=None, description="PICKLIST only: where options came from (NONE = left empty)."
+    )
+
+
+class FormGroup(BaseModel):
+    """0.9.10: one field group in the form / generator (any group, from the metadata)."""
+
+    name: str
+    label: str
+    cardinality: Cardinality
+    fields: list[FormField]
 
 
 class FormSchema(BaseModel):
@@ -230,9 +276,13 @@ class FormSchema(BaseModel):
         description="Name of the dynamic Pydantic model (pydantic.create_model)."
     )
     fields: list[FormField]
-    skipped_groups: list[str] = Field(
-        description="Field groups not offered in the form yet (root fields only in 0.9.8)."
+    groups: list[FormGroup] = Field(
+        default_factory=list, description="0.9.10: field groups, each a repeatable block."
     )
+    skipped_groups: list[str] = Field(
+        description="Field groups not offered in the form (empty since 0.9.10)."
+    )
+    picklist_note: str = Field(default="", description="How picklist options were found.")
     json_schema_text: str = Field(
         description="model_json_schema() of the dynamic model as pretty JSON text, for reference."
     )
@@ -246,6 +296,21 @@ class NewRecord(BaseModel):
         description="sourcePKey. Empty: the backend makes TXMDM-<yyyymmddHHMMSS>-<n>.",
     )
     values: dict[str, FieldValue] = Field(description="Root fields, keyed by field name.")
+    groups: list["NewGroupRows"] = Field(
+        default_factory=list, description="0.9.10: field group rows (any group in the metadata)."
+    )
+
+
+class NewGroupRow(BaseModel):
+    row_id: str | None = Field(
+        default=None, max_length=128, description="The row's _id (pp. 53, 86). Empty: new row."
+    )
+    values: dict[str, FieldValue] = Field(description="Fields of this row, keyed by field name.")
+
+
+class NewGroupRows(BaseModel):
+    group: str = Field(description="FieldGroup.name")
+    rows: list[NewGroupRow] = Field(max_length=50)
 
 
 class GenerateRequest(BaseModel):
@@ -300,3 +365,103 @@ class CreateResponse(BaseModel):
         description="Why sending stopped early (429 / 401 / 403 / no answer); null if it ran out."
     )
     results: list[CreateResult]
+
+
+# ---------------------------------------------------------------------------------------------
+# 0.9.10 Source records (xref): Records (S), Metadata (S), Edit records (S)
+# ---------------------------------------------------------------------------------------------
+
+
+class SourceKey(BaseModel):
+    """One entry of Read Source Records by Master Record (p. 70-71)."""
+
+    source_system: str
+    source_pkey: str
+
+
+class SourceRecord(BaseModel):
+    """Read Source Record reply (pp. 80-84), typed. Picklists keep their Code (editable)."""
+
+    entity: str
+    source_system: str
+    source_pkey: str
+    business_id: str = Field(description="_meta.businessId: the master record it belongs to.")
+    values: dict[str, FieldValue] = Field(description="Root fields; picklists as their Code.")
+    groups: list[NewGroupRows] = Field(description="Field group rows with their _id.")
+    last_updated: datetime | None = Field(default=None, description="_meta.lastUpdateDate")
+    source_last_updated: datetime | None = Field(
+        default=None, description="_meta.sourceLastUpdatedDate (p. 81)"
+    )
+    updated_by: str | None = None
+    xref_type: str | None = Field(default=None, description="_meta.xrefType (p. 83)")
+    states: dict[str, str] = Field(
+        default_factory=dict, description="_meta.states: base, consolidation, validation ..."
+    )
+    unknown_keys: list[str] = Field(default_factory=list)
+    system_values: list[SystemValue] = Field(
+        default_factory=list, description="Every xref _meta value the reply carried (SYSTEM)."
+    )
+
+
+class SourceRecordList(BaseModel):
+    """Source records that contribute to one master record."""
+
+    entity: BusinessEntity
+    business_id: str
+    members: list[SourceKey] = Field(description="Read Source Records by Master Record (p. 70).")
+    records: list[SourceRecord] = Field(description="Read Source Record per member (p. 80).")
+    not_read: list[SourceKey] = Field(
+        default_factory=list, description="Members not read (over the cap, or a read failed)."
+    )
+    note: str = ""
+    system_columns: list[EntityField] = Field(
+        default_factory=list, description="xref _meta keys present in these records (SYSTEM)."
+    )
+
+
+class PatchOperation(StrEnum):
+    ADD = "add"
+    REPLACE = "replace"
+    REMOVE = "remove"
+
+
+PatchScalar = str | int | float | bool | None
+# A root / row field value, a picklist {"Code": ...}, or new group rows (add).
+PatchValue = (
+    PatchScalar | dict[str, PatchScalar] | list[dict[str, PatchScalar | dict[str, PatchScalar]]]
+)
+
+
+class PatchOp(BaseModel):
+    """One Update Source Record Field operation (pp. 88-90)."""
+
+    op: PatchOperation
+    path: str
+    value: PatchValue = None
+    old: FieldValue = Field(
+        default=None, description="Shown inline on the Edit page (old -> new); not sent."
+    )
+    new: FieldValue = Field(
+        default=None, description="Shown inline on the Edit page (old -> new); not sent."
+    )
+    verified: bool = Field(
+        description="True when the path shape is in the reference; False = UNVERIFIED shape."
+    )
+
+
+class UpdateSourceRequest(BaseModel):
+    original: NewRecord = Field(description="The record as loaded (Read Source Record).")
+    updated: NewRecord = Field(description="The record as edited in the form.")
+    dry_run: bool = Field(
+        default=True, description="True: only build the operations, send nothing."
+    )
+
+
+class UpdateSourceResponse(BaseModel):
+    entity: str
+    source_system: str
+    source_pkey: str
+    ops: list[PatchOp]
+    sent: bool
+    approval_required: bool | None = None
+    note: str

@@ -8,15 +8,23 @@
 //                 as its own titled block (no tabs). "This entity has no field groups" if none.
 //   Metadata tab: the entity's fields (type, mandatory, searchable) and field groups.
 //   Add records tab (0.9.8): type a record or generate Faker rows, then Save / Send to B360.
+// 0.9.10 tabs: Records (M) | Metadata (M) | Records (S) | Metadata (S) | Add records (S) |
+//   Edit records (S). Records (S) reuses the master list: pick a master row, its sources show
+//   below (SourceViews.tsx). Master and source tables sit in their own scroll box (both
+//   directions, about 10 rows high, sticky header). System (_meta) columns are magenta.
+//   UI SDK Input / Button / Select with unique aria-labels; tables stay own markup, labelled.
 // /b360 with no entity = "Show all entities": every entity grouped by category.
 // No polling; Refresh reloads. A 429 is shown and nothing is retried.
 
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@ui-sdk/react/button";
+import { Input } from "@ui-sdk/react/input";
+import { Listbox, ListboxItem } from "@ui-sdk/react/listbox";
 import { ApiError, errorText } from "../shared/api";
 import type { Route } from "../shared/routes";
-import { useRibbonTab } from "../shell/sections";
+import { selectRibbonTab, useRibbonTab } from "../shell/sections";
 import { AddRecordsView } from "./AddRecordsView";
+import { EditSourceView, SourceRecordsView, type SourceKeyPick } from "./SourceViews";
 import type { BusinessEntity, BusinessEntitySummary, FieldGroup } from "./api-types";
 import {
   b360Api,
@@ -27,6 +35,8 @@ import {
   groupRows,
   lastUpdatedText,
   recordColumns,
+  systemValue,
+  systemValueText,
   type EntityRecord,
   type RecordPage,
   type RecordQuery,
@@ -105,6 +115,25 @@ function RecordDetail({ page, record }: { page: RecordPage; record: EntityRecord
       ) : (
         page.entity.field_groups.map((g) => <GroupBlock key={g.name} group={g} record={record} />)
       )}
+      {(record.system_values ?? []).length > 0 && (
+        <section className="b360-group system-group" data-testid="b360-detail-system" data-origin="SYSTEM">
+          <h4>
+            System fields (_meta) <SystemTag />
+          </h4>
+          <table className="monitor kv" aria-label={`Record ${record.business_id} system fields`}>
+            <tbody>
+              {(record.system_values ?? []).map((v) => (
+                <tr key={v.name} className="system-row" data-origin="SYSTEM">
+                  <th>
+                    <code>{v.name}</code>
+                  </th>
+                  <td>{systemValueText(v.name, v.value)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
     </div>
   );
 }
@@ -113,9 +142,16 @@ function SystemTag(): React.JSX.Element {
   return <span className="system-tag">system</span>;
 }
 
-function FieldTable({ fields, testId }: { fields: BusinessEntity["fields"]; testId: string }): React.JSX.Element {
+function FieldTable({ fields, testId, title }: { fields: BusinessEntity["fields"]; testId: string; title: string }): React.JSX.Element {
   return (
     <div className="table-wrap">
+      <Listbox aria-label={`${title} field list`} data-testid={`${testId}-list`} className="field-list" orientation="horizontal">
+        {fields.map((f) => (
+          <ListboxItem key={f.name} value={f.name} className={f.origin === "SYSTEM" ? "system-col" : undefined}>
+            {`${f.name} (${f.data_type}${f.origin === "SYSTEM" ? ", system" : ""}${f.mandatory ? ", mandatory" : ""})`}
+          </ListboxItem>
+        ))}
+      </Listbox>
       <table className="monitor" data-testid={testId}>
         <thead>
           <tr>
@@ -147,7 +183,7 @@ function FieldTable({ fields, testId }: { fields: BusinessEntity["fields"]; test
   );
 }
 
-function MetadataView({ entity }: { entity: BusinessEntity }): React.JSX.Element {
+function MetadataView({ entity, source = false }: { entity: BusinessEntity; source?: boolean }): React.JSX.Element {
   const systemFields = entity.system_fields ?? [];
   const systemGroups = entity.system_field_groups ?? [];
   const groupBlock = (g: BusinessEntity["field_groups"][number]): React.JSX.Element => (
@@ -158,15 +194,29 @@ function MetadataView({ entity }: { entity: BusinessEntity }): React.JSX.Element
       data-origin={g.origin ?? "CONFIGURED"}
     >
       <h4>
-        {g.label} <span className="muted small">({g.name}, {g.cardinality})</span>
+        {g.name === "_meta" ? "Record system metadata (_meta)" : g.label}{" "}
+        <span className="muted small">({g.name}, {g.cardinality})</span>
         {g.origin === "SYSTEM" && <SystemTag />}
         {g.origin_source === "DOCUMENTED" && <span className="small"> documented in the B360 REST API Reference</span>}
       </h4>
-      <FieldTable fields={g.fields} testId={`b360-meta-group-fields-${g.name}`} />
+      {g.origin === "SYSTEM" && (
+        <p className="muted small" data-testid={`b360-meta-group-note-${g.name}`}>
+          Purely system-owned, no user control: ids, entity, created / updated by and dates, and similar.
+        </p>
+      )}
+      <FieldTable fields={g.fields} testId={`b360-meta-group-fields-${g.name}`} title={`${source ? "Source " : ""}${g.name === "_meta" ? "Record system metadata (_meta)" : g.label}`} />
     </section>
   );
   return (
-    <div className="b360-meta" data-testid="b360-metadata">
+    <div className="b360-meta" data-testid={source ? "b360-source-metadata" : "b360-metadata"}>
+      {source && (
+        <p className="muted small" data-testid="b360-source-metadata-note">
+          Source (xref) records carry the same configured fields and field groups as the master (same entity
+          metadata). The system fields below are the xref _meta fields: those the org metadata lists, plus the ones
+          the B360 REST API Reference documents for Read Source Record (pp. 80-84), marked documented. Derived, not
+          read from a separate source-metadata call (none is documented).
+        </p>
+      )}
       <p className="muted small">
         Configured fields are in normal text. <span className="system-text">System fields and field groups are in magenta</span>{" "}
         with a system label: added by Business 360 itself. &quot;documented&quot; means the org metadata reply did not list it and it
@@ -176,7 +226,7 @@ function MetadataView({ entity }: { entity: BusinessEntity }): React.JSX.Element
         <h4>
           Root fields <span className="count">{entity.fields.length}</span>
         </h4>
-        <FieldTable fields={entity.fields} testId="b360-meta-fields" />
+        <FieldTable fields={entity.fields} testId="b360-meta-fields" title={source ? "Source root" : "Root"} />
       </section>
       {entity.field_groups.length === 0 ? (
         <p className="muted">This entity has no configured field groups.</p>
@@ -188,7 +238,10 @@ function MetadataView({ entity }: { entity: BusinessEntity }): React.JSX.Element
           <h4>
             System fields <span className="count">{systemFields.length}</span> <SystemTag />
           </h4>
-          <FieldTable fields={systemFields} testId="b360-meta-system-fields-table" />
+          <p className="muted small" data-testid="b360-meta-system-fields-note">
+            Business-facing system fields the data can influence: validation, active / inactive record state, index validation.
+          </p>
+          <FieldTable fields={systemFields} testId="b360-meta-system-fields-table" title={source ? "Source system fields" : "System fields"} />
         </section>
       )}
       {systemGroups.map(groupBlock)}
@@ -216,6 +269,9 @@ export function B360DataPanel({
   const [loading, setLoading] = useState<boolean>(false);
   // 0.9.9: paging, filters (first / last name STARTS_WITH, exact Business ID), Last updated sort.
   const [query, setQuery] = useState<RecordQuery>({ page: 1, sort: "NEWEST_FIRST" });
+  // 0.9.10: Metadata (S) and the source record picked for Edit records (S).
+  const [sourceMeta, setSourceMeta] = useState<BusinessEntity | null>(null);
+  const [editPick, setEditPick] = useState<SourceKeyPick | null>(null);
   const [draft, setDraft] = useState<{ firstName: string; lastName: string; businessId: string }>({
     firstName: "",
     lastName: "",
@@ -261,6 +317,8 @@ export function B360DataPanel({
     setSelected({ entity: entityName, record: null });
     setPage(null);
     setDraft({ firstName: "", lastName: "", businessId: "" });
+    setSourceMeta(null);
+    setEditPick(null);
     loadRecords(entityName);
   }, [active, entityName, selected.entity, loadRecords]);
 
@@ -271,6 +329,23 @@ export function B360DataPanel({
       recordListeners.delete(listener);
     };
   }, []);
+
+  useEffect(() => {
+    if (!active || entityName === null || tab !== "source-metadata" || sourceMeta?.name === entityName) return;
+    let live = true;
+    b360Api
+      .sourceMetadata(entityName)
+      .then((m) => live && setSourceMeta(m))
+      .catch((err: unknown) => live && setError(errorMessage(err)));
+    return () => {
+      live = false;
+    };
+  }, [active, entityName, tab, sourceMeta]);
+
+  const openEdit = (pick: SourceKeyPick): void => {
+    setEditPick(pick);
+    selectRibbonTab("b360-data", "edit");
+  };
 
   const refresh = (): void => {
     if (entityName === null) loadAll();
@@ -313,7 +388,7 @@ export function B360DataPanel({
       <div className="b360-data" data-testid="b360-data">
         <div className="toolbar">
           <h2>All business entities</h2>
-          <Button data-testid="b360-refresh" onClick={refresh} disabled={loading}>
+          <Button aria-label="Refresh all entities" data-testid="b360-refresh" onClick={refresh} disabled={loading}>
             Refresh
           </Button>
           {loading && <span className="muted">Loading...</span>}
@@ -348,7 +423,7 @@ export function B360DataPanel({
       <div className="toolbar">
         <h2>{page?.entity.label ?? entityName}</h2>
         <code>{entityName}</code>
-        <Button data-testid="b360-refresh" onClick={refresh} disabled={loading}>
+        <Button aria-label={`Refresh ${entityName}`} data-testid="b360-refresh" onClick={refresh} disabled={loading}>
           Refresh
         </Button>
         {loading && <span className="muted">Loading...</span>}
@@ -357,15 +432,25 @@ export function B360DataPanel({
 
       {page !== null && tab === "metadata" && <MetadataView entity={page.entity} />}
 
+      {tab === "source-metadata" &&
+        (sourceMeta !== null && sourceMeta.name === entityName ? (
+          <MetadataView entity={sourceMeta} source />
+        ) : (
+          <p className="muted">Loading the source metadata...</p>
+        ))}
+
+      {page !== null && tab === "edit" && <EditSourceView entity={page.entity.name} initial={editPick} />}
+
       {page !== null && tab === "add" && (
         <AddRecordsView entity={page.entity.name} onSaved={() => loadRecords(page.entity.name, { page: 1, sort: "NEWEST_FIRST" })} />
       )}
 
-      {page !== null && tab !== "metadata" && tab !== "add" && (
+      {page !== null && (tab === "records" || tab === "sources" || !["metadata", "add", "source-metadata", "edit"].includes(tab)) && (
         <div className="b360-records master-detail" data-testid="b360-records" data-entity={page.entity.name}>
           <section className="b360-master" data-testid="b360-master">
             <h3>
-              Master: {page.entity.label} root
+              {tab === "sources" ? "Pick a master record: " : "Master: "}
+              {page.entity.label} root
               {page.mode === "BUSINESS_ID" ? ` - business ID ${page.business_id ?? ""}` : ""}
             </h3>
             <div className="toolbar b360-filters" data-testid="b360-filters">
@@ -378,22 +463,23 @@ export function B360DataPanel({
               ).map(([key, label, testId]) => (
                 <label key={key}>
                   {label}{" "}
-                  <input
+                  <Input
                     type="text"
+                    aria-label={`Filter ${label}`}
                     data-testid={testId}
                     value={draft[key]}
                     placeholder={key === "businessId" ? "exact" : "starts with"}
-                    onChange={(e) => setDraft((d) => ({ ...d, [key]: e.target.value }))}
-                    onKeyDown={(e) => {
+                    onValueChange={(v: string) => setDraft((d) => ({ ...d, [key]: v }))}
+                    onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
                       if (e.key === "Enter") applyFilters();
                     }}
                   />
                 </label>
               ))}
-              <Button data-testid="b360-filter-apply" onClick={applyFilters} disabled={loading}>
+              <Button aria-label="Apply filters" data-testid="b360-filter-apply" onClick={applyFilters} disabled={loading}>
                 Apply
               </Button>
-              <Button data-testid="b360-filter-clear" onClick={clearFilters} disabled={loading}>
+              <Button aria-label="Clear filters" data-testid="b360-filter-clear" onClick={clearFilters} disabled={loading}>
                 Clear
               </Button>
             </div>
@@ -406,13 +492,14 @@ export function B360DataPanel({
               </p>
             )}
             <div className="toolbar b360-pager" data-testid="b360-pager">
-              <Button data-testid="b360-page-prev" onClick={() => goPage((page.page ?? 1) - 1)} disabled={loading || (page.page ?? 1) <= 1}>
+              <Button aria-label="Previous page" data-testid="b360-page-prev" onClick={() => goPage((page.page ?? 1) - 1)} disabled={loading || (page.page ?? 1) <= 1}>
                 Prev
               </Button>
               <span data-testid="b360-page-info">
                 Page {page.page ?? 1} of {page.total_pages ?? 1} ({(page.hits ?? page.records.length).toLocaleString()} records)
               </span>
               <Button
+                aria-label="Next page"
                 data-testid="b360-page-next"
                 onClick={() => goPage((page.page ?? 1) + 1)}
                 disabled={loading || (page.page ?? 1) >= (page.total_pages ?? 1)}
@@ -428,15 +515,32 @@ export function B360DataPanel({
             {page.records.length === 0 ? (
               <p className="muted">No records.</p>
             ) : (
-              <div className="table-wrap">
-                <table className="monitor" data-testid="b360-records-table">
+              <>
+              <Listbox
+                aria-label="Open master record"
+                data-testid="b360-record-picker"
+                className="record-picker"
+                orientation="horizontal"
+                value={selected.record}
+                onValueChange={(value) => {
+                  if (typeof value === "string") setSelected((s) => ({ ...s, record: value }));
+                }}
+              >
+                {page.records.map((r) => (
+                  <ListboxItem key={r.business_id} value={r.business_id} data-testid={`b360-pick-${r.business_id}`}>
+                    {r.business_id}
+                  </ListboxItem>
+                ))}
+              </Listbox>
+              <div className="records-scroll" data-testid="b360-records-scroll">
+                <table className="monitor" data-testid="b360-records-table" aria-label="Master records">
                   <thead>
                     <tr>
                       <th>Business id</th>
                       <th>
-                        <button
-                          type="button"
+                        <Button
                           className="sort-head"
+                          aria-label="Sort by Last updated"
                           data-testid="b360-sort-updated"
                           data-sort={query.sort ?? "NEWEST_FIRST"}
                           title="Sort all records by last update (any channel): click to flip"
@@ -444,10 +548,15 @@ export function B360DataPanel({
                           disabled={loading || page.mode === "BUSINESS_ID"}
                         >
                           Last updated {query.sort === "OLDEST_FIRST" ? "(oldest first) ^" : "(newest first) v"}
-                        </button>
+                        </Button>
                       </th>
                       {recordColumns(page.entity).map((f) => (
                         <th key={f.name} title={`${f.name} (${f.data_type})`}>{f.label}</th>
+                      ))}
+                      {(page.system_columns ?? []).map((c) => (
+                        <th key={c.name} className="system-col" data-origin="SYSTEM" title={`${c.name} (system)`}>
+                          {c.name}
+                        </th>
                       ))}
                     </tr>
                   </thead>
@@ -467,14 +576,21 @@ export function B360DataPanel({
                         {recordColumns(page.entity).map((f) => (
                           <td key={f.name}>{cellText(r.values[f.name], f.data_type)}</td>
                         ))}
+                        {(page.system_columns ?? []).map((c) => (
+                          <td key={c.name} className="system-col" data-origin="SYSTEM">
+                            {systemValueText(c.name, systemValue(r.system_values, c.name))}
+                          </td>
+                        ))}
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </section>
-          {record !== null && <RecordDetail page={page} record={record} />}
+          {tab !== "sources" && record !== null && <RecordDetail page={page} record={record} />}
+          {tab === "sources" && <SourceRecordsView entity={page.entity} businessId={selected.record} onEdit={openEdit} />}
         </div>
       )}
     </div>

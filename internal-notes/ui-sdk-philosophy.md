@@ -44,7 +44,7 @@ the way Vercel wants you to use it... so that it's agent friendly. So use it to 
 | SDK components, own CSS | Left pane: Input (search), Listbox (sections, search matches), Separator. Ribbon: Tabs. Pages: Listbox (task/job/taskflow lists), Input, Button. Styles in styles.css, light theme. |
 | Name = handle | Every SDK component has an aria-label: "Search tasks, taskflows and jobs", "Search results", "Taskflow list", "IDMC run id", "Run <name>", "Abort taskflow run <id>". |
 | One bridge | `src/agent.ts` creates it before render and puts it on `window.agent`. |
-| Mark what needs a person | Run (CDI task, MDM job, taskflow) and Abort carry `data-agent-confirm` sentences ("Starts taskflow X on the live IDMC org", "Terminates (aborts) taskflow run N ..."). `allow` reads `step.confirm` and asks with that sentence; unmarked presses (Refresh, Track, Add field) run without asking. |
+| Mark what needs a person | SUPERSEDED in 0.9.10, see "No confirmation (0.9.10)" below. Run, Abort, Save, Send still carry `data-agent-confirm` sentences, now as descriptive labels only. |
 | Agent changes = person changes | Search matches are a Listbox: `agent.act({steps:[{ref:"Search results", action:"setValue", args:["<value>"]}]})` opens the item exactly like a click. |
 
 Our own typed surface `window.txmdm` (agentActions.ts) stays: it reads backend data and drives
@@ -54,12 +54,39 @@ routes. It is not part of the SDK; the SDK docs do not describe app-level action
 
 - `definePrimitive` / the `agent` key: we have no custom interactive component yet; the key is
   experimental.
-- Alert Dialog for confirmations: Run / Abort still use window.confirm in their click handlers,
-  so an agent press asks twice (allow + handler). Known wart; switching to Alert Dialog is the
-  clean fix.
+- Alert Dialog: not used, on purpose. The owner asked for no pop-ups at all (see below).
 - WebMCP `registerTools`, `subscribe`, history/undo: no consumer for them here today.
 
 ## Where the docs are thin
 
-- How `data-agent-confirm` interacts with a click handler that also confirms: not described.
+- How `data-agent-confirm` interacts with a click handler that also confirms: not described
+  (moot since 0.9.10: no handler confirms any more).
 - Release is 0.1.0-beta.13; APIs can change. Re-read the shipped docs after any upgrade.
+
+## No confirmation (0.9.10) - owner decision 2026-11-23 01:53 CST
+
+Vamsi, 01:51-01:53 CST: "remove all those pop-ups ... we don't need those pop-ups", then for the
+agent-permission asks too: "Take it out."
+
+- No window.confirm / alert / prompt anywhere in frontend/src, for persons OR agents. Run (CDI
+  task, MDM job, taskflow), Abort, Save (create / edit) and Send to B360 act at once; results and
+  errors show inline on the page.
+- `src/agent.ts`: `allow: () => true`. This deliberately departs from the SDK's "mark what needs a
+  person" guidance; the owner chose it.
+- `src/agentActions.ts`: runJob / runTaskflowByName / terminateTaskflow no longer ask; they are
+  still listed with `sideEffect: true` so an agent can see they act on the live org.
+- `data-agent-confirm` sentences are KEPT on those buttons as descriptive labels: snapshot() still
+  shows the agent what the press does, but nothing blocks on them.
+- Guard: `src/noPopups.test.ts` (vitest) fails on any confirm/alert/prompt call in frontend/src,
+  no exceptions. Cypress `taskflows_fake.cy.js` now fails if a window:confirm ever fires.
+
+## Used now (0.9.10) and still not
+
+Used on the B360 screens: Input (filters, sourcePKey, generate count, typed fields), Button (every press,
+incl. the Last updated sort), Select (source system, picklist fields), Checkbox (boolean fields), Listbox
+(left pane; "Open master record" / "Open source record" pickers; "<group> field list" on Metadata), Tabs
+(ribbon). Every one has a unique aria-label (scoped: "Add form ...", "Preview row N ...", "Edit ...").
+Still own markup: tables (no SDK table component) - labelled with aria-label, with a Listbox picker next to
+them so an agent can open a row; Field/FieldLabel not adopted yet (plain <label> wraps). data-agent-hidden /
+data-agent-secret: checked, nothing is secret (no credentials in the frontend), so none is set.
+Agent-ready: `window.agentReady` (see ui-observations v0.9.10).

@@ -134,6 +134,10 @@ cd frontend && npm run typecheck && npm test && npm run lint && npm run build
 | POST | `/api/b360/entities/{name}/records/generate` | 0.9.8: `{count: 1..100, seed?}` -> Faker test rows checked by the same dynamic model. Preview only, NO IDMC call. Typed `GeneratedRows` |
 | POST | `/api/b360/entities/{name}/records` | 0.9.8 WRITE: `{source_system, records[<=100]}` -> Create Master Record (`POST {mdm}/business-entity/public/api/v1/entity/{name}?sourceSystem=&sourcePKey=`, reference pp. 51-55) one record at a time, in order, never retried. Source not allowed -> 400; a record that does not fit the model, duplicate sourcePKey or >100 -> 422; in both cases nothing is sent. 429 / 401 / 403 / no answer stop the run (rest NOT_SENT). Typed `CreateResponse`. Only on a person's Save / Send to B360 |
 | GET | `/api/b360/entities/{name}/records?page=1&first_name=&last_name=&business_id=&sort=NEWEST_FIRST` | 0.9.9: one page of 10 master records via the Search API (`recordOffset`/`recordsToReturn`/`pageSize`, reference pp. 25-26); `first_name`/`last_name` -> `filters.filter[]` STARTS_WITH on `<entity prefix>.<field>`; `sort` NEWEST_FIRST/OLDEST_FIRST -> `sort:[{fieldName:"_meta.lastUpdateDate"}]` (only sortable column); `business_id` -> exact Read Master Record by Business ID `GET {mdm}/business-entity/public/api/v1/entity/{name}/{businessId}` (pp. 56-58; 404 = empty page with a note). Typed `RecordPage` (page, total_pages, filters, mode, last_updated per record). Read-only |
+| GET | `/api/b360/entities/{name}/source-metadata` | 0.9.10: Metadata (S) - same configured fields/groups as the entity, plus the xref `_meta` system fields (org metadata + those documented for Read Source Record, pp. 80-84, marked DOCUMENTED). Derived: no separate source-metadata call is documented. Typed `BusinessEntity`. Read-only |
+| GET | `/api/b360/entities/{name}/records/{business_id}/sources` | 0.9.10: Records (S) - Read Source Records by Master Record `GET {mdm}/business-entity/public/api/v1/entity-member/{name}/{businessId}` (pp. 70-71), then Read Source Record for each member (max 20, one at a time). Typed `SourceRecordList` (records, not_read, system_columns). Read-only |
+| GET | `/api/b360/entities/{name}/sources/{source_system}/{source_pkey}` | 0.9.10: Read Source Record `GET {mdm}/business-entity/public/api/v1/entity-xref/{name}/{sourceSystem}/{sourcePKey}` (pp. 80-84); 404 -> 404. Typed `SourceRecord` (values, group rows with `_id`, system_values). Read-only |
+| POST | `/api/b360/entities/{name}/sources/{source_system}/{source_pkey}/update` | 0.9.10 WRITE (dry_run=false only): `{original, updated, dry_run}` -> diff into Update Source Record Field ops; dry_run=true (default) returns them (old -> new, shown inline on the Edit page) and sends nothing; dry_run=false sends ONE `PATCH .../entity-xref/{name}/{sourceSystem}/{sourcePKey}` (pp. 88-90). Source not allowed -> 400, bad values -> 422, 429 passed through, never retried. Typed `UpdateSourceResponse`. No master-record edit exists |
 | GET | `/api/health` | Liveness |
 
 Rules built in: one active run per job (a second start gets HTTP 409); a failed run is
@@ -172,7 +176,7 @@ npx cypress@16 run --browser electron --config-file cypress.config.cjs --config 
 ## Taskflows by name (Taskflows section)
 
 UI: left pane **Taskflows** (`/taskflows`). Pick a taskflow, check the input fields
-(`jobInstanceId` = `ABC123` is prefilled - edit it), press **Run** (asks to confirm). The run id
+(`jobInstanceId` = `ABC123` is prefilled - edit it), press **Run** (starts at once, no pop-up). The run id
 appears in the URL (`/taskflows/runs/<runId>`) and the view polls every 10 s until final:
 started at, ticking "running for", status, then per child task rows ok/error, source/target
 rows, errors, totals and a **Session log** button per child. Ribbon tab **Track run id**: paste any run id and press
@@ -245,15 +249,15 @@ the Allowed Users hint; already running from this backend -> 409. Starts are nev
 | `openSection(service)` | Show the `mdm` or `cdi` job list |
 | `listMdmJobs()` / `listCdiTasks()` | Read the metadata-driven lists |
 | `selectJob(service, jobId)` | Open one job |
-| `runJob(service, jobId, apiName?)` | Start one run **after a person confirms**, then open its results; never retries |
+| `runJob(service, jobId, apiName?)` | Start one run at once (no confirmation, owner decision 2026-11-23 01:53 CST), then open its results; never retries |
 | `openRun(service, runKey)` | Open a results screen |
 | `getRun(service, runKey)` | Read a run's status, counts, errors, log |
 | `layout()` / `openNavSection(sectionId)` / `selectRibbonTab(tabId)` | OneNote layout: read sections + ribbon tabs, select a section or a ribbon tab |
 | `openMonitor()` / `getMonitor(onlyMyTasks?, rowLimit?)` | Show / read the CDI Monitor (running + history) |
-| `runTaskflowByName(name, parameters = {jobInstanceId: "ABC123"}, apiName?)` | Start a taskflow by name after a person confirms; opens `/taskflows/runs/<runId>` |
+| `runTaskflowByName(name, parameters = {jobInstanceId: "ABC123"}, apiName?)` | Start a taskflow by name at once (no confirmation); opens `/taskflows/runs/<runId>` |
 | `trackTaskflowRun(runId)` / `getTaskflowRun(runId)` | Show / read a taskflow run by IDMC run id |
 | `getTaskflowSessionLog(runId, childTask?)` | Plain-text session log of one child task |
-| `terminateTaskflow(runId)` | Abort a running taskflow after a person confirms |
+| `terminateTaskflow(runId)` | Abort a running taskflow at once (no confirmation) |
 | `currentRoute()` / `describe()` | Where am I / what can I call |
 
 The UI SDK agent bridge (`src/agent.ts`) is registered too; its allow-callback asks before any
@@ -325,7 +329,7 @@ Each B360 Data entity page has an **Add records** ribbon tab (next to Records an
 - **Generate test data**: put a number in "Number of records" (1-100), press Generate. The backend
   makes the rows with Faker (`backend/app/b360data/testdata.py`); nothing is sent yet. Edit or remove
   rows, then press **Send to B360**. Rows go one at a time; a 429, 401 or 403 stops the rest.
-- Both ask you to confirm first. After a save, the Records tab reloads so the new records show.
+- Neither asks first (no pop-ups anywhere, owner decision 2026-11-23 01:53 CST); the result shows inline. After a save, the Records tab reloads so the new records show.
 - **Source system** dropdown = `[sources] allowed` in `backend/b360_entities.toml` (today
   `zlv_ttf` (default), `zlv_eci`, `c360.default.system`, exact case). The backend refuses any other
   value. Informatica documents no API that lists source systems; an undocumented metadata call is

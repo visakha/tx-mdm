@@ -33,7 +33,13 @@ from app.b360data.models import (
     FieldGroupRows,
     FieldOrigin,
     FieldValue,
+    NewGroupRow,
+    NewGroupRows,
     OriginSource,
+    PicklistOption,
+    SourceKey,
+    SourceRecord,
+    SystemValue,
 )
 
 _JSON = TypeAdapter(JsonValue)
@@ -387,6 +393,7 @@ def record_from_search(raw: dict[str, JsonValue], entity: BusinessEntity) -> Ent
         groups=groups,
         last_updated=_epoch_or_iso(meta_d.get("lastUpdateDate")),
         updated_by=str(updated_by) if isinstance(updated_by, (str, int)) else None,
+        system_values=system_values(meta_d),
     )
 
 
@@ -447,3 +454,239 @@ class WireCreated(_Wire):
 def created_record(body: object) -> WireCreated:
     data = as_json(body)
     return WireCreated.model_validate(data if isinstance(data, dict) else {})
+
+
+# ---------------------------------------------------------------------------------------------
+# 0.9.10 picklist options (observed) + source records (xref)
+# ---------------------------------------------------------------------------------------------
+
+_PICKS = (FieldDataType.PICKLIST, FieldDataType.DEPENDENT_PICKLIST)
+
+
+def _option(raw: JsonValue) -> PicklistOption | None:
+    if not isinstance(raw, dict):
+        return None
+    code = raw.get("Code", raw.get("code"))
+    name = raw.get("Name", raw.get("name"))
+    if not isinstance(code, (str, int)) or isinstance(code, bool):
+        return None
+    return PicklistOption(
+        code=str(code), name=str(name) if isinstance(name, (str, int)) else str(code)
+    )
+
+
+def picklist_options(
+    records: list[dict[str, JsonValue]], entity: BusinessEntity
+) -> dict[tuple[str, str], list[PicklistOption]]:
+    """Distinct {Code, Name} per picklist field as IDMC returned them in real records.
+
+    The reference has no call that lists a picklist's allowed values; this is the only grounded
+    source. Order: first seen. Root fields under key ("", field), group fields (group, field).
+    """
+    found: dict[tuple[str, str], dict[str, PicklistOption]] = {}
+
+    def add(key: tuple[str, str], raw: JsonValue) -> None:
+        option = _option(raw)
+        if option is not None:
+            found.setdefault(key, {}).setdefault(option.code, option)
+
+    for record in records:
+        by_local = {_local(k): v for k, v in record.items() if not k.startswith("_")}
+        for f in entity.fields:
+            if f.data_type in _PICKS:
+                add(("", f.name), by_local.get(f.name))
+        for group in entity.field_groups:
+            cell = by_local.get(group.name)
+            rows = cell if isinstance(cell, list) else [cell] if isinstance(cell, dict) else []
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                row_local = {_local(k): v for k, v in row.items()}
+                for f in group.fields:
+                    if f.data_type in _PICKS:
+                        add((group.name, f.name), row_local.get(f.name))
+    return {key: list(options.values()) for key, options in found.items()}
+
+
+def _editable(raw: JsonValue, data_type: FieldDataType) -> FieldValue:
+    """Like typed_value, but a picklist keeps its Code: the value an update sends back."""
+    if isinstance(raw, dict) and data_type in _PICKS:
+        option = _option(raw)
+        return option.code if option else None
+    return typed_value(raw, data_type)
+
+
+class WireSourceKey(_Wire):
+    source_pkey: str | int = Field(alias="sourcePKey")
+    source_system: str = Field(alias="sourceSystem")
+
+
+class WireMembers(_Wire):
+    content: list[WireSourceKey] = Field(default_factory=list)
+
+
+def source_members(body: object) -> list[SourceKey]:
+    """Read Source Records by Master Record: {"content": [{sourcePKey, sourceSystem}]} (p. 71)."""
+    data = as_json(body)
+    parsed = WireMembers.model_validate(data if isinstance(data, dict) else {})
+    return [
+        SourceKey(source_system=m.source_system, source_pkey=str(m.source_pkey))
+        for m in parsed.content
+    ]
+
+
+def source_record(
+    body: object, entity: BusinessEntity, source_system: str, source_pkey: str
+) -> SourceRecord:
+    """Read Source Record reply (pp. 80-84): plain field names, groups as lists with _id, _meta."""
+    data = as_json(body)
+    raw: dict[str, JsonValue] = data if isinstance(data, dict) else {}
+    meta = raw.get("_meta")
+    meta_d: dict[str, JsonValue] = meta if isinstance(meta, dict) else {}
+    by_local = {_local(k): v for k, v in raw.items() if not k.startswith("_")}
+    values = {f.name: _editable(by_local.get(f.name), f.data_type) for f in entity.fields}
+    groups: list[NewGroupRows] = []
+    for group in entity.field_groups:
+        cell = by_local.get(group.name)
+        rows = cell if isinstance(cell, list) else [cell] if isinstance(cell, dict) else []
+        groups.append(
+            NewGroupRows(
+                group=group.name,
+                rows=[
+                    NewGroupRow(
+                        row_id=str(row["_id"]) if isinstance(row.get("_id"), (str, int)) else None,
+                        values={
+                            f.name: _editable(row.get(f.name), f.data_type) for f in group.fields
+                        },
+                    )
+                    for row in rows
+                    if isinstance(row, dict)
+                ],
+            )
+        )
+    states = meta_d.get("states")
+    known = {f.name for f in entity.fields} | {g.name for g in entity.field_groups}
+    updated_by = meta_d.get("updatedBy")
+    xref_type = meta_d.get("xrefType")
+    business_id = meta_d.get("businessId")
+    return SourceRecord(
+        entity=entity.name,
+        source_system=str(meta_d.get("sourceSystem") or source_system),
+        source_pkey=str(meta_d.get("sourcePrimaryKey") or source_pkey),
+        business_id=str(business_id) if isinstance(business_id, (str, int)) else "",
+        values=values,
+        groups=groups,
+        last_updated=_epoch_or_iso(meta_d.get("lastUpdateDate")),
+        source_last_updated=_epoch_or_iso(meta_d.get("sourceLastUpdatedDate")),
+        updated_by=str(updated_by) if isinstance(updated_by, (str, int)) else None,
+        xref_type=str(xref_type) if isinstance(xref_type, str) else None,
+        states=(
+            {k: str(v) for k, v in states.items() if isinstance(v, (str, int))}
+            if isinstance(states, dict)
+            else {}
+        ),
+        unknown_keys=sorted(set(by_local) - known),
+        system_values=system_values(meta_d),
+    )
+
+
+# Source (xref) _meta, Read Source Record GET response table + example (pp. 81-83).
+DOCUMENTED_XREF_META_FIELDS: tuple[tuple[str, str, FieldDataType], ...] = (
+    ("businessId", "Business ID (master record)", FieldDataType.STRING),
+    ("businessEntity", "Business entity", FieldDataType.STRING),
+    ("sourceSystem", "Source system", FieldDataType.STRING),
+    ("sourcePrimaryKey", "Source primary key (sourcePKey)", FieldDataType.STRING),
+    ("xrefType", "Xref type", FieldDataType.STRING),
+    ("createdBy", "Created by", FieldDataType.STRING),
+    ("creationDate", "Creation date", FieldDataType.DATETIME),
+    ("updatedBy", "Updated by", FieldDataType.STRING),
+    ("lastUpdateDate", "Last update date", FieldDataType.DATETIME),
+    ("sourceLastUpdatedDate", "Source last updated date", FieldDataType.DATETIME),
+    ("states.base", "State: base", FieldDataType.STRING),
+    ("states.consolidation", "State: consolidation", FieldDataType.STRING),
+    ("states.validation", "State: validation", FieldDataType.STRING),
+    ("states.searchIndex", "State: search index", FieldDataType.STRING),
+    ("populationName", "Population", FieldDataType.STRING),
+)
+
+
+def source_view(entity: BusinessEntity) -> BusinessEntity:
+    """Metadata (S): same configured fields / groups (a source record carries the same model,
+    pp. 82-87), the metadata's own system fields, and the documented xref _meta group instead of
+    the master _meta group. Derived from the reference: no separate source metadata call."""
+    xref_meta = FieldGroup(
+        name="_meta",
+        label="Source record _meta (xref)",
+        cardinality=Cardinality.ONE,
+        fields=[
+            EntityField(
+                name=name,
+                label=label,
+                data_type=kind,
+                raw_type="documented",
+                searchable=False,
+                mandatory=False,
+                origin=FieldOrigin.SYSTEM,
+                origin_source=OriginSource.DOCUMENTED,
+            )
+            for name, label, kind in DOCUMENTED_XREF_META_FIELDS
+        ],
+        origin=FieldOrigin.SYSTEM,
+        origin_source=OriginSource.DOCUMENTED,
+    )
+    others = [g for g in entity.system_field_groups if g.name != "_meta"]
+    return entity.model_copy(update={"system_field_groups": [xref_meta, *others]})
+
+
+# ---- 0.9.10 system values in the data (Vamsi 01:48 CST) ----------------------------------------
+
+
+def system_values(meta: JsonValue) -> list[SystemValue]:
+    """Every _meta value the reply carried, in reply order; nested objects dotted (states.base).
+    A {code, name} object (populationName) shows its name. Lists are summarised. Never invented."""
+    out: list[SystemValue] = []
+
+    def walk(prefix: str, node: JsonValue) -> None:
+        if isinstance(node, dict):
+            option = _option(node)
+            if option is not None and set(node) <= {"Code", "Name", "code", "name"}:
+                out.append(SystemValue(name=prefix, value=option.name))
+                return
+            for key, value in node.items():
+                walk(f"{prefix}.{key}" if prefix else key, value)
+        elif isinstance(node, list):
+            out.append(SystemValue(name=prefix, value=f"[{len(node)} items]"))
+        elif prefix.lower().endswith("date") and (
+            _is_number(node) or (isinstance(node, str) and node.isdigit())
+        ):
+            out.append(SystemValue(name=prefix, value=_epoch_or_iso(node)))
+        elif node is None or isinstance(node, (str, int, float, bool)):
+            out.append(SystemValue(name=prefix, value=node))
+
+    if isinstance(meta, dict):
+        walk("", meta)
+    return out
+
+
+def system_columns(rows: list[list[SystemValue]]) -> list[EntityField]:
+    """Union of the system value names, first-seen order, as SYSTEM EntityFields."""
+    seen: dict[str, EntityField] = {}
+    for values in rows:
+        for v in values:
+            if v.name not in seen:
+                kind = (
+                    FieldDataType.DATETIME
+                    if isinstance(v.value, datetime)
+                    else (FieldDataType.STRING)
+                )
+                seen[v.name] = EntityField(
+                    name=v.name,
+                    label=v.name,
+                    data_type=kind,
+                    raw_type="_meta",
+                    searchable=False,
+                    mandatory=False,
+                    origin=FieldOrigin.SYSTEM,
+                    origin_source=OriginSource.METADATA,
+                )
+    return list(seen.values())

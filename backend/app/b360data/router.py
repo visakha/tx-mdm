@@ -21,18 +21,26 @@ from app.b360data.models import (
     GenerateRequest,
     RecordPage,
     SortOrder,
+    SourceRecord,
+    SourceRecordList,
     SourceSystemList,
+    UpdateSourceRequest,
+    UpdateSourceResponse,
 )
 from app.b360data.service import (
     B360DataService,
     B360InputError,
     DuplicateSourcePKeyError,
     SourceNotAllowedError,
+    SourceRecordNotFoundError,
 )
 from app.dependencies import get_b360_data_service
 
 router = APIRouter(prefix="/api/b360", tags=["b360"])
 
+SourceSystem = Annotated[str, Path(pattern=r"^[A-Za-z0-9._-]{1,128}$")]
+SourcePKey = Annotated[str, Path(min_length=1, max_length=255)]
+BusinessId = Annotated[str, Path(min_length=1, max_length=100)]
 Service = Annotated[B360DataService, Depends(get_b360_data_service)]
 EntityName = Annotated[str, Path(pattern=r"^[A-Za-z0-9._-]{1,128}$")]
 
@@ -165,4 +173,83 @@ def create_records(
             status_code=422,
             detail=f"record {exc.index} does not fit the entity: {'; '.join(exc.problems)}. "
             "Nothing was sent.",
+        ) from exc
+
+
+# ---------------------------------------------------------------- 0.9.10 source (xref) records
+
+
+@router.get(
+    "/entities/{name}/source-metadata",
+    response_model=BusinessEntity,
+    operation_id="b360_source_metadata",
+    summary="Metadata (S): the source-record view of the entity metadata",
+    description="Same configured fields and field groups as the master (a source record carries "
+    "the same model, pp. 82-87) plus the documented source (xref) _meta fields of Read Source "
+    "Record (pp. 81-83) as SYSTEM / DOCUMENTED. Derived: there is no separate source metadata "
+    "call in the reference. Read-only.",
+)
+def source_metadata(name: EntityName, service: Service) -> BusinessEntity:
+    return service.source_metadata(name)
+
+
+@router.get(
+    "/entities/{name}/records/{business_id}/sources",
+    response_model=SourceRecordList,
+    operation_id="b360_master_sources",
+    summary="Records (S): source records that contribute to one master record",
+    description="Read Source Records by Master Record GET business-entity/public/api/v1/"
+    "entity-member/{name}/{businessId} (p. 70), then Read Source Record GET .../entity-xref/"
+    "{name}/{sourceSystem}/{sourcePKey} (p. 80) per member, one at a time, at most 20. "
+    "Read-only. 429 passed through, never retried.",
+)
+def master_sources(name: EntityName, business_id: BusinessId, service: Service) -> SourceRecordList:
+    return service.source_records(name, business_id)
+
+
+@router.get(
+    "/entities/{name}/sources/{source_system}/{source_pkey}",
+    response_model=SourceRecord,
+    operation_id="b360_source_record",
+    summary="Read one source record by sourceSystem + sourcePKey",
+    description="Read Source Record GET business-entity/public/api/v1/entity-xref/{name}/"
+    "{sourceSystem}/{sourcePKey} (pp. 80-84). 404 -> 404. Read-only.",
+)
+def source_record(
+    name: EntityName, source_system: SourceSystem, source_pkey: SourcePKey, service: Service
+) -> SourceRecord:
+    try:
+        return service.source_record(name, source_system, source_pkey)
+    except SourceRecordNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post(
+    "/entities/{name}/sources/{source_system}/{source_pkey}/update",
+    response_model=UpdateSourceResponse,
+    operation_id="b360_update_source_record",
+    summary="WRITE (dry_run=false only): update a source record with only what changed",
+    description="Diffs original vs updated into Update Source Record Field operations (PATCH "
+    "business-entity/public/api/v1/entity-xref/{name}/{sourceSystem}/{sourcePKey}, pp. 88-90). "
+    "dry_run=true (default) sends nothing and returns the operations (old -> new), shown "
+    "inline on the Edit page. dry_run=false sends ONE PATCH. "
+    "sourceSystem must be in [sources] allowed (else 400); edited values must fit the dynamic "
+    "models (else 422). 429 passed through, "
+    "never retried. No master-record edit exists in this app.",
+)
+def update_source_record(
+    name: EntityName,
+    source_system: SourceSystem,
+    source_pkey: SourcePKey,
+    service: Service,
+    request: Annotated[UpdateSourceRequest, Body()],
+) -> UpdateSourceResponse:
+    try:
+        return service.update_source(name, source_system, source_pkey, request)
+    except SourceNotAllowedError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RecordInvalidError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=f"edit does not fit the entity: {'; '.join(exc.problems)}. Nothing was sent.",
         ) from exc

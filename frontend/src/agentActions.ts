@@ -2,8 +2,8 @@
 // can call instead of clicking. Exposed as window.txmdm. Every action goes through the same
 // backend API and the same URL routes the UI uses, so what the agent does is what a person sees.
 //
-// Starting a job is the only action with a side effect, and it asks a person first
-// (window.confirm), the same rule the UI SDK agent bridge applies to button presses.
+// Start / terminate / write actions have side effects. By owner decision 2026-11-23 01:53 CST
+// there is no confirmation for persons or agents: they run as called (sideEffect: true in ACTIONS).
 
 import { cdiApi, type CdiTask } from "./cdi/cdiApi";
 import { monitorApi, type MonitorSnapshot } from "./cdi/monitorApi";
@@ -22,6 +22,8 @@ import {
   type BusinessEntity,
   type BusinessEntityList,
   type GeneratedRows,
+  type SourceRecord,
+  type SourceRecordList,
   type RecordPage,
   type RecordQuery,
   type SourceSystemList,
@@ -66,16 +68,16 @@ export const ACTIONS: readonly ActionInfo[] = [
   { name: "listMdmJobs", args: "()", description: "MDM job definitions from the metadata API (with runnable flag).", sideEffect: false },
   { name: "listCdiTasks", args: "()", description: "CDI tasks from the metadata API.", sideEffect: false },
   { name: "selectJob", args: "(service, jobId)", description: "Open one job's detail screen (/<service>/jobs/:jobId).", sideEffect: false },
-  { name: "runJob", args: "(service, jobId, apiName?)", description: "Start one run after a person confirms; opens its results screen. Never retries.", sideEffect: true },
+  { name: "runJob", args: "(service, jobId, apiName?)", description: "Start one run (no confirmation, owner decision 01:53 CST); opens its results screen. Never retries.", sideEffect: true },
   { name: "openRun", args: "(service, runKey)", description: "Open the results screen for a run (/<service>/runs/:runKey).", sideEffect: false },
   { name: "getRun", args: "(service, runKey)", description: "Read a run's current state (status, counts, errors, log).", sideEffect: false },
   { name: "openMonitor", args: "()", description: "Show the CDI Monitor tab (/monitor).", sideEffect: false },
-  { name: "runTaskflowByName", args: "(name, parameters = {}, apiName?)", description: "Start an advanced taskflow by name with its input fields. Business 360 taskflows (tf_MDM_*, *_EGR, *_IGR; task domain mdm) NEED { jobInstanceId: '<real id>' }; CDI taskflows (tf_Ldg_*, tf_Stg_*) must get none - the backend answers 400 otherwise. after a person confirms; stays on the Run tab and puts the run on top of the history (open it with openTaskflowSummary / openTaskflowLog). Parallel starts allowed. Never retries.", sideEffect: true },
+  { name: "runTaskflowByName", args: "(name, parameters = {}, apiName?)", description: "Start an advanced taskflow by name with its input fields. Business 360 taskflows (tf_MDM_*, *_EGR, *_IGR; task domain mdm) NEED { jobInstanceId: '<real id>' }; CDI taskflows (tf_Ldg_*, tf_Stg_*) must get none - the backend answers 400 otherwise. Starts at once (no confirmation); stays on the Run tab and puts the run on top of the history (open it with openTaskflowSummary / openTaskflowLog). Parallel starts allowed. Never retries.", sideEffect: true },
   { name: "getTaskflowHistory", args: "(name, rowLimit = 100)", description: "Run history of one taskflow (Run tab detail): running first, then recent; taskflow rows from this app are trackable, child task rows are not.", sideEffect: false },
   { name: "openTaskflowSummary", args: "(runId, domain = 'cdi')", description: "Open the Summary tab of one taskflow run by IDMC run id (/taskflows/runs/:runId): status, progress, child rows, Abort.", sideEffect: false },
   { name: "openTaskflowLog", args: "(runId, domain = 'cdi')", description: "Open the Session log tab of one taskflow run by IDMC run id.", sideEffect: false },
   { name: "getTaskflowRun", args: "(runId)", description: "Read a taskflow run by IDMC run id: status, times, per-child rows and errors, totals.", sideEffect: false },
-  { name: "terminateTaskflow", args: "(runId)", description: "Terminate (abort) a running taskflow by IDMC run id, after a person confirms. Never retried.", sideEffect: true },
+  { name: "terminateTaskflow", args: "(runId)", description: "Terminate (abort) a running taskflow by IDMC run id (no confirmation). Never retried.", sideEffect: true },
   { name: "getTaskflowSessionLog", args: "(runId, childTask?)", description: "Plain-text session log of one child task of a taskflow run.", sideEffect: false },
   { name: "getMonitor", args: "(onlyMyTasks = true, rowLimit = 50)", description: "Read running CDI jobs (elapsed minutes) + recent history (status, rows, errors, taskflow steps).", sideEffect: false },
   { name: "openMdmMonitor", args: "()", description: "Show Business 360 Currently running (/mdm/running).", sideEffect: false },
@@ -84,15 +86,14 @@ export const ACTIONS: readonly ActionInfo[] = [
   { name: "getB360Metadata", args: "(name)", description: "B360 Data: one entity's typed fields + field groups from its metadata.", sideEffect: false },
   { name: "getB360Records", args: "(name, {page, firstName, lastName, businessId, sort})", description: "B360 Data: open an entity and read one page of 10 master records (top-level values + field group rows + last updated). firstName/lastName filter STARTS_WITH; businessId is an exact Read Master Record lookup; sort is NEWEST_FIRST (default) or OLDEST_FIRST on Last updated, the only sortable column.", sideEffect: false },
   { name: "getB360SourceSystems", args: "()", description: "B360 Data Add records: source systems allowed in backend/b360_entities.toml (default zlv_ttf) plus any an undocumented IDMC metadata call found.", sideEffect: false },
-  { name: "generateB360Rows", args: "(name, count = 5)", description: "B360 Data Add records: Faker test rows (1-100) for an entity from the backend. Preview only, nothing is sent to IDMC. Sending is a person's Save / Send to B360 button (it asks first).", sideEffect: false },
+  { name: "getB360Sources", args: "(name, businessId)", description: "B360 Data Records (S): the source (xref) records of one master record - Read Source Records by Master Record, then Read Source Record each (max 20). Read-only.", sideEffect: false },
+  { name: "getB360SourceRecord", args: "(name, sourceSystem, sourcePKey)", description: "B360 Data: read one source record by source system + sourcePKey (Read Source Record). Read-only.", sideEffect: false },
+  { name: "generateB360Rows", args: "(name, count = 5)", description: "B360 Data Add records: Faker test rows (1-100) for an entity from the backend. Preview only, nothing is sent to IDMC. Sending is a person's Save / Send to B360 button (sends at once, no pop-up).", sideEffect: false },
   { name: "openB360Record", args: "(businessId)", description: "B360 Data: open one record of the open entity; its field groups show stacked below.", sideEffect: false },
   { name: "lookupMdmJob", args: "(instanceId)", description: "Read any B360 job instance by its full id (status, times, started by, counts, errors).", sideEffect: false },
 ];
 
 async function runJob(service: Service, jobId: string, apiName?: string): Promise<RunView> {
-  if (!window.confirm(`Allow the agent to start ${service.toUpperCase()} job ${jobId}?`)) {
-    throw new Error("Run not started: the person declined.");
-  }
   let run: RunView;
   if (service === "mdm") {
     run = await mdmApi.startRun(jobId);
@@ -115,12 +116,6 @@ async function runTaskflowByName(
   parameters: Record<string, string> = {},
   apiName?: string,
 ): Promise<TaskflowStartResult> {
-  const shown = Object.entries(parameters)
-    .map(([k, v]) => `${k}=${v}`)
-    .join(", ");
-  if (!window.confirm(`Allow the agent to start taskflow ${name} with ${shown || "no input fields"}?`)) {
-    throw new Error("Run not started: the person declined.");
-  }
   const started = await taskflowApi.runByName(name, apiName ?? null, parameters);
   // 0.9.1: stay on the Run tab; the run shows on top of the history. Open it with
   // openTaskflowSummary(runId) / openTaskflowLog(runId) (the history row links).
@@ -133,9 +128,6 @@ function currentSection(): SectionId {
 }
 
 async function terminateTaskflow(runId: string): Promise<TerminateResult> {
-  if (!window.confirm(`Allow the agent to TERMINATE taskflow run ${runId}?`)) {
-    throw new Error("Not terminated: the person declined.");
-  }
   return taskflowApi.terminate(runId);
 }
 
@@ -205,6 +197,9 @@ export const txmdm = {
     return b360Api.records(name, query);
   },
   getB360SourceSystems: (): Promise<SourceSystemList> => b360Api.sourceSystems(),
+  getB360Sources: (name: string, businessId: string): Promise<SourceRecordList> => b360Api.masterSources(name, businessId),
+  getB360SourceRecord: (name: string, sourceSystem: string, sourcePKey: string): Promise<SourceRecord> =>
+    b360Api.sourceRecord(name, sourceSystem, sourcePKey),
   generateB360Rows: (name: string, count = 5): Promise<GeneratedRows> => b360Api.generate(name, count),
   openB360Record,
   lookupMdmJob: (instanceId: string): Promise<MdmJobInstance> => mdmMonitorApi.lookup(instanceId),

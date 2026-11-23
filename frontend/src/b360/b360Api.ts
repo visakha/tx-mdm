@@ -18,9 +18,15 @@ import type {
   FormSchema,
   GeneratedRows,
   NewRecord,
+  NewGroupRows,
   RecordPage,
   SortOrder,
+  SourceRecord,
+  SourceRecordList,
   SourceSystemList,
+  SystemValue,
+  UpdateSourceRequest,
+  UpdateSourceResponse,
 } from "./api-types";
 
 export type { BusinessEntity, BusinessEntityList, EntityField, EntityRecord, RecordPage, SortOrder };
@@ -65,9 +71,33 @@ export const b360Api = {
     postJson<GeneratedRows>(`${base(name)}/records/generate`, { count, seed }),
   create: (name: string, request: CreateRequest): Promise<CreateResponse> =>
     postJson<CreateResponse>(`${base(name)}/records`, request),
+  // 0.9.10 source (xref) records. Only updateSource(dry_run=false) writes, on a person's Save.
+  sourceMetadata: (name: string): Promise<BusinessEntity> => getJson<BusinessEntity>(`${base(name)}/source-metadata`),
+  masterSources: (name: string, businessId: string): Promise<SourceRecordList> =>
+    getJson<SourceRecordList>(`${base(name)}/records/${encodeURIComponent(businessId)}/sources`),
+  sourceRecord: (name: string, sourceSystem: string, sourcePKey: string): Promise<SourceRecord> =>
+    getJson<SourceRecord>(sourceUrl(name, sourceSystem, sourcePKey)),
+  updateSource: (name: string, sourceSystem: string, sourcePKey: string, request: UpdateSourceRequest): Promise<UpdateSourceResponse> =>
+    postJson<UpdateSourceResponse>(`${sourceUrl(name, sourceSystem, sourcePKey)}/update`, request),
 };
 
-export type { CreateResponse, FormField, FormSchema, GeneratedRows, NewRecord, SourceSystemList };
+function sourceUrl(name: string, sourceSystem: string, sourcePKey: string): string {
+  return `${base(name)}/sources/${encodeURIComponent(sourceSystem)}/${encodeURIComponent(sourcePKey)}`;
+}
+
+export type {
+  CreateResponse,
+  FormField,
+  FormSchema,
+  GeneratedRows,
+  NewGroupRows,
+  NewRecord,
+  SourceRecord,
+  SourceRecordList,
+  SourceSystemList,
+  SystemValue,
+  UpdateSourceResponse,
+};
 
 export const MAX_ADD = 100;
 
@@ -200,4 +230,26 @@ export function lastUpdatedText(value: string | null | undefined): string {
   if (value === null || value === undefined || value === "") return "-";
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? value : d.toLocaleString();
+}
+
+/** 0.9.10: drop empty values in every group row, and rows left with nothing (and no _id). */
+export function cleanGroups(groups: readonly NewGroupRows[]): NewGroupRows[] {
+  return groups.map((g) => ({
+    group: g.group,
+    rows: g.rows
+      .map((r) => ({ row_id: r.row_id ?? null, values: cleanValues(r.values) }))
+      .filter((r) => r.row_id !== null || Object.keys(r.values).length > 0),
+  }));
+}
+
+/** One system value cell: a _meta date (ISO from the backend) as local time, else the text. */
+export function systemValueText(name: string, value: CellValue | undefined): string {
+  if (value === null || value === undefined || value === "") return "-";
+  if (typeof value === "string" && name.toLowerCase().endsWith("date")) return lastUpdatedText(value);
+  return String(value);
+}
+
+/** The value of one system column in a record (rows from the backend's system_values). */
+export function systemValue(values: readonly SystemValue[] | undefined, name: string): CellValue {
+  return values?.find((v) => v.name === name)?.value ?? null;
 }

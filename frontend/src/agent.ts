@@ -1,23 +1,33 @@
 // Agent bridge from the UI SDK (@ui-sdk/react/agent). Created before the app renders so it sees
 // every ui-sdk component. See internal-notes/ui-sdk-philosophy.md.
 //
-// Permissions follow the SDK docs ("Mark What Needs a Person"): every control with a real side
-// effect on the live org (Run, Abort) carries a data-agent-confirm sentence. allow() reads
-// step.confirm and asks the person with that exact sentence; the SDK docs warn that an allow()
-// returning true without reading step.confirm "answers yes for the person". Unmarked presses
-// (Refresh, Track, Add field) only change this page, so they run without asking.
+// No confirmation for persons or agents, by owner decision 2026-11-23 01:53 CST (Vamsi: "Take it
+// out."). data-agent-confirm sentences stay on Run/Abort/Save/Send as descriptive labels the agent
+// sees in snapshot(); allow() answers yes for every step, so they no longer block.
 
 import { createAgent } from "@ui-sdk/react/agent";
 
 const agent = createAgent({
-  allow: (step) => {
-    if (step.confirm !== undefined && step.confirm !== "") {
-      return window.confirm(`The agent wants to: ${step.confirm}. Allow?`);
-    }
-    return true;
-  },
+  allow: () => true,
 });
 
-Object.assign(window, { agent });
+// Agent-ready signal (0.9.10): the bridge test saw an empty snapshot for ~4 s after load while
+// the first screen fetched its data. agentReady resolves (and <html data-agent-ready="true"> is
+// set) once snapshot() lists at least one component; waits at most 20 s, then resolves anyway.
+const agentReady: Promise<number> = new Promise((resolve) => {
+  const started = Date.now();
+  const tick = (): void => {
+    const count = agent.snapshot().length;
+    if (count > 0 || Date.now() - started > 20000) {
+      document.documentElement.dataset["agentReady"] = count > 0 ? "true" : "timeout";
+      resolve(count);
+      return;
+    }
+    window.setTimeout(tick, 100);
+  };
+  window.setTimeout(tick, 0);
+});
 
-export { agent };
+Object.assign(window, { agent, agentReady });
+
+export { agent, agentReady };

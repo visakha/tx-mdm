@@ -13,7 +13,8 @@ describe("Taskflows tab (fake IDMC)", () => {
     cy.get('[data-testid="tf-history-refresh"]').should("contain", "every 15 s");
     cy.get('[data-testid="tf-run-view"]').should("not.exist");
     cy.get('[data-testid="run-progress"]').should("not.exist");
-    cy.on("window:confirm", (text) => { expect(text).to.contain("jobInstanceId=ABC123"); return true; });
+    // 0.9.10: no pop-up (owner decision 2026-11-23 01:53 CST); fail if one ever appears.
+    cy.on("window:confirm", () => { throw new Error("unexpected pop-up"); });
     cy.get('[data-testid="tf-run"]').click();
     // stays on Run; the accepted run is on top of the history at once, marked running
     cy.get('[data-testid="ribbon-tab-run"]').should("have.attr", "aria-selected", "true");
@@ -76,13 +77,13 @@ describe("Taskflows tab (fake IDMC)", () => {
 });
 
 describe("Abort a running taskflow (fake IDMC)", () => {
-  it("shows Abort only while running, confirms, then the run goes final", () => {
+  it("shows Abort only while running, no pop-up, then the run goes final", () => {
     cy.visit("/taskflows/runs/900000000000000003");
     cy.get('[data-testid="tf-status"]').should("contain", "RUNNING");
     cy.get('[data-testid="run-progress"]').should("have.attr", "data-final", "false");
     cy.get('[data-testid="poll-clock"]').should("have.attr", "data-final", "false");
     cy.screenshot("taskflow-running-progress");
-    cy.on("window:confirm", (text) => { expect(text).to.contain("900000000000000003"); return true; });
+    cy.on("window:confirm", () => { throw new Error("unexpected pop-up"); });
     cy.get('[data-testid="tf-abort"]').should("be.visible").click();
     cy.get('[data-testid="tf-abort-note"]').should("contain", "accepted");
     cy.get('[data-testid="tf-run-view"]', { timeout: 30000 }).should("have.attr", "data-status", "FAILED");
