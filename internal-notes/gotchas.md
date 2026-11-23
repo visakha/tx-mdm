@@ -95,3 +95,11 @@ this; `app/main.py` forces stdout/stderr to ASCII with backslash escapes at runt
   "ABC123"}` (shape per Informatica KB curl example; not yet verified live with this field).
 - Backend: `POST /api/cdi/taskflows/{name}/run` body `{"parameters": {"jobInstanceId": ...}}`;
   `POST /api/cdi/runs` takes the same `parameters`. UI prefills jobInstanceId = ABC123.
+
+## Terminating (aborting) a taskflow run (2026-11-22)
+- `PUT {pod}/active-bpel/services/tf/terminate`, header INFA-SESSION-ID, body
+  `{"runid": ["<run id>", ...]}` (max 200). 204 No Content = accepted; 500 = some id is invalid
+  or no longer active. Source: Informatica KB 000216333 (method + path only in its screenshots;
+  a community post confirms PUT /active-bpel/services/tf/terminate). Not yet called live.
+- Backend: `POST /api/cdi/taskflows/runs/{run_id}/terminate` (optional `{"run_ids": [...]}`).
+  IDMC 500 -> our 502 with the text; never retried. UI: "Abort run" while RUNNING, with confirm.

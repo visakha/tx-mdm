@@ -13,6 +13,7 @@ import {
   taskflowApi,
   type TaskflowRunStatus,
   type TaskflowStartResult,
+  type TerminateResult,
 } from "./cdi/taskflowApi";
 import { mdmApi, type MdmJob } from "./mdm/mdmApi";
 import { getJson } from "./shared/api";
@@ -58,6 +59,7 @@ export const ACTIONS: readonly ActionInfo[] = [
   { name: "runTaskflowByName", args: "(name, parameters = { jobInstanceId: 'ABC123' }, apiName?)", description: "Start an advanced taskflow by name with its input fields, after a person confirms; opens /taskflows/runs/:runId. Never retries.", sideEffect: true },
   { name: "trackTaskflowRun", args: "(runId)", description: "Show one taskflow run by IDMC run id (/taskflows/runs/:runId).", sideEffect: false },
   { name: "getTaskflowRun", args: "(runId)", description: "Read a taskflow run by IDMC run id: status, times, per-child rows and errors, totals.", sideEffect: false },
+  { name: "terminateTaskflow", args: "(runId)", description: "Terminate (abort) a running taskflow by IDMC run id, after a person confirms. Never retried.", sideEffect: true },
   { name: "getTaskflowSessionLog", args: "(runId, childTask?)", description: "Plain-text session log of one child task of a taskflow run.", sideEffect: false },
   { name: "getMonitor", args: "(onlyMyTasks = true, rowLimit = 50)", description: "Read running CDI jobs (elapsed minutes) + recent history (status, rows, errors, taskflow steps).", sideEffect: false },
 ];
@@ -103,6 +105,13 @@ function currentSection(): SectionId {
   return sectionOf(currentRoute(), null);
 }
 
+async function terminateTaskflow(runId: string): Promise<TerminateResult> {
+  if (!window.confirm(`Allow the agent to TERMINATE taskflow run ${runId}?`)) {
+    throw new Error("Not terminated: the person declined.");
+  }
+  return taskflowApi.terminate(runId);
+}
+
 export const txmdm = {
   describe: (): readonly ActionInfo[] => ACTIONS,
   layout: (): {
@@ -143,6 +152,7 @@ export const txmdm = {
   runTaskflowByName,
   trackTaskflowRun: (runId: string): void =>
     navigate({ screen: "taskflows", service: "cdi", runId }),
+  terminateTaskflow,
   getTaskflowRun: (runId: string): Promise<TaskflowRunStatus> => taskflowApi.status(runId),
   getTaskflowSessionLog: (runId: string, childTask?: string): Promise<string> =>
     taskflowApi.sessionLog(runId, childTask ?? null),

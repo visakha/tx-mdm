@@ -103,6 +103,7 @@ cd frontend && npm run typecheck && npm test && npm run lint && npm run build
 | POST | `/api/cdi/taskflows/{name}/run` | Start an advanced taskflow BY NAME; body `{"parameters": {"jobInstanceId": "ABC123"}, "api_name": null}` (both optional). Returns IDMC's `run_id` |
 | GET | `/api/cdi/taskflows/runs/{run_id}?details=true` | Status + summary of ANY taskflow run by IDMC run id (works after a restart). Read-only |
 | GET | `/api/cdi/taskflows/runs/{run_id}/session-log?subtask=<child task>` | Session log of one child task, plain text. Read-only |
+| POST | `/api/cdi/taskflows/runs/{run_id}/terminate` | Abort a running taskflow (IDMC `PUT /active-bpel/services/tf/terminate {"runid": [...]}`, 204 = accepted). Optional `{"run_ids": [...]}`, max 200. SIDE EFFECT |
 | GET | `/api/mdm/jobs` | MDM job definitions (v3 objects) + resolved internal id / kind |
 | POST | `/api/mdm/runs` | Start one MDM job `{asset_id}` |
 | GET | `/api/mdm/runs/{run_key}` | Refresh and return the run |
@@ -164,6 +165,10 @@ curl.exe -s "http://127.0.0.1:8000/api/cdi/taskflows/runs/1309380263289049088"
 #       "success_rows":0,"error_rows":0,"rows":{"source_success":...},"error":"[FATAL] ...",
 #       "log_entry_id":"..."}],"totals":{...},"notes":[]}
 
+# abort a running taskflow (stops the LIVE run)
+Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/cdi/taskflows/runs/1309386379683184640/terminate"
+# -> {"run_ids":["1309386379683184640"],"terminated":true,"note":"IDMC accepted the terminate (204). ..."}
+
 # session log of one child task (plain text, read-only)
 curl.exe -s "http://127.0.0.1:8000/api/cdi/taskflows/runs/1309380263289049088/session-log?subtask=mt_m_MDM_ZLV_TTF_Guest_Basic"
 ```
@@ -220,6 +225,7 @@ the Allowed Users hint; already running from this backend -> 409. Starts are nev
 | `runTaskflowByName(name, parameters = {jobInstanceId: "ABC123"}, apiName?)` | Start a taskflow by name after a person confirms; opens `/taskflows/runs/<runId>` |
 | `trackTaskflowRun(runId)` / `getTaskflowRun(runId)` | Show / read a taskflow run by IDMC run id |
 | `getTaskflowSessionLog(runId, childTask?)` | Plain-text session log of one child task |
+| `terminateTaskflow(runId)` | Abort a running taskflow after a person confirms |
 | `currentRoute()` / `describe()` | Where am I / what can I call |
 
 The UI SDK agent bridge (`src/agent.ts`) is registered too; its allow-callback asks before any

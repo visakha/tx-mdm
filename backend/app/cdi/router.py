@@ -12,8 +12,15 @@ from app.cdi.service import (
     SessionLogNotFoundError,
     TaskflowNotFoundError,
     TaskflowStartError,
+    TerminateError,
 )
-from app.cdi.taskflow_runs import TaskflowRunRequest, TaskflowRunStatus, TaskflowStartResult
+from app.cdi.taskflow_runs import (
+    TaskflowRunRequest,
+    TaskflowRunStatus,
+    TaskflowStartResult,
+    TerminateRequest,
+    TerminateResult,
+)
 from app.common.runs import RunView
 from app.dependencies import get_cdi_service
 
@@ -139,3 +146,25 @@ def taskflow_session_log(run_id: str, service: Service, subtask: str | None = No
     except SessionLogNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return f"# session log: {name} (taskflow run {run_id})\n{text}"
+
+
+@router.post(
+    "/taskflows/runs/{run_id}/terminate",
+    operation_id="cdi_terminate_taskflow",
+    summary="Terminate (abort) a taskflow run by IDMC run id",
+    description='Calls PUT {pod}/active-bpel/services/tf/terminate {"runid": [...]}. Optional '
+    'body {"run_ids": [...]} adds more ids to the same call (max 200). 204 from IDMC -> '
+    "terminated=true. A 500 from IDMC (invalid / not active id) is returned as 502 with its text. "
+    "Never retried. SIDE EFFECT: stops a live run.",
+)
+def terminate_taskflow(
+    run_id: str, service: Service, request: TerminateRequest | None = None
+) -> TerminateResult:
+    extra = request.run_ids if request else []
+    try:
+        return service.terminate_taskflows([run_id, *extra])
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except TerminateError as exc:
+        code = exc.status_code if 400 <= exc.status_code < 500 else 502
+        raise HTTPException(status_code=code, detail=str(exc)) from exc

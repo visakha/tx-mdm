@@ -3,6 +3,7 @@
 import time
 
 from app.cdi.client import CdiClient
+from app.cdi.endpoints import TERMINATE_MAX_IDS
 from app.cdi.models import CdiRunHandle, CdiRunRequest, CdiTask, CdiTaskType
 from app.cdi.monitor import (
     MonitorEntry,
@@ -15,6 +16,7 @@ from app.cdi.taskflow_runs import (
     SubtaskRun,
     TaskflowRunStatus,
     TaskflowStartResult,
+    TerminateResult,
     find_log_entry,
     log_text,
     status_from_body,
@@ -34,6 +36,14 @@ class TaskflowNotFoundError(Exception):
 
 class TaskflowStartError(Exception):
     """IDMC refused the start call. status_code is IDMC's (e.g. 403)."""
+
+    def __init__(self, status_code: int, message: str) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+
+
+class TerminateError(Exception):
+    """IDMC refused the terminate call (500 = a run id is not valid / not running)."""
 
     def __init__(self, status_code: int, message: str) -> None:
         super().__init__(message)
@@ -212,6 +222,38 @@ class CdiService:
             self._final_status[run_id] = status
             self._close_registry_run(status)
         return status
+
+    def terminate_taskflows(self, run_ids: list[str]) -> TerminateResult:
+        """Abort taskflow runs by IDMC run id. One call, never retried."""
+        ids = list(dict.fromkeys(i.strip() for i in run_ids if i.strip()))
+        if not ids:
+            raise ValueError("No run id given.")
+        if len(ids) > TERMINATE_MAX_IDS:
+            raise ValueError(f"At most {TERMINATE_MAX_IDS} run ids per call (got {len(ids)}).")
+        try:
+            self._client.terminate_taskflows(ids)
+        except IdmcRateLimitedError:
+            raise
+        except IdmcError as exc:
+            hint = (
+                " IDMC answers 500 when a run id is not valid or the run is no longer active."
+                if exc.status_code == 500
+                else ""
+            )
+            raise TerminateError(exc.status_code, f"Terminate refused: {exc}{hint}") from exc
+        for run_id in ids:
+            self._final_status.pop(run_id, None)
+            for run_key, handle in self._handles.items():
+                if handle.run_id != run_id:
+                    continue
+                run = self._registry.get(run_key)
+                if not run.status.is_terminal:
+                    self._registry.update_status(run, RunStatus.STOPPED, "Terminated via API")
+        return TerminateResult(
+            run_ids=ids,
+            terminated=True,
+            note="IDMC accepted the terminate (204). Poll the status to see it go final.",
+        )
 
     def _close_registry_run(self, status: TaskflowRunStatus) -> None:
         """A run started here stays 'active' (409 on a second start) until it is seen final."""

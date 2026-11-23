@@ -58,3 +58,9 @@ Do it only with Vamsi's go-ahead and his credentials in `backend/.env`:
    search).
 2. Record the date, the call and the response shape, with ids redacted, in this file.
 3. If the fact changes behaviour, write a change proposal under `changes/`.
+
+## Taskflow terminate (2026-11-22)
+- DOC (KB 000216333): body {"runid": [...]}, INFA-SESSION-ID or Basic auth, 204 success, max 200
+  ids, 500 if any id is invalid. https://knowledge.informatica.com/s/article/000216333?language=en_US
+- COMMUNITY: method/path PUT /active-bpel/services/tf/terminate (pod host, same as tf status).
+- UNVERIFIED live: what status the run shows after terminate (FAILED vs STOPPED/SUSPENDED).

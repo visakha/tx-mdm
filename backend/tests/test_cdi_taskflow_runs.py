@@ -212,3 +212,42 @@ def test_live_suspended_shape_no_end_time_and_json_error():
     status = status_from_body(RUN, body, NOW)
     assert status.ended_at is not None and status.elapsed_minutes == 1.4
     assert status.error == "[FATAL] Invalid/Default JobInstanceId is passed as runtime parameter"
+
+
+def test_terminate_sends_runid_list_and_closes_local_run(
+    idmc: respx.MockRouter, idmc_http: IdmcHttp
+):
+    idmc.get(f"{PLATFORM}/public/core/v3/objects").respond(
+        200, json={"objects": [{"id": "FED9", "path": "ZL_Vamsi/tf_MDM_ZLV_TTF_Guest_Basic"}]}
+    )
+    idmc.post(f"{POD}/active-bpel/rt/tf_MDM_ZLV_TTF_Guest_Basic").respond(200, json={"RunId": RUN})
+    put = idmc.put(f"{POD}/active-bpel/services/tf/terminate").respond(204)
+    client = _app(idmc_http)
+    url = "/api/cdi/taskflows/tf_MDM_ZLV_TTF_Guest_Basic/run"
+    assert client.post(url).status_code == 200
+    response = client.post(f"/api/cdi/taskflows/runs/{RUN}/terminate")
+    assert response.status_code == 200
+    assert response.json()["terminated"] is True
+    assert json.loads(put.calls.last.request.content) == {"runid": [RUN]}
+    assert put.calls.last.request.headers["INFA-SESSION-ID"]
+    assert client.post(url).status_code == 200  # local run closed -> no 409
+
+
+def test_terminate_invalid_id_500_is_502_with_text(idmc: respx.MockRouter, idmc_http: IdmcHttp):
+    idmc.put(f"{POD}/active-bpel/services/tf/terminate").respond(
+        500, json={"error": "Invalid run id"}
+    )
+    response = _app(idmc_http).post("/api/cdi/taskflows/runs/123/terminate")
+    assert response.status_code == 502
+    assert "not valid" in response.json()["detail"]
+
+
+def test_terminate_more_than_200_ids_is_400(idmc_http: IdmcHttp):
+    extra = [str(i) for i in range(1000, 1200)]
+    response = _app(idmc_http).post("/api/cdi/taskflows/runs/1/terminate", json={"run_ids": extra})
+    assert response.status_code == 400
+
+
+def test_terminate_429_is_hard_stop(idmc: respx.MockRouter, idmc_http: IdmcHttp):
+    idmc.put(f"{POD}/active-bpel/services/tf/terminate").respond(429)
+    assert _app(idmc_http).post("/api/cdi/taskflows/runs/1/terminate").status_code == 429

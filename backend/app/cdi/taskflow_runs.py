@@ -314,3 +314,15 @@ def log_text(content_type: str, content: bytes) -> str:
                 parts.append(f"===== {member} =====\n{text}")
         return "\n".join(parts)
     return content.decode("utf-8", errors="replace")
+
+
+class TerminateRequest(BaseModel):
+    run_ids: list[str] = Field(
+        default_factory=list, description="Extra run ids to terminate in the same call (max 200)."
+    )
+
+
+class TerminateResult(BaseModel):
+    run_ids: list[str]
+    terminated: bool
+    note: str = ""

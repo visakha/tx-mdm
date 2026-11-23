@@ -7,6 +7,7 @@ Jobs finish SUCCESS on the second status check.
 Advanced taskflow tf_demo_advanced (POST /active-bpel/rt/tf_demo_advanced) returns runId
 900000000000000001: RUNNING on the first status check, SUCCESS with two child tasks after.
 Run id 900000000000000002 is a SUSPENDED run with a failed child (a real failure shape).
+Run id 900000000000000003 stays RUNNING until PUT /active-bpel/services/tf/terminate.
 Session logs: /saas/api/v2/activity/activityLog/<id>/sessionLog.
 The Monitor tab calls (activityMonitor?details=true, activityLog?rowLimit=N) get a fixed
 demo set: one running taskflow with two child steps, plus a few finished runs.
@@ -15,8 +16,8 @@ demo set: one running taskflow with two child steps, plus a few finished runs.
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from fastapi import FastAPI
-from fastapi.responses import PlainTextResponse
+from fastapi import Body, FastAPI, Response
+from fastapi.responses import JSONResponse, PlainTextResponse
 
 app = FastAPI(title="fake IDMC")
 _checks: dict[str, int] = {}
@@ -201,6 +202,7 @@ def read_instance(instance_id: str) -> dict[str, Any]:
 
 TF_OK = "900000000000000001"
 TF_BAD = "900000000000000002"
+TF_LONG = "900000000000000003"  # RUNNING until terminated, then FAILED
 
 
 @app.post("/active-bpel/rt/{api_name}")
@@ -242,6 +244,17 @@ def taskflow_status(run_id: str, subtaskDetails: str = "No") -> dict[str, Any]: 
         "startedBy": "VVamsi-idmcdev",
         "updateTime": _ago(4),
     }
+    if run_id == TF_LONG and run_id not in TERMINATED:
+        return base | {"status": "RUNNING", "subtasks": 1, "subtaskDetails": {"details": {}}}
+    if run_id == TF_LONG:
+        error = "Taskflow terminated by user"
+        tasks = [_child("mt_demo_load", "14", "STOPPED", 10, 0, error)]
+        return base | {
+            "status": "FAILED",
+            "errorMessage": error,
+            "subtasks": 1,
+            "subtaskDetails": {"details": {"tasks": tasks}},
+        }
     if run_id == TF_OK and _bump(run_id) == 1:
         return base | {"status": "RUNNING", "subtasks": 2, "subtaskDetails": {"details": {}}}
     if run_id == TF_OK:
@@ -306,3 +319,16 @@ def session_log(log_id: str) -> str:
         "READER_1_1_1> Reading rows from source...\n"
         "WRITER_1_*_1> Committed 1200 rows, rejected 3.\n"
     )
+
+
+TERMINATED: set[str] = set()
+
+
+@app.put("/active-bpel/services/tf/terminate", response_model=None)
+def terminate(body: dict[str, Any] = Body(...)) -> Response:  # noqa: B008
+    ids = [str(i) for i in body.get("runid", [])]
+    known = {TF_OK, TF_BAD, TF_LONG}
+    if not ids or any(i not in known for i in ids):
+        return JSONResponse({"error": "Invalid run id(s): " + ", ".join(ids)}, status_code=500)
+    TERMINATED.update(ids)
+    return Response(status_code=204)

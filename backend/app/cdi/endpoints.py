@@ -12,6 +12,10 @@ SESSION_LOG = "/api/v2/activity/activityLog/{log_id}/sessionLog"
 # Advanced taskflows, relative to the pod host (baseApiUrl without /saas)
 TASKFLOW_RUN = "/active-bpel/rt/{api_name}"
 TASKFLOW_STATUS = "/active-bpel/services/tf/status/{run_id}"
+# PUT, body {"runid": [...]} (max 200), 204 = terminated, 500 = an invalid id.
+# Source: Informatica KB 000216333 "HOW TO: Stop/Terminate Advanced Task flows using API".
+TASKFLOW_TERMINATE = "/active-bpel/services/tf/terminate"
+TERMINATE_MAX_IDS = 200
 
 V3_HEADERS = ("INFA-SESSION-ID",)
 V2_HEADERS = ("icSessionId",)

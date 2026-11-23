@@ -91,6 +91,12 @@ export function paramsOf(rows: readonly ParamRow[]): Record<string, string> {
   return out;
 }
 
+export interface TerminateResult {
+  run_ids: string[];
+  terminated: boolean;
+  note: string;
+}
+
 const enc = encodeURIComponent;
 
 export const taskflowApi = {
@@ -105,6 +111,8 @@ export const taskflowApi = {
     }),
   status: (runId: string): Promise<TaskflowRunStatus> =>
     getJson<TaskflowRunStatus>(`/api/cdi/taskflows/runs/${enc(runId)}`),
+  terminate: (runId: string): Promise<TerminateResult> =>
+    postJson<TerminateResult>(`/api/cdi/taskflows/runs/${enc(runId)}/terminate`, { run_ids: [] }),
   sessionLog: (runId: string, subtask: string | null): Promise<string> =>
     getText(
       `/api/cdi/taskflows/runs/${enc(runId)}/session-log` +

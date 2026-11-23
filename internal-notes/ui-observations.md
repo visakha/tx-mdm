@@ -59,6 +59,11 @@ fake IDMC (backend/dev/fake_idmc.py). Not yet observed against the live org - se
 - **Read the summary:** Summary tab: status badge (`tf-status`, e.g. "STOPPED (SUSPENDED)"),
   started / running-for (ticks every second while running) / ended, error line, child table
   (`tf-child-<name>`), totals row once final.
+- **Abort a running taskflow:** while the tracked run is RUNNING an "Abort run" button
+  (`tf-abort`) shows under the run id > confirm ("Terminate (abort) taskflow run <id>?") > note
+  `tf-abort-note` "IDMC accepted the terminate (204)..." > next poll (<= 10 s) shows it final;
+  the button disappears. Agent: `txmdm.terminateTaskflow(runId)` (asks a person first).
+  Observed with the fake (run 900000000000000003 -> FAILED). Not yet observed live.
 - **Session log:** Session log tab > "Session log" button on a child row (`tf-log-<name>`,
   disabled when no activity-log row matched) > text in `tf-log-viewer`.
 - **Run a CDI task / MDM job:** Tasks (or All jobs / Ingress / Egress) > pick > Run. The app

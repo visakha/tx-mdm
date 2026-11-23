@@ -143,6 +143,20 @@ class CdiClient:
 
     # ---- taskflow runs by run id (read-only) -------------------------------------------------
 
+    def terminate_taskflows(self, run_ids: list[str]) -> None:
+        """Terminate (abort) advanced taskflow runs. IDMC answers 204 No Content on success.
+
+        Doc-verified (KB 000216333): body {"runid": [...]}, INFA-SESSION-ID header, 204 on
+        success, max 200 ids, 500 if any id is invalid. Method PUT and the path are shown only
+        in the KB screenshots; a community post confirms "PUT /active-bpel/services/tf/terminate".
+        """
+        self._http.request(
+            "PUT",
+            self.pod_url() + ep.TASKFLOW_TERMINATE,
+            ep.V3_HEADERS,
+            json={"runid": run_ids},
+        )
+
     def taskflow_status(self, run_id: str) -> dict[str, Any]:
         """Raw tf status body for one run, with subtask details.
 

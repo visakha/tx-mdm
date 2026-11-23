@@ -97,6 +97,7 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
     setStopped(false);
     setLogFor(null);
     setLogText("");
+    setAbortNote(null);
   }, [runId]);
 
   useEffect(() => {
@@ -145,6 +146,23 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
     },
     [runId],
   );
+
+  const [aborting, setAborting] = useState<boolean>(false);
+  const [abortNote, setAbortNote] = useState<string | null>(null);
+  const abortRun = useCallback((): void => {
+    if (runId === null) return;
+    if (!window.confirm(`Terminate (abort) taskflow run ${runId}? This stops the live run.`)) return;
+    setAborting(true);
+    setAbortNote(null);
+    taskflowApi
+      .terminate(runId)
+      .then((result) => {
+        setAbortNote(result.note);
+        setStopped(false);
+      })
+      .catch((err: unknown) => setAbortNote(`Abort failed: ${errorText(err)}`))
+      .finally(() => setAborting(false));
+  }, [runId]);
 
   const pastedId = useMemo(() => cleanRunId(pasted), [pasted]);
 
@@ -256,6 +274,21 @@ export function TaskflowsPanel({ route, go, active }: Props): React.JSX.Element 
                 {statusLabel(status)}
               </span>
             </p>
+            {running && (
+              <Button
+                aria-label={`Abort taskflow run ${status.run_id}`}
+                data-testid="tf-abort"
+                disabled={aborting}
+                onClick={abortRun}
+              >
+                {aborting ? "Aborting..." : "Abort run"}
+              </Button>
+            )}
+            {abortNote !== null && (
+              <p className="muted" data-testid="tf-abort-note">
+                {abortNote}
+              </p>
+            )}
             <p data-testid="tf-times">
               Started {fmt(status.started_at)}
               {running

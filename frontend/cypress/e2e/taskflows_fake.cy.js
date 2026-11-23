@@ -33,3 +33,16 @@ describe("Taskflows tab (fake IDMC)", () => {
     }).then((s) => expect(s.state_text).to.eq("SUSPENDED"));
   });
 });
+
+describe("Abort a running taskflow (fake IDMC)", () => {
+  it("shows Abort only while running, confirms, then the run goes final", () => {
+    cy.visit("/taskflows/runs/900000000000000003");
+    cy.get('[data-testid="tf-status"]').should("contain", "RUNNING");
+    cy.on("window:confirm", (text) => { expect(text).to.contain("900000000000000003"); return true; });
+    cy.get('[data-testid="tf-abort"]').should("be.visible").click();
+    cy.get('[data-testid="tf-abort-note"]').should("contain", "accepted");
+    cy.get('[data-testid="tf-run-view"]', { timeout: 30000 }).should("have.attr", "data-status", "FAILED");
+    cy.get('[data-testid="tf-abort"]').should("not.exist");
+    cy.screenshot("abort-done");
+  });
+});
