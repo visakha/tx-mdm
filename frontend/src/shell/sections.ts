@@ -133,10 +133,10 @@ export const RIBBON: Record<SectionId, readonly RibbonTab[]> = {
   ],
   "b360-data": [
     // 0.9.10: (M) = master / golden records, (S) = source (xref) records. Adds are always source.
+    // 0.9.12.3 (Vamsi 02:45 CST): ONE Metadata tab with a Master | Source sub-tab strip below it.
     { id: "records", label: "Records (M)" },
-    { id: "metadata", label: "Metadata (M)" },
     { id: "sources", label: "Records (S)" },
-    { id: "source-metadata", label: "Metadata (S)" },
+    { id: "metadata", label: "Metadata" },
     { id: "add", label: "Add records (S)" },
     { id: "edit", label: "Edit records (S)" },
     // 0.9.12: merge master records, per-field winners applied on the survivor.
@@ -161,8 +161,73 @@ export function ribbonTab(section: SectionId): string {
   return selected[section] ?? RIBBON[section][0]?.id ?? "";
 }
 
-/** Select a ribbon tab. Unknown tab ids are rejected so the agent gets a clear error. */
+// ---- second-level tabs (0.9.12.3: Metadata -> Master | Source) ----
+
+export type SubTabId = "master" | "source";
+
+export interface SubTab {
+  readonly id: SubTabId;
+  readonly label: string;
+}
+
+/** Tabs that carry a second-level strip directly beneath them. First entry is the default. */
+export const SUB_TABS: Partial<Record<SectionId, Readonly<Record<string, readonly SubTab[]>>>> = {
+  "b360-data": {
+    metadata: [
+      { id: "master", label: "Master" },
+      { id: "source", label: "Source" },
+    ],
+  },
+};
+
+/** Old tab ids that now live under a parent tab + sub-tab. Kept so old links / agent calls work. */
+interface TabAlias {
+  readonly tab: string;
+  readonly sub: SubTabId;
+}
+
+const TAB_ALIASES: Partial<Record<SectionId, Readonly<Record<string, TabAlias>>>> = {
+  "b360-data": {
+    "source-metadata": { tab: "metadata", sub: "source" },
+    "metadata-master": { tab: "metadata", sub: "master" },
+    "metadata-source": { tab: "metadata", sub: "source" },
+  },
+};
+
+let selectedSub: Partial<Record<SectionId, SubTabId>> = {};
+
+export function subTabs(section: SectionId, tab: string): readonly SubTab[] {
+  return SUB_TABS[section]?.[tab] ?? [];
+}
+
+export function subTab(section: SectionId): SubTabId {
+  return selectedSub[section] ?? subTabs(section, ribbonTab(section))[0]?.id ?? "master";
+}
+
+export function selectSubTab(section: SectionId, sub: SubTabId): void {
+  if (!subTabs(section, ribbonTab(section)).some((t) => t.id === sub)) {
+    throw new Error(`Tab ${ribbonTab(section)} in ${section} has no sub-tab ${sub}`);
+  }
+  selectedSub = { ...selectedSub, [section]: sub };
+  for (const listener of listeners) listener();
+}
+
+export function useSubTab(section: SectionId): SubTabId {
+  return useSyncExternalStore(subscribe, () => subTab(section));
+}
+
+/** Select a ribbon tab. Unknown tab ids are rejected so the agent gets a clear error. Old ids
+ * (Metadata (M) / (S) = "metadata" / "source-metadata") redirect to Metadata + its sub-tab. */
 export function selectRibbonTab(section: SectionId, tab: string): void {
+  const alias = TAB_ALIASES[section]?.[tab];
+  if (alias !== undefined) {
+    selected = { ...selected, [section]: alias.tab };
+    selectedSub = { ...selectedSub, [section]: alias.sub };
+    for (const listener of listeners) listener();
+    return;
+  }
+  const subs = subTabs(section, tab);
+  if (subs.length > 0 && subs[0] !== undefined) selectedSub = { ...selectedSub, [section]: subs[0].id };
   if (!RIBBON[section].some((t) => t.id === tab)) {
     const known = RIBBON[section].map((t) => t.id).join(", ");
     throw new Error(`No ribbon tab ${tab} in ${section}. Tabs: ${known}`);

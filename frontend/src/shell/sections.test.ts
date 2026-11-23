@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matchSections, ribbonTab, sectionOf, selectRibbonTab } from "./sections";
+import { matchSections, ribbonTab, sectionOf, selectRibbonTab, selectSubTab, subTab } from "./sections";
 
 describe("OneNote shell model", () => {
   it("maps every route to its left-pane section", () => {
@@ -27,4 +27,20 @@ describe("OneNote shell model", () => {
     expect(ribbonTab("cdi-taskflows")).toBe("summary");
     expect(() => selectRibbonTab("cdi-taskflows", "nope")).toThrow(/Tabs: run, summary, log/);
   });
+
+  it("0.9.12.3: one Metadata tab with Master | Source; old ids redirect", () => {
+    selectRibbonTab("b360-data", "metadata");
+    expect(ribbonTab("b360-data")).toBe("metadata");
+    expect(subTab("b360-data")).toBe("master");
+    selectSubTab("b360-data", "source");
+    expect(subTab("b360-data")).toBe("source");
+    selectRibbonTab("b360-data", "records");
+    selectRibbonTab("b360-data", "source-metadata");
+    expect(ribbonTab("b360-data")).toBe("metadata");
+    expect(subTab("b360-data")).toBe("source");
+    selectRibbonTab("b360-data", "metadata-master");
+    expect(subTab("b360-data")).toBe("master");
+    expect(() => selectRibbonTab("b360-data", "nope")).toThrow(/Tabs: records, sources, metadata/);
+  });
 });
+

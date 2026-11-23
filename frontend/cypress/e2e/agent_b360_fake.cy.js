@@ -85,7 +85,7 @@ describe("Agent drives B360 Data via window.agent (fake IDMC)", () => {
     });
     cy.get('[data-testid="b360-filters-applied"]').should("contain", "Anna");
 
-    // 4. Metadata (M) via the ribbon Tabs.
+    // 4. Metadata > Master (default sub-tab) via the ribbon Tabs.
     cy.window().then(async (win) => {
       snap(win, "Records (M) filtered");
       await act(win, "Section tabs", "setValue", ["metadata"]);

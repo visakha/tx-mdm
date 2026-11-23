@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@ui-sdk/react/button";
+import { Checkbox, CheckboxIndicator } from "@ui-sdk/react/checkbox";
 import { Input } from "@ui-sdk/react/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@ui-sdk/react/select";
 import { errorText } from "../shared/api";
@@ -27,7 +28,7 @@ import {
   systemValue,
   systemValueText,
   type CellValue,
-  type SourceRecordList,
+  type SourceRecordPage,
   type UpdateSourceResponse,
 } from "./b360Api";
 import { FieldInput, GroupRowsEditor } from "./GroupRowsEditor";
@@ -219,29 +220,71 @@ function SourceDetail({
 }
 
 /** Records (S): the sources of the picked master record, plus a sourceSystem + sourcePKey lookup. */
+/** 0.9.12.3: one checkbox per [sources] allowed system (b360_entities.toml). Multi-select. */
+export function SourceSystemPicker({
+  allowed,
+  picked,
+  onChange,
+  testId,
+}: {
+  allowed: readonly string[];
+  picked: readonly string[];
+  onChange: (next: string[]) => void;
+  testId: string;
+}): React.JSX.Element {
+  return (
+    <div className="toolbar source-system-picker" role="group" aria-label="Source systems" data-testid={testId}>
+      <span className="muted small">Source systems:</span>
+      {allowed.map((sys) => (
+        <label key={sys} className="check-label">
+          <Checkbox
+            aria-label={`Source system ${sys}`}
+            data-testid={`${testId}-${sys}`}
+            checked={picked.includes(sys)}
+            onCheckedChange={(c) => onChange(c === true ? [...picked, sys] : picked.filter((p) => p !== sys))}
+          >
+            <CheckboxIndicator aria-hidden="true">x</CheckboxIndicator>
+          </Checkbox>
+          <code>{sys}</code>
+        </label>
+      ))}
+      {allowed.length === 0 && <span className="muted small">No [sources] allowed in b360_entities.toml.</span>}
+    </div>
+  );
+}
+
+/** Records (S), source-specific (0.9.12.3): only source records of the ticked systems, flat. */
 export function SourceRecordsView({
   entity,
-  businessId,
+  systems,
   onEdit,
 }: {
   entity: BusinessEntity;
-  businessId: string | null;
+  systems: readonly string[];
   onEdit: (pick: SourceKeyPick) => void;
 }): React.JSX.Element {
-  const [list, setList] = useState<SourceRecordList | null>(null);
+  const [list, setList] = useState<SourceRecordPage | null>(null);
   const [looked, setLooked] = useState<SourceRecord | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
+  const [pageNo, setPageNo] = useState<number>(1);
   const [error, setError] = useState<string>("");
   const [busy, setBusy] = useState<boolean>(false);
 
   useEffect(() => {
-    if (businessId === null) return;
+    setPageNo(1);
+  }, [entity.name, systems]);
+
+  useEffect(() => {
+    if (systems.length === 0) {
+      setList(null);
+      return;
+    }
     let live = true;
     setBusy(true);
     setError("");
     setLooked(null);
     b360Api
-      .masterSources(entity.name, businessId)
+      .sourceRecordsBySystem(entity.name, systems, pageNo)
       .then((l) => {
         if (!live) return;
         setList(l);
@@ -252,7 +295,7 @@ export function SourceRecordsView({
     return () => {
       live = false;
     };
-  }, [entity.name, businessId]);
+  }, [entity.name, systems, pageNo]);
 
   const lookup = useCallback(
     (pick: SourceKeyPick): void => {
@@ -275,32 +318,50 @@ export function SourceRecordsView({
   const sysCols: readonly EntityField[] = (list?.system_columns ?? []).filter((c) => isSystemColumnShown(vis, c.name));
   const cols = entity.fields.filter((f) => isShown(vis, f.name));
   const current = records.find((r) => `${r.source_system}/${r.source_pkey}` === picked) ?? null;
+  const totalPages = list?.total_pages ?? 1;
 
   return (
     <section className="b360-sources" data-testid="b360-sources">
       <h3>
-        Sources {looked !== null ? `- lookup ${picked ?? ""}` : businessId !== null ? `of master ${businessId}` : ""}
+        Source records {looked !== null ? `- lookup ${picked ?? ""}` : `from ${systems.join(", ") || "(none ticked)"}`}
       </h3>
       <SourceLookup label="Records (S) lookup" testId="b360-source-lookup" initial={null} onOpen={lookup} busy={busy} />
-      <p className="muted small">
-        Pick a master row above to see its source records (Read Source Records by Master Record, then Read Source
-        Record each). B360 documents no way to list or search all source records, so there is no such list here.
+      <p className="muted small" data-testid="b360-sources-filter-note">
+        {list?.filter_note ??
+          "Filtered by tx-mdm after the IDMC read: IDMC has no server-side source-system filter. Paging is per page of 10 master records."}
       </p>
+      {systems.length === 0 && <p className="warn-text">Tick at least one source system.</p>}
+      {list !== null && looked === null && (
+        <div className="toolbar" data-testid="b360-sources-paging">
+          <Button aria-label="Previous master page (Records (S))" data-testid="b360-sources-prev" disabled={busy || pageNo <= 1} onClick={() => setPageNo(pageNo - 1)}>
+            Previous
+          </Button>
+          <span className="muted small" data-testid="b360-sources-page">
+            Master page {list.page} of {totalPages} ({list.masters_read.length} masters, {list.records.length} source records
+            {(list.skipped_other_systems ?? 0) > 0 ? `, ${list.skipped_other_systems ?? 0} from other systems not shown` : ""})
+          </span>
+          <Button aria-label="Next master page (Records (S))" data-testid="b360-sources-next" disabled={busy || pageNo >= totalPages} onClick={() => setPageNo(pageNo + 1)}>
+            Next
+          </Button>
+        </div>
+      )}
       {error !== "" && <p className="warn-text" data-testid="b360-sources-error">{error}</p>}
       {busy && <p className="muted">Loading...</p>}
-      {list?.note !== undefined && list.note !== "" && looked === null && (
-        <p className="muted small" data-testid="b360-sources-note">{list.note}</p>
+      {(list?.not_read?.length ?? 0) > 0 && looked === null && (
+        <p className="muted small" data-testid="b360-sources-not-read">
+          Not read: {(list?.not_read ?? []).map((k) => `${k.source_system}/${k.source_pkey}`).join(", ")}
+        </p>
       )}
       {records.length === 0 ? (
-        !busy && <p className="muted">No source records.</p>
+        !busy && systems.length > 0 && <p className="muted">No source records from these systems on this master page.</p>
       ) : (
-        <>
         <div className="records-scroll" data-testid="b360-sources-scroll">
           <table className="monitor" data-testid="b360-sources-table" aria-label="Source records">
             <thead>
               <tr>
                 <th>Source system</th>
                 <th>sourcePKey</th>
+                <th>Master business id</th>
                 {cols.map((f) => (
                   <th key={f.name} title={`${f.name} (${f.data_type})`}>{f.label}</th>
                 ))}
@@ -333,6 +394,9 @@ export function SourceRecordsView({
                         <code>{r.source_pkey}</code>
                       </Button>
                     </td>
+                    <td>
+                      <code>{r.business_id ?? "-"}</code>
+                    </td>
                     {cols.map((f) => (
                       <td key={f.name}>{cellText(r.values[f.name], f.data_type)}</td>
                     ))}
@@ -347,7 +411,6 @@ export function SourceRecordsView({
             </tbody>
           </table>
         </div>
-        </>
       )}
       {current !== null && <SourceDetail entity={entity} record={current} onEdit={onEdit} vis={vis} />}
     </section>

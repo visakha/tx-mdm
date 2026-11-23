@@ -442,7 +442,22 @@ for the agent-permission asks too.
 - Guard: `frontend/src/noPopups.test.ts` fails on any window.confirm / alert / prompt call in
   frontend/src (no exceptions). Cypress taskflows_fake.cy.js fails if a confirm ever fires.
 
-### Tabs (ribbon): Records (M) | Metadata (M) | Records (S) | Metadata (S) | Add records (S) | Edit records (S)
+### 0.9.12.3 (Vamsi 02:45 CST): Records (M) | Records (S) | Metadata [Master | Source] | Add records (S) | Edit records (S) | Merge (M)
+
+- **Records (S)** no longer shows the master list. Top: checkbox row "Source systems" (UI SDK
+  Checkbox, aria "Source system zlv_ttf" / "zlv_eci" / "c360.default.system", testids
+  `b360-sources-systems-<sys>`), default = [sources] default (zlv_ttf). Then the sourcePKey lookup, a
+  muted line `b360-sources-filter-note` (filtered by tx-mdm after the IDMC read; paging per master
+  page), Previous / Next master page buttons, and one flat table: Source system | sourcePKey (button
+  "Open source record <sys>/<pkey>") | Master business id | fields | xref system columns (magenta).
+- **Metadata**: one ribbon tab; beneath it a sub-tab strip (testid `b360-meta-subtabs`) "Metadata
+  Master" (default, the old Metadata (M)) and "Metadata Source" (the old Metadata (S) plus the same
+  checkbox row, testids `b360-meta-systems-<sys>`, and a line naming the ticked systems: one model
+  for all of them). Agent: act("Section tabs","setValue",["metadata"]) then click "Metadata Source";
+  the old id "source-metadata" still works and lands on Metadata > Source.
+- The descriptions of Records (S) / Metadata (S) below are the 0.9.10 state, kept for history.
+
+### Tabs (ribbon, 0.9.10): Records (M) | Metadata (M) | Records (S) | Metadata (S) | Add records (S) | Edit records (S)
 
 - **Records (M)**: master list in its own scroll box `b360-records-scroll` (Vamsi 01:47 CST "I want a
   scrollbar"): horizontal scroll when wide, about 10 rows high (24rem), header row sticky. Above the table a

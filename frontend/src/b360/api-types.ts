@@ -410,6 +410,15 @@ export interface SourceKey {
   source_pkey: string;
 }
 
+export interface SourceMetadata {
+  /** Source view of the entity metadata. */
+  entity: BusinessEntity;
+  source_systems: string[];
+  /** True: IDMC has one model for every source system (no per-source metadata call is documented), so it is shown once. */
+  same_for_all: boolean;
+  note: string;
+}
+
 export interface SourceRecord {
   entity: string;
   source_system: string;
@@ -445,6 +454,29 @@ export interface SourceRecordList {
   not_read?: SourceKey[];
   note?: string;
   /** xref _meta keys present in these records (SYSTEM). */
+  system_columns?: EntityField[];
+  visibility?: FieldVisibility;
+}
+
+export interface SourceRecordPage {
+  entity: BusinessEntity;
+  /** Picked systems (all in [sources] allowed). */
+  source_systems: string[];
+  page: number;
+  page_size: number;
+  total_pages: number;
+  /** Masters in the entity (Search API hits). */
+  master_hits: number | null;
+  /** Business ids of the masters on this page. */
+  masters_read: string[];
+  /** Picked-system source records, flat. */
+  records: SourceRecord[];
+  /** Members of these masters from systems NOT picked (not read). */
+  skipped_other_systems?: number;
+  /** Picked members whose read failed or was over the cap. */
+  not_read?: SourceKey[];
+  /** Plain words: the filter runs in the backend after the IDMC read; paging is per master page. */
+  filter_note: string;
   system_columns?: EntityField[];
   visibility?: FieldVisibility;
 }

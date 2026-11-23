@@ -317,3 +317,13 @@ Reference: internal-docs/B360_October2026_Business360_REST-API_Reference_en.pdf.
 - The reference prints `length`, `minLength`, `maxLength`, `precision`, `scale` for Customer 360 custom
   field designators (pp. 148-150). Whether businessEntity metadata fields carry `maxLength` / `length`
   is UNVERIFIED; tx-mdm reads either if present (origin METADATA). Our earlier wire model dropped them.
+
+## Source-system filtering (0.9.12.3, read from the reference 2026-11-23 ~02:46 CST)
+- The Search API `filters > filter > fieldName` documents only entity fields plus validationType,
+  validationState, recordStateIndicator, `_indexValidationError.code`. There is NO server-side
+  sourceSystem filter, and no call that lists all source (xref) records of one source system.
+- So Records (S) by source system = Search page of masters -> Read Source Records by Master Record
+  (p. 70) -> keep ticked systems -> Read Source Record (p. 80). Filter applied by tx-mdm after the read.
+- There is no per-source-system metadata call. Per-source differences are per record: content meta
+  (`_showContentMeta=true`, p. 19) gives trust.fieldData[] with fieldRef, lastUpdatedDate,
+  manualOverride, sourcePrimaryKey, sourceSystem, trustRule, trustScore.

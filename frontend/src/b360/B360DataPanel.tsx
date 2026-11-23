@@ -14,6 +14,9 @@
 //   directions, about 10 rows high, sticky header). System (_meta) columns are magenta.
 //   UI SDK Input / Button / Select with unique aria-labels; tables stay own markup, labelled.
 // /b360 with no entity = "Show all entities": every entity grouped by category.
+// 0.9.12.3 (Vamsi 02:45 CST): Records (M) | Records (S) | Metadata [Master | Source] | Add | Edit |
+//   Merge. Records (S) and Metadata Source are source-specific: tick source systems
+//   ([sources] allowed); Records (S) no longer shows the master list.
 // No polling; Refresh reloads. A 429 is shown and nothing is retried.
 
 import { useCallback, useEffect, useState } from "react";
@@ -21,11 +24,12 @@ import { Button } from "@ui-sdk/react/button";
 import { Input } from "@ui-sdk/react/input";
 import { ApiError, errorText } from "../shared/api";
 import type { Route } from "../shared/routes";
-import { selectRibbonTab, useRibbonTab } from "../shell/sections";
+import { Tabs, TabsList, TabsTab } from "@ui-sdk/react/tabs";
+import { selectRibbonTab, selectSubTab, subTabs, useRibbonTab, useSubTab } from "../shell/sections";
 import { AddRecordsView } from "./AddRecordsView";
 import { MergeView } from "./MergeView";
-import { EditSourceView, SourceRecordsView, type SourceKeyPick } from "./SourceViews";
-import type { BusinessEntity, BusinessEntitySummary, FieldGroup } from "./api-types";
+import { EditSourceView, SourceRecordsView, SourceSystemPicker, type SourceKeyPick } from "./SourceViews";
+import type { BusinessEntity, BusinessEntitySummary, FieldGroup, SourceMetadata, SourceSystemList } from "./api-types";
 import {
   b360Api,
   B360_LIMIT,
@@ -308,7 +312,11 @@ export function B360DataPanel({
   // 0.9.9: paging, filters (first / last name STARTS_WITH, exact Business ID), Last updated sort.
   const [query, setQuery] = useState<RecordQuery>({ page: 1, sort: "NEWEST_FIRST" });
   // 0.9.10: Metadata (S) and the source record picked for Edit records (S).
-  const [sourceMeta, setSourceMeta] = useState<BusinessEntity | null>(null);
+  const [sourceMeta, setSourceMeta] = useState<SourceMetadata | null>(null);
+  // 0.9.12.3: ticked source systems, shared by Records (S) and Metadata > Source.
+  const sub = useSubTab("b360-data");
+  const [sources, setSources] = useState<SourceSystemList | null>(null);
+  const [systems, setSystems] = useState<string[]>([]);
   const [editPick, setEditPick] = useState<SourceKeyPick | null>(null);
   const [draft, setDraft] = useState<{ firstName: string; lastName: string; businessId: string }>({
     firstName: "",
@@ -368,17 +376,46 @@ export function B360DataPanel({
     };
   }, []);
 
+  const wantsSources = tab === "sources" || (tab === "metadata" && sub === "source");
   useEffect(() => {
-    if (!active || entityName === null || tab !== "source-metadata" || sourceMeta?.name === entityName) return;
+    if (!active || !wantsSources || sources !== null) return;
     let live = true;
     b360Api
-      .sourceMetadata(entityName)
+      .sourceSystems()
+      .then((l) => {
+        if (!live) return;
+        setSources(l);
+        setSystems(l.default !== null && l.default !== undefined ? [l.default] : l.allowed.slice(0, 1));
+      })
+      .catch((err: unknown) => live && setError(errorMessage(err)));
+    return () => {
+      live = false;
+    };
+  }, [active, wantsSources, sources]);
+
+  useEffect(() => {
+    if (!active || entityName === null || tab !== "metadata" || sub !== "source" || systems.length === 0) return;
+    let live = true;
+    b360Api
+      .sourceMetadataBySystem(entityName, systems)
       .then((m) => live && setSourceMeta(m))
       .catch((err: unknown) => live && setError(errorMessage(err)));
     return () => {
       live = false;
     };
-  }, [active, entityName, tab, sourceMeta]);
+  }, [active, entityName, tab, sub, systems]);
+
+  const picker =
+    sources !== null ? (
+      <SourceSystemPicker
+        allowed={sources.allowed}
+        picked={systems}
+        onChange={setSystems}
+        testId={tab === "sources" ? "b360-sources-systems" : "b360-meta-systems"}
+      />
+    ) : (
+      <p className="muted">Loading the source systems...</p>
+    );
 
   const openEdit = (pick: SourceKeyPick): void => {
     setEditPick(pick);
@@ -468,14 +505,52 @@ export function B360DataPanel({
       </div>
       {error !== "" && <p className="warn-text" data-testid="b360-error">{error}</p>}
 
-      {page !== null && tab === "metadata" && <MetadataView entity={page.entity} />}
+      {tab === "metadata" && (
+        <Tabs
+          aria-label="Metadata sub-tabs"
+          data-testid="b360-meta-subtabs"
+          value={sub}
+          onValueChange={(value) => {
+            const next = subTabs("b360-data", "metadata").find((t) => t.id === value);
+            if (next !== undefined) selectSubTab("b360-data", next.id);
+          }}
+        >
+          <TabsList>
+            {subTabs("b360-data", "metadata").map((t) => (
+              <TabsTab key={t.id} value={t.id} aria-label={`Metadata ${t.label}`} data-testid={`b360-meta-subtab-${t.id}`}>
+                {t.label}
+              </TabsTab>
+            ))}
+          </TabsList>
+        </Tabs>
+      )}
 
-      {tab === "source-metadata" &&
-        (sourceMeta !== null && sourceMeta.name === entityName ? (
-          <MetadataView entity={sourceMeta} source />
-        ) : (
-          <p className="muted">Loading the source metadata...</p>
-        ))}
+      {page !== null && tab === "metadata" && sub === "master" && <MetadataView entity={page.entity} />}
+
+      {tab === "metadata" && sub === "source" && (
+        <>
+          {picker}
+          {systems.length === 0 ? (
+            <p className="warn-text">Tick at least one source system.</p>
+          ) : sourceMeta !== null && sourceMeta.entity.name === entityName ? (
+            <>
+              <p className="muted small" data-testid="b360-source-metadata-systems">
+                Source systems: {sourceMeta.source_systems.join(", ")}. {sourceMeta.note}
+              </p>
+              <MetadataView entity={sourceMeta.entity} source />
+            </>
+          ) : (
+            <p className="muted">Loading the source metadata...</p>
+          )}
+        </>
+      )}
+
+      {page !== null && tab === "sources" && (
+        <>
+          {picker}
+          <SourceRecordsView entity={page.entity} systems={systems} onEdit={openEdit} />
+        </>
+      )}
 
       {page !== null && tab === "edit" && <EditSourceView entity={page.entity.name} initial={editPick} />}
 
@@ -487,11 +562,11 @@ export function B360DataPanel({
         <AddRecordsView entity={page.entity.name} onSaved={() => loadRecords(page.entity.name, { page: 1, sort: "NEWEST_FIRST" })} />
       )}
 
-      {page !== null && (tab === "records" || tab === "sources" || !["metadata", "add", "source-metadata", "edit", "merge"].includes(tab)) && (
+      {page !== null && (tab === "records" || !["metadata", "add", "sources", "edit", "merge"].includes(tab)) && (
         <div className="b360-records master-detail" data-testid="b360-records" data-entity={page.entity.name}>
           <section className="b360-master" data-testid="b360-master">
             <h3>
-              {tab === "sources" ? "Pick a master record: " : "Master: "}
+              Master:{" "}
               {page.entity.label} root
               {page.mode === "BUSINESS_ID" ? ` - business ID ${page.business_id ?? ""}` : ""}
             </h3>
@@ -636,8 +711,7 @@ export function B360DataPanel({
               </>
             )}
           </section>
-          {tab !== "sources" && record !== null && <RecordDetail page={page} record={record} />}
-          {tab === "sources" && <SourceRecordsView entity={page.entity} businessId={selected.record} onEdit={openEdit} />}
+          {record !== null && <RecordDetail page={page} record={record} />}
         </div>
       )}
     </div>

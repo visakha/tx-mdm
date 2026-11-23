@@ -668,3 +668,46 @@ class UnmergeResponse(BaseModel):
     sources: list[SourceKey]
     approval_required: bool | None = None
     note: str
+
+
+# ---- 0.9.12.3 source-specific Records (S) / Metadata (S) ---------------------------------------
+
+
+class SourceRecordPage(BaseModel):
+    """Records (S) for picked source systems: every source record of one page of masters whose
+    sourceSystem is picked. IDMC has no server-side source filter (Search API filters are fields
+    plus validationType / validationState / recordStateIndicator, pp. 20-30), so the backend reads
+    each master's members (p. 70) and keeps the picked systems, then reads those (p. 80)."""
+
+    entity: BusinessEntity
+    source_systems: list[str] = Field(description="Picked systems (all in [sources] allowed).")
+    page: int
+    page_size: int
+    total_pages: int
+    master_hits: int | None = Field(description="Masters in the entity (Search API hits).")
+    masters_read: list[str] = Field(description="Business ids of the masters on this page.")
+    records: list[SourceRecord] = Field(description="Picked-system source records, flat.")
+    skipped_other_systems: int = Field(
+        default=0, description="Members of these masters from systems NOT picked (not read)."
+    )
+    not_read: list[SourceKey] = Field(
+        default_factory=list, description="Picked members whose read failed or was over the cap."
+    )
+    filter_note: str = Field(
+        description="Plain words: the filter runs in the backend after the IDMC read; paging is "
+        "per master page."
+    )
+    system_columns: list[EntityField] = Field(default_factory=list)
+    visibility: FieldVisibility = Field(default_factory=FieldVisibility)
+
+
+class SourceMetadata(BaseModel):
+    """Metadata (S) for the picked source systems."""
+
+    entity: BusinessEntity = Field(description="Source view of the entity metadata.")
+    source_systems: list[str]
+    same_for_all: bool = Field(
+        description="True: IDMC has one model for every source system (no per-source metadata "
+        "call is documented), so it is shown once."
+    )
+    note: str

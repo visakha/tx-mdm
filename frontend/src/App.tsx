@@ -60,7 +60,8 @@ const HINTS: Record<string, string> = {
   "mdm-runs/list": "Runs started from this backend. Pick one to see its result.",
   "mdm-runs/result": "Result of the selected run.",
   "b360-data/records": "Master: the entity root, first 10 records. Click a record: its root fields and field groups stack below (detail). Read-only; Refresh reloads.",
-  "b360-data/metadata": "The entity's root fields and field groups from the B360 metadata: type, mandatory, searchable.",
+  "b360-data/metadata": "Metadata: pick Master (golden record fields, groups, lookups, lengths) or Source (the model source records carry, for the source systems you tick).",
+  "b360-data/sources": "Records (S): tick one or more source systems; only their source records show, one page of 10 master records at a time (filtered by tx-mdm after the IDMC read).",
   "b360-data/add": "Type one record in the form (from the Pydantic model) and Save, or Generate 1-100 Faker rows, edit them, then Send to B360. Source system from b360_entities.toml. Every write asks first.",
 };
 

@@ -51,8 +51,10 @@ from app.b360data.models import (
     RecordPage,
     SortOrder,
     SourceKey,
+    SourceMetadata,
     SourceRecord,
     SourceRecordList,
+    SourceRecordPage,
     SourceSystemList,
     UnmergeRequest,
     UnmergeResponse,
@@ -462,6 +464,95 @@ class B360DataService:
 
     def source_metadata(self, guid: str) -> BusinessEntity:
         return wire.source_view(self.metadata(guid))
+
+    def _picked_sources(self, picked: list[str]) -> list[str]:
+        """Picked systems, deduplicated, all in [sources] allowed (else 400). Empty -> default."""
+        sources = entity_scope.focus_config().sources
+        chosen = list(dict.fromkeys(picked)) or [s for s in [sources.default_source()] if s]
+        bad = [s for s in chosen if not sources.is_allowed(s)]
+        if bad:
+            raise SourceNotAllowedError(
+                f"source system(s) {', '.join(bad)} not in [sources] allowed of "
+                f"{entity_scope.config_path().name} (allowed: {', '.join(sources.allowed)})."
+            )
+        return chosen
+
+    def source_metadata_for(self, guid: str, picked: list[str]) -> SourceMetadata:
+        chosen = self._picked_sources(picked)
+        return SourceMetadata(
+            entity=self.source_metadata(guid),
+            source_systems=chosen,
+            same_for_all=True,
+            note=(
+                f"Same model for {', '.join(chosen)}: B360 documents no per-source-system "
+                "metadata call, and a source record carries the entity's own fields (pp. 82-87). "
+                "What differs per source is per RECORD, not per model: trust score, survivorship "
+                "rule and manualOverride per field (content meta, _showContentMeta=true, p. 19)."
+            ),
+        )
+
+    def source_records_page(self, guid: str, picked: list[str], page: int = 1) -> SourceRecordPage:
+        """Records (S) for picked systems. One Search API page of masters (10), their members
+        (p. 70), keep the picked systems, read each (p. 80). 429 stops everything (passed through).
+        """
+        chosen = self._picked_sources(picked)
+        masters = self.records(guid, page=page)
+        entity = masters.entity
+        wanted = set(chosen)
+        records: list[SourceRecord] = []
+        not_read: list[SourceKey] = []
+        skipped = 0
+        for master in masters.records:
+            url = self._mdm_url + ep.ENTITY_MEMBER.format(
+                guid=quote(guid, safe="."), business_id=quote(master.business_id, safe="")
+            )
+            try:
+                reply: object = self._http.request("GET", url, ep.MDM_HEADERS)
+            except IdmcRateLimitedError:
+                raise
+            except IdmcError:
+                continue
+            members = wire.source_members(reply)
+            keep = [m for m in members if m.source_system in wanted]
+            skipped += len(members) - len(keep)
+            for member in keep:
+                if len(records) + len(not_read) >= ep.MAX_SOURCES_PAGE:
+                    not_read.append(member)
+                    continue
+                try:
+                    body: object = self._http.request(
+                        "GET",
+                        self._xref_url(guid, member.source_system, member.source_pkey),
+                        ep.MDM_HEADERS,
+                    )
+                except IdmcRateLimitedError:
+                    raise
+                except IdmcError:
+                    not_read.append(member)
+                    continue
+                records.append(
+                    wire.source_record(body, entity, member.source_system, member.source_pkey)
+                )
+        return SourceRecordPage(
+            entity=entity,
+            source_systems=chosen,
+            page=masters.page,
+            page_size=masters.page_size,
+            total_pages=masters.total_pages,
+            master_hits=masters.hits,
+            masters_read=[m.business_id for m in masters.records],
+            records=records,
+            skipped_other_systems=skipped,
+            not_read=not_read,
+            filter_note=(
+                "Filtered in tx-mdm, after the IDMC read: IDMC has no server-side source-system "
+                "filter and no call that lists all records of one source. Paging is per page of "
+                f"{masters.page_size} MASTER records; this page shows their source records from "
+                f"{', '.join(chosen)} only."
+            ),
+            system_columns=wire.system_columns([r.system_values for r in records]),
+            visibility=entity_scope.field_visibility(entity),
+        )
 
     def _xref_url(self, guid: str, source_system: str, source_pkey: str) -> str:
         return self._mdm_url + ep.ENTITY_XREF.format(

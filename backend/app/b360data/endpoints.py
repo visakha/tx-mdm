@@ -77,3 +77,4 @@ RDM_CACHE_SECONDS = 300  # 0.9.12: allowed values cached 5 min, like metadata
 ENTITY_GROUP = "/business-entity/public/api/v1/entity-group/{guid}"
 ENTITY_GROUP_MASTER = "/business-entity/public/api/v1/entity-group/{guid}/{business_id}"
 MAX_MERGE = 10
+MAX_SOURCES_PAGE = 50  # 0.9.12.3: most source records read for one Records (S) page

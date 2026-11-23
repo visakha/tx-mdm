@@ -151,6 +151,23 @@ Lengths (0.9.12.2, Vamsi 02:40-02:41 CST)
   x-length-origin), in Type-it / Edit inputs (maxlength, min / max), and in Generate (cntry_cd 1,
   ph_num 10 digits not starting with 0, ph_typ a real Code that fits). Generate fills root fields and
   every field group in one go. `CODE`
+- **D30** Records (S) is source-specific (Vamsi 02:45 CST): tick one or more source systems
+  (checkboxes "Source system <name>", one per `[sources] allowed`, default = `[sources] default`).
+  `GET /api/b360/entities/{name}/source-records?source_systems=..&source_systems=..&page=N`
+  (`SourceRecordPage`): Search API page of 10 masters -> Read Source Records by Master Record (p. 70)
+  per master -> keep members whose sourceSystem is ticked -> Read Source Record (p. 80) each (cap
+  50). One flat table: source system, sourcePKey, master business id, fields. Not-allowed system ->
+  400, nothing sent. 429 -> passed through, nothing retried. The FILTER IS APPLIED BY tx-mdm AFTER
+  THE IDMC READ: the Search API documents filters only on fields and validationType /
+  validationState / recordStateIndicator / _indexValidationError.code, and no call lists all
+  records of one source. PAGING IS PER MASTER PAGE, so a page can show 0..n source records. `CODE`
+- **D31** Metadata is ONE ribbon tab with a sub-tab strip Master | Source (UI SDK Tabs, aria-labels
+  "Metadata Master" / "Metadata Source", default Master). Source has the same source-system
+  checkboxes; `GET /api/b360/entities/{name}/source-metadata/by-system` (`SourceMetadata`) returns
+  the model once with `same_for_all = true` and a note naming the ticked systems: no per-source
+  metadata call is documented. What differs per source is per record (content meta,
+  `_showContentMeta=true`, p. 19: trust score, trust rule, manualOverride per field). Old tab ids
+  `source-metadata` / `metadata-source` / `metadata-master` redirect to Metadata + sub-tab. `CODE`
 
 ## Out of scope
 

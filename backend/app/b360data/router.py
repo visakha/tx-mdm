@@ -25,8 +25,10 @@ from app.b360data.models import (
     MergeResponse,
     RecordPage,
     SortOrder,
+    SourceMetadata,
     SourceRecord,
     SourceRecordList,
+    SourceRecordPage,
     SourceSystemList,
     UnmergeRequest,
     UnmergeResponse,
@@ -206,6 +208,59 @@ def create_records(
 )
 def source_metadata(name: EntityName, service: Service) -> BusinessEntity:
     return service.source_metadata(name)
+
+
+PickedSources = Annotated[
+    list[str],
+    Query(
+        description="Source systems to show (repeat the parameter); each must be in "
+        "b360_entities.toml [sources] allowed, else 400. Empty = [sources] default.",
+        max_length=20,
+    ),
+]
+
+
+@router.get(
+    "/entities/{name}/source-records",
+    response_model=SourceRecordPage,
+    operation_id="b360_source_records_by_system",
+    summary="Records (S): source records of the picked source systems, one master page at a time",
+    description="IDMC documents no server-side source-system filter (Search API filters, pp. "
+    "20-30) and no call listing all records of one source. So: Search API (one page of 10 "
+    "masters) -> Read Source Records by Master Record (p. 70) per master -> keep members whose "
+    "sourceSystem is picked -> Read Source Record (p. 80) each. Filter applied in the backend "
+    "AFTER the IDMC read; paging is per master page. Read-only; 429 passed through, never retried.",
+)
+def source_records_by_system(
+    name: EntityName,
+    service: Service,
+    source_systems: PickedSources = [],  # noqa: B006 - FastAPI query default
+    page: Annotated[int, Query(ge=1, le=100_000)] = 1,
+) -> SourceRecordPage:
+    try:
+        return service.source_records_page(name, source_systems, page)
+    except SourceNotAllowedError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get(
+    "/entities/{name}/source-metadata/by-system",
+    response_model=SourceMetadata,
+    operation_id="b360_source_metadata_by_system",
+    summary="Metadata (S) for the picked source systems",
+    description="One model for every source system: no per-source metadata call is documented. "
+    "Per-source differences (trust, survivorship, manualOverride) are per record (content meta, "
+    "_showContentMeta=true), not per model. Read-only.",
+)
+def source_metadata_by_system(
+    name: EntityName,
+    service: Service,
+    source_systems: PickedSources = [],  # noqa: B006 - FastAPI query default
+) -> SourceMetadata:
+    try:
+        return service.source_metadata_for(name, source_systems)
+    except SourceNotAllowedError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get(

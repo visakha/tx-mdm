@@ -25,7 +25,9 @@ import type {
   RecordPage,
   SortOrder,
   SourceRecord,
+  SourceMetadata,
   SourceRecordList,
+  SourceRecordPage,
   SourceSystemList,
   SystemValue,
   UnmergeRequest,
@@ -60,6 +62,13 @@ export type CellValue = string | number | boolean | null;
 
 export const B360_LIMIT = 10;
 
+function systemsQuery(systems: readonly string[], page: number | null): string {
+  const q = new URLSearchParams();
+  for (const sys of systems) q.append("source_systems", sys);
+  if (page !== null) q.set("page", String(page));
+  return q.toString();
+}
+
 const base = (name: string): string => `/api/b360/entities/${encodeURIComponent(name)}`;
 
 export const b360Api = {
@@ -78,6 +87,11 @@ export const b360Api = {
     postJson<CreateResponse>(`${base(name)}/records`, request),
   // 0.9.10 source (xref) records. Only updateSource(dry_run=false) writes, on a person's Save.
   sourceMetadata: (name: string): Promise<BusinessEntity> => getJson<BusinessEntity>(`${base(name)}/source-metadata`),
+  // 0.9.12.3 source-specific Records (S) / Metadata (S): repeated source_systems parameter.
+  sourceRecordsBySystem: (name: string, systems: readonly string[], page = 1): Promise<SourceRecordPage> =>
+    getJson<SourceRecordPage>(`${base(name)}/source-records?${systemsQuery(systems, page)}`),
+  sourceMetadataBySystem: (name: string, systems: readonly string[]): Promise<SourceMetadata> =>
+    getJson<SourceMetadata>(`${base(name)}/source-metadata/by-system?${systemsQuery(systems, null)}`),
   masterSources: (name: string, businessId: string): Promise<SourceRecordList> =>
     getJson<SourceRecordList>(`${base(name)}/records/${encodeURIComponent(businessId)}/sources`),
   sourceRecord: (name: string, sourceSystem: string, sourcePKey: string): Promise<SourceRecord> =>
@@ -123,7 +137,9 @@ export type {
   NewGroupRows,
   NewRecord,
   SourceRecord,
+  SourceMetadata,
   SourceRecordList,
+  SourceRecordPage,
   SourceSystemList,
   SystemValue,
   UpdateSourceResponse,
