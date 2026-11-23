@@ -178,3 +178,20 @@ def test_status_and_session_log_by_run_id(idmc: respx.MockRouter, idmc_http: Idm
 
     missing = client.get(f"/api/cdi/taskflows/runs/{RUN}/session-log?subtask=nope")
     assert missing.status_code == 404
+
+
+def test_second_start_allowed_once_first_run_is_seen_final(
+    idmc: respx.MockRouter, idmc_http: IdmcHttp
+):
+    idmc.get(f"{PLATFORM}/public/core/v3/objects").respond(
+        200, json={"objects": [{"id": "FED9", "path": "ZL_Vamsi/tf_MDM_ZLV_TTF_Guest_Basic"}]}
+    )
+    idmc.post(f"{POD}/active-bpel/rt/tf_MDM_ZLV_TTF_Guest_Basic").respond(200, json={"RunId": RUN})
+    idmc.get(f"{POD}/active-bpel/services/tf/status/{RUN}").respond(200, json=SUSPENDED)
+    idmc.get(f"{PLATFORM}/api/v2/activity/activityLog").respond(200, json=LOG_ROWS)
+    client = _app(idmc_http)
+    url = "/api/cdi/taskflows/tf_MDM_ZLV_TTF_Guest_Basic/run"
+    assert client.post(url).status_code == 200
+    assert client.post(url).status_code == 409
+    client.get(f"/api/cdi/taskflows/runs/{RUN}")
+    assert client.post(url).status_code == 200

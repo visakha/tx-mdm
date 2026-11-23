@@ -209,7 +209,20 @@ class CdiService:
             status = self._add_log_details(status)
         if status.is_final:
             self._final_status[run_id] = status
+            self._close_registry_run(status)
         return status
+
+    def _close_registry_run(self, status: TaskflowRunStatus) -> None:
+        """A run started here stays 'active' (409 on a second start) until it is seen final."""
+        for run_key, handle in self._handles.items():
+            if handle.run_id != status.run_id:
+                continue
+            run = self._registry.get(run_key)
+            if not run.status.is_terminal:
+                if status.error and status.error not in run.errors:
+                    run.errors.append(status.error)
+                run.ended_at = status.ended_at
+                self._registry.update_status(run, status.status, f"IDMC: {status.state_text}")
 
     def _add_log_details(self, status: TaskflowRunStatus) -> TaskflowRunStatus:
         try:
