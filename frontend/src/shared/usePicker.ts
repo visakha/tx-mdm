@@ -1,5 +1,5 @@
-// Generic picker + run hook used by both panels. Each panel passes its own loader and runner,
-// so CDI and MDM never share state.
+// Picker + starter hooks used by both panels. Each panel passes its own loader and runner,
+// so CDI and MDM never share state. Selection comes from the URL (see routes.ts).
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { errorText } from "./api";
@@ -13,7 +13,6 @@ export interface PickerState<T> {
   setFilter: (value: string) => void;
   visible: T[];
   selected: T | undefined;
-  select: (id: string) => void;
   reload: () => void;
 }
 
@@ -21,12 +20,12 @@ export function usePicker<T>(
   load: () => Promise<T[]>,
   idOf: (item: T) => string,
   textOf: (item: T) => string,
+  selectedId: string | null,
 ): PickerState<T> {
   const [items, setItems] = useState<T[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const reload = useCallback(() => {
     setLoading(true);
@@ -44,39 +43,30 @@ export function usePicker<T>(
     return needle === "" ? items : items.filter((i) => textOf(i).toLowerCase().includes(needle));
   }, [items, filter, textOf]);
 
-  const selected = visible.find((i) => idOf(i) === selectedId);
+  const selected = selectedId === null ? undefined : items.find((i) => idOf(i) === selectedId);
 
-  return {
-    items,
-    loading,
-    loadError,
-    filter,
-    setFilter,
-    visible,
-    selected,
-    select: setSelectedId,
-    reload,
-  };
+  return { items, loading, loadError, filter, setFilter, visible, selected, reload };
 }
 
-export function useStarter(): {
-  started: RunView | null;
+export function useStarter(onStarted: (run: RunView) => void): {
   starting: boolean;
   startError: string | null;
   start: (call: () => Promise<RunView>) => void;
 } {
-  const [started, setStarted] = useState<RunView | null>(null);
   const [starting, setStarting] = useState<boolean>(false);
   const [startError, setStartError] = useState<string | null>(null);
 
-  const start = useCallback((call: () => Promise<RunView>) => {
-    setStarting(true);
-    setStartError(null);
-    call()
-      .then(setStarted)
-      .catch((err: unknown) => setStartError(errorText(err)))
-      .finally(() => setStarting(false));
-  }, []);
+  const start = useCallback(
+    (call: () => Promise<RunView>) => {
+      setStarting(true);
+      setStartError(null);
+      call()
+        .then(onStarted)
+        .catch((err: unknown) => setStartError(errorText(err)))
+        .finally(() => setStarting(false));
+    },
+    [onStarted],
+  );
 
-  return { started, starting, startError, start };
+  return { starting, startError, start };
 }

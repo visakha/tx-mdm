@@ -11,7 +11,22 @@ from app.mdm.router import router as mdm_router
 
 
 def create_app(frontend_origin: str = "http://localhost:5173") -> FastAPI:
-    app = FastAPI(title="TX MDM job runner", version="0.1.0")
+    app = FastAPI(
+        title="TX MDM job runner",
+        version="0.1.0",
+        description=(
+            "Runs and monitors Informatica IDMC jobs. Two separate services: `cdi` (Data "
+            "Integration tasks) and `mdm` (Business 360 ingress / egress / match-merge). "
+            "Flow for both: list -> start run -> poll the run until a final status. "
+            "One active run per job; failed runs are never retried; HTTP 429 from IDMC is "
+            "returned as 429 and not retried."
+        ),
+        openapi_tags=[
+            {"name": "cdi", "description": "Data Integration (CDI) tasks and runs."},
+            {"name": "mdm", "description": "Business 360 (MDM) job definitions and runs."},
+            {"name": "meta", "description": "Health."},
+        ],
+    )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[frontend_origin],
@@ -21,7 +36,7 @@ def create_app(frontend_origin: str = "http://localhost:5173") -> FastAPI:
     app.include_router(cdi_router)
     app.include_router(mdm_router)
 
-    @app.get("/api/health")
+    @app.get("/api/health", tags=["meta"], operation_id="health", summary="Liveness check")
     def health() -> dict[str, str]:
         return {"status": "ok"}
 

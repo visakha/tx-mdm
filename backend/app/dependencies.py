@@ -2,6 +2,7 @@
 registry and service. Tests override get_cdi_service / get_mdm_service via app.dependency_overrides.
 """
 
+import logging
 from functools import lru_cache
 
 import httpx
@@ -15,10 +16,29 @@ from app.mdm.client import MdmClient
 from app.mdm.resolver import JobSearchResolver
 from app.mdm.service import MdmService
 
+log = logging.getLogger(__name__)
+
+
+def build_http_client(settings: Settings) -> httpx.Client:
+    """Proxy comes from settings, not from ambient env vars, unless HTTP_TRUST_ENV=true.
+
+    If env-var proxy config is requested but httpx cannot parse it (e.g. NO_PROXY with an
+    IPv6 entry -> InvalidURL "Invalid port"), fall back to the explicit setting and say so.
+    """
+    proxy = settings.idmc_proxy_url or None
+    if settings.http_trust_env:
+        try:
+            return httpx.Client(timeout=settings.http_timeout_seconds, trust_env=True)
+        except (httpx.InvalidURL, ValueError) as err:
+            log.warning(
+                "Ignoring proxy env vars httpx cannot parse (%s); using IDMC_PROXY_URL", err
+            )
+    return httpx.Client(timeout=settings.http_timeout_seconds, trust_env=False, proxy=proxy)
+
 
 @lru_cache
 def get_http_client() -> httpx.Client:
-    return httpx.Client(timeout=get_settings().http_timeout_seconds)
+    return build_http_client(get_settings())
 
 
 def _new_session(settings: Settings) -> IdmcSession:

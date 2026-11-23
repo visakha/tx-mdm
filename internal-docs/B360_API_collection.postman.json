@@ -1,0 +1,2711 @@
+{
+	"info": {
+		"_postman_id": "23e62e04-d249-48ea-b3f8-c10646dc09d3",
+		"name": "Public API POSTMAN ROLLOUT",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "4315639"
+	},
+	"item": [
+		{
+			"name": "Login",
+			"item": [
+				{
+					"name": "User login V1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;",
+									"var jsonData = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"PodMDMUserSessionId\", jsonData.sessionId);",
+									"postman.setEnvironmentVariable(\"currentOrgId\", jsonData.currentOrgId);",
+									"if (responseCode.code === 200 ) {",
+									"    console.log(\"User Login Successful\");",
+									"}",
+									"console.log(\" <=================== ResponseBody =================== >\"+  responseBody);"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"username\",\n    \"password\": \"Password\"\n}"
+						},
+						"url": {
+							"raw": "https://{{baseAPIUrl}}/identity-service/api/v1/Login",
+							"protocol": "https",
+							"host": [
+								"{{baseAPIUrl}}"
+							],
+							"path": [
+								"identity-service",
+								"api",
+								"v1",
+								"Login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "User login V3",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;",
+									"var jsonData = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"PodMDMUserSessionId\", jsonData.sessionId);",
+									"postman.setEnvironmentVariable(\"currentOrgId\", jsonData.currentOrgId);",
+									"if (responseCode.code === 200 ) {",
+									"    console.log(\"User Login Successful\");",
+									"}",
+									"console.log(\" <=================== ResponseBody =================== >\"+  responseBody);"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"username\",\n    \"password\": \"password\"\n}"
+						},
+						"url": {
+							"raw": "https://{{baseAPIUrl}}/saas/public/core/v3/login",
+							"protocol": "https",
+							"host": [
+								"{{baseAPIUrl}}"
+							],
+							"path": [
+								"saas",
+								"public",
+								"core",
+								"v3",
+								"login"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Search",
+			"item": [
+				{
+					"name": "Search & Filter Business Entity",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;",
+									"if (responseCode.code === 200 ) {",
+									"    console.log(\"Data model registeration Successful\");",
+									"    postman.setEnvironmentVariable(\"ModelVersion\", postman.getResponseHeader(\"MODEL_VERSION\"));",
+									"}",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "IDS-SESSION-ID",
+								"value": "{{PodMDMUserSessionId}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"entityType\": \"c360.organization\",\r\n    \"pageSize\": 5,\r\n    \"recordsToReturn\": 5,\r\n    \"recordOffset\": 5,\r\n    \"filters\": {\r\n        \"operator\": \"OR\",\r\n        \"filter\": [\r\n            {\r\n                \"comparator\": \"EQUALS\",\r\n                \"fieldName\": \"c360organization.companyType.Name\",\r\n                \"fieldValue\": \"Chartered\"\r\n            },\r\n            {\r\n                \"comparator\": \"EQUALS\",\r\n                \"fieldName\": \"c360organization.companyType.Name\",\r\n                \"fieldValue\": \"Government\"\r\n            }\r\n        ]\r\n    },\r\n    \"search\": \"*\"\r\n}"
+						},
+						"url": {
+							"raw": "https://{{publicURL}}/search/public/api/v1/search",
+							"protocol": "https",
+							"host": [
+								"{{publicURL}}"
+							],
+							"path": [
+								"search",
+								"public",
+								"api",
+								"v1",
+								"search"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Search Business Entity",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;",
+									"if (responseCode.code === 200 ) {",
+									"    console.log(\"Data model registeration Successful\");",
+									"    postman.setEnvironmentVariable(\"ModelVersion\", postman.getResponseHeader(\"MODEL_VERSION\"));",
+									"}",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "IDS-SESSION-ID",
+								"value": "{{PodMDMUserSessionId}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"entityType\": \"c360.organization\",\r\n    \"search\": \"Marathon Petroleum\",\r\n    \"maxRecords\": \"10\"\r\n}"
+						},
+						"url": {
+							"raw": "https://{{publicURL}}/search/public/api/v1/search?_showContentMeta=true",
+							"protocol": "https",
+							"host": [
+								"{{publicURL}}"
+							],
+							"path": [
+								"search",
+								"public",
+								"api",
+								"v1",
+								"search"
+							],
+							"query": [
+								{
+									"key": "_showContentMeta",
+									"value": "true"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Advanced Search",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var template = `",
+									"    <table bgcolor=\"#FFFFFF\">",
+									"        <tr>",
+									"            <th>Name</th>",
+									"            <th>Score</th>",
+									"        </tr>",
+									"",
+									"        {{#each response.searchResult.records}}",
+									"            <tr id=row_{{@key}} onClick=\"handleClick(this.id)\">",
+									"                <td id={{@key}}>{{c360person.fullName}}</td>",
+									"                <td>{{email}}</td>",
+									"            </tr>",
+									"        {{/each}}",
+									"    </table>",
+									"`;",
+									"// Set visualizer",
+									"pm.visualizer.set(template, {",
+									"    // Pass the response body parsed as JSON as `data`",
+									"    response: pm.response.json()",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "IDS-SESSION-ID",
+								"value": "{{PodMDMUserSessionId}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "",
+								"value": "",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"entityType\": \"c360.person\",\r\n    \"fields\":\r\n    {             \r\n        \"c360person.firstName\": \"*John*\"\r\n    },\r\n      \"filters\": {\r\n        \"filter\": [\r\n            {\r\n                \"comparator\": \"EQUALS\",\r\n                \"fieldName\": \"c360person.gender.Name\",\r\n                \"fieldValue\": \"Female\"\r\n            }\r\n        ]\r\n    },\r\n    \"sort\": [\r\n        {\r\n            \"fieldName\": \"c360person.firstName\",\r\n            \"order\": \"ASCENDING\"\r\n        }\r\n    ]\r\n}"
+						},
+						"url": {
+							"raw": "https://{{publicURL}}/search/public/api/v1/search",
+							"protocol": "https",
+							"host": [
+								"{{publicURL}}"
+							],
+							"path": [
+								"search",
+								"public",
+								"api",
+								"v1",
+								"search"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "SearchMatch",
+			"item": [
+				{
+					"name": "Search Match",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;",
+									"if (responseCode.code === 200 ) {",
+									"    console.log(\"Data model registeration Successful\");",
+									"    postman.setEnvironmentVariable(\"ModelVersion\", postman.getResponseHeader(\"MODEL_VERSION\"));",
+									"}",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "IDS-SESSION-ID",
+								"value": "{{PodMDMUserSessionId}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"entityType\": \"c360.organization\",\r\n    \"pageSize\": 5,\r\n    \"recordsToReturn\": 5,\r\n    \"recordOffset\": 5,\r\n    \"filters\": {\r\n        \"operator\": \"OR\",\r\n        \"filter\": [\r\n            {\r\n                \"comparator\": \"EQUALS\",\r\n                \"fieldName\": \"c360organization.companyType.Name\",\r\n                \"fieldValue\": \"Chartered\"\r\n            },\r\n            {\r\n                \"comparator\": \"EQUALS\",\r\n                \"fieldName\": \"c360organization.companyType.Name\",\r\n                \"fieldValue\": \"Government\"\r\n            }\r\n        ]\r\n    },\r\n    \"search\": \"*\"\r\n}"
+						},
+						"url": {
+							"raw": "https://{{publicURL}}/match-ng-pair-gen/public/api/v1/searchmatch/c360.person?matchmodel=person.ruleset1&version=1",
+							"protocol": "https",
+							"host": [
+								"{{publicURL}}"
+							],
+							"path": [
+								"match-ng-pair-gen",
+								"public",
+								"api",
+								"v1",
+								"searchmatch",
+								"c360.person"
+							],
+							"query": [
+								{
+									"key": "matchmodel",
+									"value": "person.ruleset1"
+								},
+								{
+									"key": "version",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Business Entity Service",
+			"item": [
+				{
+					"name": "Business Entity Master",
+					"item": [
+						{
+							"name": "Using Cross Walks",
+							"item": [
+								{
+									"name": "Business Entity Master with Crosswalk",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"var json = JSON.parse(responseBody)\r",
+													"\r",
+													"postman.setEnvironmentVariable(\"businessId\",json.businessId)"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "IDS-SESSION-ID",
+												"value": "{{PodMDMUserSessionId}}",
+												"type": "default"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"name\": \"Walmart New York\",\r\n    \"countryOfIncorporation\": {\r\n        \"Code\": \"840\"\r\n    }\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "https://{{publicURL}}/business-entity/public/api/v1/entity/c360.organization?sourceSystem=oracle&_resolveCrosswalk=true",
+											"protocol": "https",
+											"host": [
+												"{{publicURL}}"
+											],
+											"path": [
+												"business-entity",
+												"public",
+												"api",
+												"v1",
+												"entity",
+												"c360.organization"
+											],
+											"query": [
+												{
+													"key": "sourceSystem",
+													"value": "oracle"
+												},
+												{
+													"key": "_resolveCrosswalk",
+													"value": "true"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Business Entity Master with Crosswalk",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"var json = JSON.parse(responseBody)\r",
+													"\r",
+													"postman.setEnvironmentVariable(\"businessId\",json.businessId)"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "IDS-SESSION-ID",
+												"value": "{{PodMDMUserSessionId}}",
+												"type": "default"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"name\": \"Walmart Canada ltd\",\r\n    \"stateOfIncorporation\": {\r\n        \"Code\": \"NY\"\r\n    }\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "https://{{publicURL}}/business-entity/public/api/v1/entity/c360.organization/MDM00000016V7K?sourceSystem=oracle&_resolveCrosswalk=true",
+											"protocol": "https",
+											"host": [
+												"{{publicURL}}"
+											],
+											"path": [
+												"business-entity",
+												"public",
+												"api",
+												"v1",
+												"entity",
+												"c360.organization",
+												"MDM00000016V7K"
+											],
+											"query": [
+												{
+													"key": "sourceSystem",
+													"value": "oracle"
+												},
+												{
+													"key": "_resolveCrosswalk",
+													"value": "true"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Business Entity Master with Crosswalk",
+									"request": {
+										"method": "PATCH",
+										"header": [
+											{
+												"key": "IDS-SESSION-ID",
+												"value": "{{IDS-SESSION-ID}}",
+												"type": "default"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "[\r\n    {\r\n        \"op\": \"replace\",\r\n        \"path\": \"employmentdetails1[0]\",\r\n        \"value\": {\r\n            \"_id\": \"E0\",\r\n            \"employername\": \"AnotherOrg\",\r\n            \"status\": {\r\n                \"Code\": \"InActive\"\r\n            },\r\n            \"country1\": {\r\n                \"Code\": \"US\"\r\n            },\r\n            \"state1\": {\r\n                \"Code\": \"CA\"\r\n            },\r\n            \"numberofyears1\": \"0\",\r\n            \"details\": [\r\n                {\r\n                    \"_id\": \"D0\",\r\n                    \"designation\": \"bogus1\",\r\n                    \"employmenttype\": {\r\n                        \"Code\": \"Contractual\"\r\n                    }\r\n                }\r\n            ]\r\n        }\r\n    },\r\n    {\r\n        \"op\": \"replace\",\r\n        \"path\": \"gender\",\r\n        \"value\": {\r\n            \"Code\": \"Fml\"\r\n        }\r\n    },\r\n    {\r\n        \"op\": \"add\",\r\n        \"path\": \"alternateid\",\r\n        \"value\": {\r\n            \"id\": \"100\",\r\n            \"idtype\": {\r\n                \"Code\": \"FedexID\"\r\n            }\r\n        }\r\n    }\r\n]",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "https://{{publicURL}}/business-entity/public/api/v1/entity/c360.organization/MDM00000016V7K?sourceSystem=oracle&_resolveCrosswalk=true",
+											"protocol": "https",
+											"host": [
+												"{{publicURL}}"
+											],
+											"path": [
+												"business-entity",
+												"public",
+												"api",
+												"v1",
+												"entity",
+												"c360.organization",
+												"MDM00000016V7K"
+											],
+											"query": [
+												{
+													"key": "sourceSystem",
+													"value": "oracle"
+												},
+												{
+													"key": "_resolveCrosswalk",
+													"value": "true"
+												}
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						},
+						{
+							"name": "Source LUD (PATCH and PUT)",
+							"item": [
+								{
+									"name": "Entity Master (Source LUD)",
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json",
+												"type": "text"
+											},
+											{
+												"key": "IDS-SESSION-ID",
+												"value": "{{PodMDMUserSessionId}}",
+												"type": "text"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"firstName\": \"Sebastin\",\r\n    \"lastName\": \"Vettel\",\r\n    \"middleName\": \"Chris\",\r\n    \"title\": \"Lead\",\r\n    \"designation\": \"Actor\",\r\n    \"PostalAddress\": [\r\n        {\r\n            \"_id\": \"0dec181346114a6196d1313ca135bcee\",\r\n            \"defaultIndicator\": true,\r\n            \"addressType\": {\r\n                \"Name\": \"Home\",\r\n                \"Code\": \"Home\"\r\n            },\r\n            \"usageType\": {\r\n                \"Name\": \"Home\",\r\n                \"Code\": \"Home\"\r\n            },\r\n            \"addressStatus\": {\r\n                \"Name\": \"Active\",\r\n                \"Code\": \"Active\"\r\n            },\r\n            \"addressLine1\": \"789456, park road\",\r\n            \"country\": {\r\n                \"Name\": \"United States\",\r\n                \"Code\": \"US\"\r\n            },\r\n            \"state\": {\r\n                \"Name\": \"California\",\r\n                \"Code\": \"CA\"\r\n            },\r\n            \"city\": \"California\"\r\n        }\r\n    ],\r\n    \"Phone\": [\r\n        {\r\n            \"_id\": \"5d14a94931db4515857465c950f9b997\",\r\n            \"phoneUsageType\": {\r\n                \"Name\": \"Home\",\r\n                \"Code\": \"Home\"\r\n            },\r\n            \"phoneType\": {\r\n                \"Name\": \"Mobile\",\r\n                \"Code\": \"Mobile\"\r\n            },\r\n            \"phoneNumber\": \"9900202777\"\r\n        }\r\n    ],\r\n    \"_contentMeta\": {\r\n        \"trust\": {\r\n            \"fieldData\": [\r\n                {\r\n                    \"fieldRef\": \"/\",\r\n                    \"sourceLastUpdateDate\": 1654058410000\r\n                },\r\n                {\r\n                    \"fieldRef\": \"PostalAddress[0dec181346114a6196d1313ca135bcee]\",\r\n                    \"sourceLastUpdateDate\": 1656650410000\r\n                },\r\n                {\r\n                    \"fieldRef\": \"Phone[5d14a94931db4515857465c950f9b997]\",\r\n                    \"sourceLastUpdateDate\": 1656650410000\r\n                }\r\n            ]\r\n        }\r\n    }\r\n}"
+										},
+										"url": {
+											"raw": "https://{{publicURL}}/business-entity/public/api/v1/entity/c360.person?sourceSystem=c360.default.system&sourcePKey=pkey300",
+											"protocol": "https",
+											"host": [
+												"{{publicURL}}"
+											],
+											"path": [
+												"business-entity",
+												"public",
+												"api",
+												"v1",
+												"entity",
+												"c360.person"
+											],
+											"query": [
+												{
+													"key": "sourceSystem",
+													"value": "c360.default.system"
+												},
+												{
+													"key": "sourcePKey",
+													"value": "pkey300"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Source XREF (Source LUD)",
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json",
+												"type": "text"
+											},
+											{
+												"key": "IDS-SESSION-ID",
+												"value": "{{PodMDMUserSessionId}}",
+												"type": "text"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"firstName\": \"Nibhish\",\r\n    \"lastName\": \"NS\",\r\n    \"middleName\": \"Junior\",\r\n    \"title\": \"F1 Driver\",\r\n    \"designation\": \"Aston Martin\",\r\n    \"PostalAddress\": [\r\n        {\r\n            \"_id\": \"0dec181346114a6196d1313ca135bcee\",\r\n            \"defaultIndicator\": true,\r\n            \"addressType\": {\r\n                \"Name\": \"Home\",\r\n                \"Code\": \"Home\"\r\n            },\r\n            \"usageType\": {\r\n                \"Name\": \"Home\",\r\n                \"Code\": \"Home\"\r\n            },\r\n            \"addressStatus\": {\r\n                \"Name\": \"Active\",\r\n                \"Code\": \"Active\"\r\n            },\r\n            \"addressLine1\": \"789456, park road\",\r\n            \"country\": {\r\n                \"Name\": \"United States\",\r\n                \"Code\": \"US\"\r\n            },\r\n            \"state\": {\r\n                \"Name\": \"California\",\r\n                \"Code\": \"CA\"\r\n            },\r\n            \"city\": \"BLR\"\r\n        },\r\n        {\r\n            \"_id\": \"1dec181346114a6196d1313ca135bcee\",\r\n            \"defaultIndicator\": true,\r\n            \"addressType\": {\r\n                \"Name\": \"Home\",\r\n                \"Code\": \"Home\"\r\n            },\r\n            \"usageType\": {\r\n                \"Name\": \"Home\",\r\n                \"Code\": \"Home\"\r\n            },\r\n            \"addressStatus\": {\r\n                \"Name\": \"Active\",\r\n                \"Code\": \"Active\"\r\n            },\r\n            \"addressLine1\": \"789456, park road\",\r\n            \"country\": {\r\n                \"Name\": \"United States\",\r\n                \"Code\": \"US\"\r\n            },\r\n            \"state\": {\r\n                \"Name\": \"California\",\r\n                \"Code\": \"CA\"\r\n            },\r\n            \"city\": \"MYS\"\r\n        }\r\n    ],\r\n    \"Phone\": [\r\n        {\r\n            \"_id\": \"5d14a94931db4515857465c950f9b997\",\r\n            \"phoneUsageType\": {\r\n                \"Name\": \"Home\",\r\n                \"Code\": \"Home\"\r\n            },\r\n            \"phoneType\": {\r\n                \"Name\": \"Mobile\",\r\n                \"Code\": \"Mobile\"\r\n            },\r\n            \"phoneNumber\": \"8800202777\"\r\n        }\r\n    ],\r\n    \"_contentMeta\": {\r\n        \"trust\": {\r\n            \"fieldData\": [\r\n                {\r\n                    \"fieldRef\": \"/\",\r\n                    \"sourceLastUpdateDate\": 1671084916833\r\n                },\r\n                {\r\n                    \"fieldRef\": \"PostalAddress[0dec181346114a6196d1313ca135bcee]\",\r\n                    \"sourceLastUpdateDate\": 1668145271000\r\n                },\r\n                {\r\n                    \"fieldRef\": \"PostalAddress[1dec181346114a6196d1313ca135bcee]\",\r\n                    \"sourceLastUpdateDate\": 1668145271000\r\n                },\r\n                {\r\n                    \"fieldRef\": \"Phone[5d14a94931db4515857465c950f9b997]\",\r\n                    \"sourceLastUpdateDate\": 1671084916833\r\n                }\r\n            ]\r\n        }\r\n    }\r\n}"
+										},
+										"url": {
+											"raw": "https://{{publicURL}}/business-entity/public/api/v1/entity-xref/c360.person/c360.default.system/pkey534",
+											"protocol": "https",
+											"host": [
+												"{{publicURL}}"
+											],
+											"path": [
+												"business-entity",
+												"public",
+												"api",
+												"v1",
+												"entity-xref",
+												"c360.person",
+												"c360.default.system",
+												"pkey534"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Source XREF(Source LUD at Root)",
+									"request": {
+										"method": "PATCH",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json",
+												"type": "text"
+											},
+											{
+												"key": "IDS-SESSION-ID",
+												"value": "{{PodMDMUserSessionId}}",
+												"type": "text"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "[\r\n    {\r\n        \"op\": \"replace\",\r\n        \"path\": \"firstName\",\r\n        \"value\": \"Maxxy3\"\r\n    },\r\n    {\r\n        \"op\": \"replace\",\r\n        \"path\": \"lastName\",\r\n        \"value\": \"Verstepan3\"\r\n    },\r\n    {\r\n        \"op\": \"setSourceLastUpdateDate\",\r\n        \"path\": \"/\",\r\n        \"value\": 1656736810000\r\n    },\r\n    {\r\n        \"op\": \"replace\",\r\n        \"path\": \"PostalAddress[3d4a8f4d07cb4f0db9ea1be9bf8d27e8]\",\r\n        \"value\": {\r\n            \"_id\": \"3d4a8f4d07cb4f0db9ea1be9bf8d27e8\",\r\n            \"addressType\": {\r\n                \"Code\": \"Home\",\r\n                \"Name\": \"Home\"\r\n            },\r\n            \"usageType\": {\r\n                \"Code\": \"Home\",\r\n                \"Name\": \"Home\"\r\n            },\r\n            \"addressStatus\": {\r\n                \"Code\": \"Active\",\r\n                \"Name\": \"Active\"\r\n            },\r\n            \"addressLine1\": \"Avenue Plaza1\",\r\n            \"country\": {\r\n                \"Code\": \"US\",\r\n                \"Name\": \"United States\"\r\n            },\r\n            \"state\": {\r\n                \"Code\": \"CA\",\r\n                \"Name\": \"California\"\r\n            },\r\n            \"city\": \"NewYork1\"\r\n        }\r\n    },\r\n    {\r\n        \"op\": \"replace\",\r\n        \"path\": \"Phone[f142a11b916c4a1b8239466f15852]\",\r\n        \"value\": {\r\n            \"_id\": \"f142a11b916c4a1b8239466f15852\",\r\n            \"phoneUsageType\": {\r\n                \"Code\": \"Home\",\r\n                \"Name\": \"Home\"\r\n            },\r\n            \"phoneType\": {\r\n                \"Code\": \"Mobile\",\r\n                \"Name\": \"Mobile\"\r\n            },\r\n            \"phoneNumber\": \"9900202799\"\r\n        }\r\n    }\r\n]"
+										},
+										"url": {
+											"raw": "https://{{publicURL}}/business-entity/public/api/v1/entity-xref/c360.person/c360.default.system/pkey202",
+											"protocol": "https",
+											"host": [
+												"{{publicURL}}"
+											],
+											"path": [
+												"business-entity",
+												"public",
+												"api",
+												"v1",
+												"entity-xref",
+												"c360.person",
+												"c360.default.system",
+												"pkey202"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Source XREF(Source LUD at FG)",
+									"request": {
+										"method": "PATCH",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json",
+												"type": "text"
+											},
+											{
+												"key": "IDS-SESSION-ID",
+												"value": "{{PodMDMUserSessionId}}",
+												"type": "text"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "[\r\n    { \"op\": \"replace\", \"path\": \"name\", \"value\": \"Smith\" },\r\n    { \"op\": \"replace\", \"path\": \"accountnumber\", \"value\": \"214191\" },\r\n    { \"op\": \"setSourceLastUpdateDate\", \"path\": \"/\", \"value\": 1654058410000 },\r\n    {\r\n        \"op\": \"replace\",\r\n        \"path\": \"Address[3d4a8f4d07cb4f0db9ea1be9bf8d27e8]\",\r\n        \"value\": {\r\n            \"_id\": \"3d4a8f4d07cb4f0db9ea1be9bf8d27e8\",            \r\n            \"addressType\": {\r\n                \"Code\": \"Home\",\r\n                \"Name\": \"Home\"\r\n            },\r\n            \"usageType\": {\r\n                \"Code\": \"Home\",\r\n                \"Name\": \"Home\"\r\n            },\r\n            \"addressStatus\": {\r\n                \"Code\": \"Active\",\r\n                \"Name\": \"Active\"\r\n            },\r\n            \"addressLine1\": \"Avenue Plaza200\",\r\n            \"country\": {\r\n                \"Code\": \"US\",\r\n                \"Name\": \"United States\"\r\n            },\r\n            \"state\": {\r\n                \"Code\": \"CA\",\r\n                \"Name\": \"California\"\r\n            },\r\n            \"city\": \"NewYork200\"\r\n        }\r\n    },\r\n    { \"op\": \"setSourceLastUpdateDate\", \"path\": \"Address[3d4a8f4d07cb4f0db9ea1be9bf8d27e8]\", \"value\": 1657428010000 },\r\n    {\r\n        \"op\": \"replace\",\r\n        \"path\": \"SmartFieldPhone[f142a11b916c4a1b8239466f15852]\",\r\n        \"value\": {\r\n            \"_id\": \"f142a11b916c4a1b8239466f15852\",            \r\n            \"phoneUsageType\": {\r\n                \"Code\": \"Home\",\r\n                \"Name\": \"Home\"\r\n            },\r\n            \"phoneType\": {\r\n                \"Code\": \"Mobile\",\r\n                \"Name\": \"Mobile\"\r\n            },\r\n            \"phoneNumber\": \"1100202799\"\r\n            \r\n                 }\r\n    },\r\n    { \"op\": \"setSourceLastUpdateDate\", \"path\": \"SmartFieldPhone[f142a11b916c4a1b8239466f15852]\", \"value\": 1657428010000 }\r\n]"
+										},
+										"url": {
+											"raw": "https://{{publicURL}}/business-entity/public/api/v1/entity-xref/account/c360.default.system/pkey201",
+											"protocol": "https",
+											"host": [
+												"{{publicURL}}"
+											],
+											"path": [
+												"business-entity",
+												"public",
+												"api",
+												"v1",
+												"entity-xref",
+												"account",
+												"c360.default.system",
+												"pkey201"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						},
+						{
+							"name": "Business Entity Master",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "IDS-SESSION-ID",
+										"value": "{{PodMDMUserSessionId}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "https://{{publicURL}}/business-entity/public/api/v1/entity/c360.person/29867286696967984873281291214?_showContentMeta=true",
+									"protocol": "https",
+									"host": [
+										"{{publicURL}}"
+									],
+									"path": [
+										"business-entity",
+										"public",
+										"api",
+										"v1",
+										"entity",
+										"c360.person",
+										"29867286696967984873281291214"
+									],
+									"query": [
+										{
+											"key": "_showContentMeta",
+											"value": "true"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Business Entity Master for XREF",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "IDS-SESSION-ID",
+										"value": "{{PodMDMUserSessionId}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "https://{{publicURL}}/business-entity/public/api/v1/entity/c360.person/c360.default.system/9",
+									"protocol": "https",
+									"host": [
+										"{{publicURL}}"
+									],
+									"path": [
+										"business-entity",
+										"public",
+										"api",
+										"v1",
+										"entity",
+										"c360.person",
+										"c360.default.system",
+										"9"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Business Entity Master Organization",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "IDS-SESSION-ID",
+										"value": "{{PodMDMUserSessionId}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"Organization API2\",\n  \"numberOfEmployees\": 12,\n  \"companyType\": {\n    \"Code\": \"Chartered\"\n  },\n  \"dateOfIncorporation\": \"2021-06-01\",\n  \"TaxDetail\": [\n    {\n      \"taxNumberType\": {\n        \"Code\": \"ITIN\"\n      },\n      \"taxNumber\": \"12\"\n    }\n  ]\n}"
+								},
+								"url": {
+									"raw": "https://{{publicURL}}/business-entity/public/api/v1/entity/c360.organization?sourceSystem=c360.default.system&sourcePKey=89",
+									"protocol": "https",
+									"host": [
+										"{{publicURL}}"
+									],
+									"path": [
+										"business-entity",
+										"public",
+										"api",
+										"v1",
+										"entity",
+										"c360.organization"
+									],
+									"query": [
+										{
+											"key": "sourceSystem",
+											"value": "c360.default.system"
+										},
+										{
+											"key": "sourcePKey",
+											"value": "89"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Business Entity Master Person",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "IDS-SESSION-ID",
+										"value": "{{PodMDMUserSessionId}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"Organization API2\",\n  \"numberOfEmployees\": 12,\n  \"companyType\": {\n    \"Code\": \"Chartered\"\n  },\n  \"dateOfIncorporation\": \"2021-06-01\",\n  \"TaxDetail\": [\n    {\n      \"taxNumberType\": {\n        \"Code\": \"ITIN\"\n      },\n      \"taxNumber\": \"12\"\n    }\n  ]\n}"
+								},
+								"url": {
+									"raw": "https://{{publicURL}}/business-entity/public/api/v1/entity/c360.person?sourceSystem=salesforce&sourcePKey=jj_001",
+									"protocol": "https",
+									"host": [
+										"{{publicURL}}"
+									],
+									"path": [
+										"business-entity",
+										"public",
+										"api",
+										"v1",
+										"entity",
+										"c360.person"
+									],
+									"query": [
+										{
+											"key": "sourceSystem",
+											"value": "salesforce"
+										},
+										{
+											"key": "sourcePKey",
+											"value": "jj_001"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Business Entity Master Person Copy",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "IDS-SESSION-ID",
+										"value": "{{PodMDMUserSessionId}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"John Jonnes\",\n    \"Country\": \"USA\"\n}"
+								},
+								"url": {
+									"raw": "https://{{publicURL}}/business-entity/public/api/v1/entity/c360.organization?sourceSystem=c360.default.system",
+									"protocol": "https",
+									"host": [
+										"{{publicURL}}"
+									],
+									"path": [
+										"business-entity",
+										"public",
+										"api",
+										"v1",
+										"entity",
+										"c360.organization"
+									],
+									"query": [
+										{
+											"key": "sourceSystem",
+											"value": "c360.default.system"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Business Entity Master",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "IDS-SESSION-ID",
+										"value": "{{PodMDMUserSessionId}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"firstName\": \"Jone\",\n    \"lastName\": \"J Jones\",\n    \"title\": \"Developer I\",\n    \"designation\": \"Advanced Developer\"\n}"
+								},
+								"url": {
+									"raw": "https://{{publicURL}}/business-entity/public/api/v1/entity/c360.person/30135099501325521983619650821?sourceSystem=c360.default.system",
+									"protocol": "https",
+									"host": [
+										"{{publicURL}}"
+									],
+									"path": [
+										"business-entity",
+										"public",
+										"api",
+										"v1",
+										"entity",
+										"c360.person",
+										"30135099501325521983619650821"
+									],
+									"query": [
+										{
+											"key": "sourceSystem",
+											"value": "c360.default.system"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Business Entity Master Field",
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "IDS-SESSION-ID",
+										"value": "{{PodMDMUserSessionId}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "[\n    {\n        \"op\": \"replace\",\n        \"path\": \"firstName\",\n        \"value\": \"jacob\"\n    },\n    {\n        \"op\": \"replace\",\n        \"path\": \"lastName\",\n        \"value\": \"Bejoy\"\n    }\n]"
+								},
+								"url": {
+									"raw": "https://{{publicURL}}/business-entity/public/api/v1/entity/c360.person/29922861446847363837152616684?sourceSystem=c360.default.system",
+									"protocol": "https",
+									"host": [
+										"{{publicURL}}"
+									],
+									"path": [
+										"business-entity",
+										"public",
+										"api",
+										"v1",
+										"entity",
+										"c360.person",
+										"29922861446847363837152616684"
+									],
+									"query": [
+										{
+											"key": "sourceSystem",
+											"value": "c360.default.system"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Entity Members",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "IDS-SESSION-ID",
+										"value": "{{PodMDMUserSessionId}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "https://{{publicURL}}/business-entity/public/api/v1/entity-member/c360.person/MDM000005IUSN1",
+									"protocol": "https",
+									"host": [
+										"{{publicURL}}"
+									],
+									"path": [
+										"business-entity",
+										"public",
+										"api",
+										"v1",
+										"entity-member",
+										"c360.person",
+										"MDM000005IUSN1"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Business Entity Master",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "IDS-SESSION-ID",
+										"value": "{{PodMDMUserSessionId}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "https://{{publicURL}}/business-entity/public/api/v1/entity/c360.person/29922861446847363837152616684?sourceSystem=c360.default.system",
+									"protocol": "https",
+									"host": [
+										"{{publicURL}}"
+									],
+									"path": [
+										"business-entity",
+										"public",
+										"api",
+										"v1",
+										"entity",
+										"c360.person",
+										"29922861446847363837152616684"
+									],
+									"query": [
+										{
+											"key": "sourceSystem",
+											"value": "c360.default.system"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Business Entity Source(XREF)",
+					"item": [
+						{
+							"name": "Source XREF",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "IDS-SESSION-ID",
+										"value": "{{PodMDMUserSessionId}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "https://{{publicURL}}/business-entity/public/api/v1/entity-xref/c360.person/salesforce/kr_001",
+									"protocol": "https",
+									"host": [
+										"{{publicURL}}"
+									],
+									"path": [
+										"business-entity",
+										"public",
+										"api",
+										"v1",
+										"entity-xref",
+										"c360.person",
+										"salesforce",
+										"kr_001"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Source XREF",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "IDS-SESSION-ID",
+										"value": "{{PodMDMUserSessionId}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"firstName\": \"Kruti\",\n    \"lastName\": \"Dev\",\n    \"title\": \"Developer\"\n}"
+								},
+								"url": {
+									"raw": "https://{{publicURL}}/business-entity/public/api/v1/entity-xref/c360.person/salesforce/kr_001",
+									"protocol": "https",
+									"host": [
+										"{{publicURL}}"
+									],
+									"path": [
+										"business-entity",
+										"public",
+										"api",
+										"v1",
+										"entity-xref",
+										"c360.person",
+										"salesforce",
+										"kr_001"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Source XREF",
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "IDS-SESSION-ID",
+										"value": "{{PodMDMUserSessionId}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"firstName\": \"Kruti\",\n    \"lastName\": \"Dev\",\n    \"title\": \"Developer\"\n}"
+								},
+								"url": {
+									"raw": "https://{{publicURL}}/business-entity/public/api/v1/entity-xref/c360.person/salesforce/kr_001",
+									"protocol": "https",
+									"host": [
+										"{{publicURL}}"
+									],
+									"path": [
+										"business-entity",
+										"public",
+										"api",
+										"v1",
+										"entity-xref",
+										"c360.person",
+										"salesforce",
+										"kr_001"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Business Entity Updates using Source LUD",
+					"item": [
+						{
+							"name": "Entity Master (Source LUD)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "IDS-SESSION-ID",
+										"value": "{{PodMDMUserSessionId}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"firstName\": \"Sebastin\",\r\n    \"lastName\": \"Vettel\",\r\n    \"middleName\": \"Chris\",\r\n    \"title\": \"Lead\",\r\n    \"designation\": \"Actor\",\r\n    \"PostalAddress\": [\r\n        {\r\n            \"_id\": \"0dec181346114a6196d1313ca135bcee\",\r\n            \"defaultIndicator\": true,\r\n            \"addressType\": {\r\n                \"Name\": \"Home\",\r\n                \"Code\": \"Home\"\r\n            },\r\n            \"usageType\": {\r\n                \"Name\": \"Home\",\r\n                \"Code\": \"Home\"\r\n            },\r\n            \"addressStatus\": {\r\n                \"Name\": \"Active\",\r\n                \"Code\": \"Active\"\r\n            },\r\n            \"addressLine1\": \"789456, park road\",\r\n            \"country\": {\r\n                \"Name\": \"United States\",\r\n                \"Code\": \"US\"\r\n            },\r\n            \"state\": {\r\n                \"Name\": \"California\",\r\n                \"Code\": \"CA\"\r\n            },\r\n            \"city\": \"California\"\r\n        }\r\n    ],\r\n    \"Phone\": [\r\n        {\r\n            \"_id\": \"5d14a94931db4515857465c950f9b997\",\r\n            \"phoneUsageType\": {\r\n                \"Name\": \"Home\",\r\n                \"Code\": \"Home\"\r\n            },\r\n            \"phoneType\": {\r\n                \"Name\": \"Mobile\",\r\n                \"Code\": \"Mobile\"\r\n            },\r\n            \"phoneNumber\": \"9900202777\"\r\n        }\r\n    ],\r\n    \"_contentMeta\": {\r\n        \"trust\": {\r\n            \"fieldData\": [\r\n                {\r\n                    \"fieldRef\": \"/\",\r\n                    \"sourceLastUpdateDate\": 1654058410000\r\n                },\r\n                {\r\n                    \"fieldRef\": \"PostalAddress[0dec181346114a6196d1313ca135bcee]\",\r\n                    \"sourceLastUpdateDate\": 1656650410000\r\n                },\r\n                {\r\n                    \"fieldRef\": \"Phone[5d14a94931db4515857465c950f9b997]\",\r\n                    \"sourceLastUpdateDate\": 1656650410000\r\n                }\r\n            ]\r\n        }\r\n    }\r\n}"
+								},
+								"url": {
+									"raw": "https://{{publicURL}}/business-entity/public/api/v1/entity/c360.person?sourceSystem=c360.default.system&sourcePKey=pkey300",
+									"protocol": "https",
+									"host": [
+										"{{publicURL}}"
+									],
+									"path": [
+										"business-entity",
+										"public",
+										"api",
+										"v1",
+										"entity",
+										"c360.person"
+									],
+									"query": [
+										{
+											"key": "sourceSystem",
+											"value": "c360.default.system"
+										},
+										{
+											"key": "sourcePKey",
+											"value": "pkey300"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Source XREF (Source LUD)",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "IDS-SESSION-ID",
+										"value": "{{PodMDMUserSessionId}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"firstName\": \"Nibhish\",\r\n    \"lastName\": \"NS\",\r\n    \"middleName\": \"Junior\",\r\n    \"title\": \"F1 Driver\",\r\n    \"designation\": \"Aston Martin\",\r\n    \"PostalAddress\": [\r\n        {\r\n            \"_id\": \"0dec181346114a6196d1313ca135bcee\",\r\n            \"defaultIndicator\": true,\r\n            \"addressType\": {\r\n                \"Name\": \"Home\",\r\n                \"Code\": \"Home\"\r\n            },\r\n            \"usageType\": {\r\n                \"Name\": \"Home\",\r\n                \"Code\": \"Home\"\r\n            },\r\n            \"addressStatus\": {\r\n                \"Name\": \"Active\",\r\n                \"Code\": \"Active\"\r\n            },\r\n            \"addressLine1\": \"789456, park road\",\r\n            \"country\": {\r\n                \"Name\": \"United States\",\r\n                \"Code\": \"US\"\r\n            },\r\n            \"state\": {\r\n                \"Name\": \"California\",\r\n                \"Code\": \"CA\"\r\n            },\r\n            \"city\": \"BLR\"\r\n        },\r\n        {\r\n            \"_id\": \"1dec181346114a6196d1313ca135bcee\",\r\n            \"defaultIndicator\": true,\r\n            \"addressType\": {\r\n                \"Name\": \"Home\",\r\n                \"Code\": \"Home\"\r\n            },\r\n            \"usageType\": {\r\n                \"Name\": \"Home\",\r\n                \"Code\": \"Home\"\r\n            },\r\n            \"addressStatus\": {\r\n                \"Name\": \"Active\",\r\n                \"Code\": \"Active\"\r\n            },\r\n            \"addressLine1\": \"789456, park road\",\r\n            \"country\": {\r\n                \"Name\": \"United States\",\r\n                \"Code\": \"US\"\r\n            },\r\n            \"state\": {\r\n                \"Name\": \"California\",\r\n                \"Code\": \"CA\"\r\n            },\r\n            \"city\": \"MYS\"\r\n        }\r\n    ],\r\n    \"Phone\": [\r\n        {\r\n            \"_id\": \"5d14a94931db4515857465c950f9b997\",\r\n            \"phoneUsageType\": {\r\n                \"Name\": \"Home\",\r\n                \"Code\": \"Home\"\r\n            },\r\n            \"phoneType\": {\r\n                \"Name\": \"Mobile\",\r\n                \"Code\": \"Mobile\"\r\n            },\r\n            \"phoneNumber\": \"8800202777\"\r\n        }\r\n    ],\r\n    \"_contentMeta\": {\r\n        \"trust\": {\r\n            \"fieldData\": [\r\n                {\r\n                    \"fieldRef\": \"/\",\r\n                    \"sourceLastUpdateDate\": 1671084916833\r\n                },\r\n                {\r\n                    \"fieldRef\": \"PostalAddress[0dec181346114a6196d1313ca135bcee]\",\r\n                    \"sourceLastUpdateDate\": 1668145271000\r\n                },\r\n                {\r\n                    \"fieldRef\": \"PostalAddress[1dec181346114a6196d1313ca135bcee]\",\r\n                    \"sourceLastUpdateDate\": 1668145271000\r\n                },\r\n                {\r\n                    \"fieldRef\": \"Phone[5d14a94931db4515857465c950f9b997]\",\r\n                    \"sourceLastUpdateDate\": 1671084916833\r\n                }\r\n            ]\r\n        }\r\n    }\r\n}"
+								},
+								"url": {
+									"raw": "https://{{publicURL}}/business-entity/public/api/v1/entity-xref/c360.person/c360.default.system/pkey534",
+									"protocol": "https",
+									"host": [
+										"{{publicURL}}"
+									],
+									"path": [
+										"business-entity",
+										"public",
+										"api",
+										"v1",
+										"entity-xref",
+										"c360.person",
+										"c360.default.system",
+										"pkey534"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Source XREF(Source LUD at Root)",
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "IDS-SESSION-ID",
+										"value": "{{PodMDMUserSessionId}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "[\r\n    {\r\n        \"op\": \"replace\",\r\n        \"path\": \"firstName\",\r\n        \"value\": \"Maxxy3\"\r\n    },\r\n    {\r\n        \"op\": \"replace\",\r\n        \"path\": \"lastName\",\r\n        \"value\": \"Verstepan3\"\r\n    },\r\n    {\r\n        \"op\": \"setSourceLastUpdateDate\",\r\n        \"path\": \"/\",\r\n        \"value\": 1656736810000\r\n    },\r\n    {\r\n        \"op\": \"replace\",\r\n        \"path\": \"PostalAddress[3d4a8f4d07cb4f0db9ea1be9bf8d27e8]\",\r\n        \"value\": {\r\n            \"_id\": \"3d4a8f4d07cb4f0db9ea1be9bf8d27e8\",\r\n            \"addressType\": {\r\n                \"Code\": \"Home\",\r\n                \"Name\": \"Home\"\r\n            },\r\n            \"usageType\": {\r\n                \"Code\": \"Home\",\r\n                \"Name\": \"Home\"\r\n            },\r\n            \"addressStatus\": {\r\n                \"Code\": \"Active\",\r\n                \"Name\": \"Active\"\r\n            },\r\n            \"addressLine1\": \"Avenue Plaza1\",\r\n            \"country\": {\r\n                \"Code\": \"US\",\r\n                \"Name\": \"United States\"\r\n            },\r\n            \"state\": {\r\n                \"Code\": \"CA\",\r\n                \"Name\": \"California\"\r\n            },\r\n            \"city\": \"NewYork1\"\r\n        }\r\n    },\r\n    {\r\n        \"op\": \"replace\",\r\n        \"path\": \"Phone[f142a11b916c4a1b8239466f15852]\",\r\n        \"value\": {\r\n            \"_id\": \"f142a11b916c4a1b8239466f15852\",\r\n            \"phoneUsageType\": {\r\n                \"Code\": \"Home\",\r\n                \"Name\": \"Home\"\r\n            },\r\n            \"phoneType\": {\r\n                \"Code\": \"Mobile\",\r\n                \"Name\": \"Mobile\"\r\n            },\r\n            \"phoneNumber\": \"9900202799\"\r\n        }\r\n    }\r\n]"
+								},
+								"url": {
+									"raw": "https://{{publicURL}}/business-entity/public/api/v1/entity-xref/c360.person/c360.default.system/pkey202",
+									"protocol": "https",
+									"host": [
+										"{{publicURL}}"
+									],
+									"path": [
+										"business-entity",
+										"public",
+										"api",
+										"v1",
+										"entity-xref",
+										"c360.person",
+										"c360.default.system",
+										"pkey202"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Source XREF(Source LUD at FG)",
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "IDS-SESSION-ID",
+										"value": "{{PodMDMUserSessionId}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "[\r\n    { \"op\": \"replace\", \"path\": \"name\", \"value\": \"Smith\" },\r\n    { \"op\": \"replace\", \"path\": \"accountnumber\", \"value\": \"214191\" },\r\n    { \"op\": \"setSourceLastUpdateDate\", \"path\": \"/\", \"value\": 1654058410000 },\r\n    {\r\n        \"op\": \"replace\",\r\n        \"path\": \"Address[3d4a8f4d07cb4f0db9ea1be9bf8d27e8]\",\r\n        \"value\": {\r\n            \"_id\": \"3d4a8f4d07cb4f0db9ea1be9bf8d27e8\",            \r\n            \"addressType\": {\r\n                \"Code\": \"Home\",\r\n                \"Name\": \"Home\"\r\n            },\r\n            \"usageType\": {\r\n                \"Code\": \"Home\",\r\n                \"Name\": \"Home\"\r\n            },\r\n            \"addressStatus\": {\r\n                \"Code\": \"Active\",\r\n                \"Name\": \"Active\"\r\n            },\r\n            \"addressLine1\": \"Avenue Plaza200\",\r\n            \"country\": {\r\n                \"Code\": \"US\",\r\n                \"Name\": \"United States\"\r\n            },\r\n            \"state\": {\r\n                \"Code\": \"CA\",\r\n                \"Name\": \"California\"\r\n            },\r\n            \"city\": \"NewYork200\"\r\n        }\r\n    },\r\n    { \"op\": \"setSourceLastUpdateDate\", \"path\": \"Address[3d4a8f4d07cb4f0db9ea1be9bf8d27e8]\", \"value\": 1657428010000 },\r\n    {\r\n        \"op\": \"replace\",\r\n        \"path\": \"SmartFieldPhone[f142a11b916c4a1b8239466f15852]\",\r\n        \"value\": {\r\n            \"_id\": \"f142a11b916c4a1b8239466f15852\",            \r\n            \"phoneUsageType\": {\r\n                \"Code\": \"Home\",\r\n                \"Name\": \"Home\"\r\n            },\r\n            \"phoneType\": {\r\n                \"Code\": \"Mobile\",\r\n                \"Name\": \"Mobile\"\r\n            },\r\n            \"phoneNumber\": \"1100202799\"\r\n            \r\n                 }\r\n    },\r\n    { \"op\": \"setSourceLastUpdateDate\", \"path\": \"SmartFieldPhone[f142a11b916c4a1b8239466f15852]\", \"value\": 1657428010000 }\r\n]"
+								},
+								"url": {
+									"raw": "https://{{publicURL}}/business-entity/public/api/v1/entity-xref/account/c360.default.system/pkey201",
+									"protocol": "https",
+									"host": [
+										"{{publicURL}}"
+									],
+									"path": [
+										"business-entity",
+										"public",
+										"api",
+										"v1",
+										"entity-xref",
+										"account",
+										"c360.default.system",
+										"pkey201"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Relationship",
+			"item": [
+				{
+					"name": "Filter Relationships",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"postman.setEnvironmentVariable(\"modelVersion\", Math.round(new Date().getTime()));",
+									"postman.setGlobalVariable(\"corelationID\", 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) { var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8); return v.toString(16); }));",
+									"console.log(\"correlation id:\"+postman.getGlobalVariable(\"correlationID\"));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "IDS-SESSION-ID",
+								"value": "{{PodMDMUserSessionId}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"filter\":\n    {\n        \"from\":\n        {\n            \"businessEntity\":\"c360.person\",\n            \"businessId\":\"30136693806248569236179512998\"\n        },\n        \"to\":\n        {\n            \"businessEntity\":\"c360.person\",\n            \"businessId\":\"30136693824695313309889064620\"\n        }\n    }\n}"
+						},
+						"url": {
+							"raw": "https://{{publicURL}}/business-entity/public/api/v1/relationship/colleague_of/filter",
+							"protocol": "https",
+							"host": [
+								"{{publicURL}}"
+							],
+							"path": [
+								"business-entity",
+								"public",
+								"api",
+								"v1",
+								"relationship",
+								"colleague_of",
+								"filter"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Relationship businessId",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"postman.setEnvironmentVariable(\"modelVersion\", Math.round(new Date().getTime()));",
+									"postman.setGlobalVariable(\"corelationID\", 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) { var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8); return v.toString(16); }));",
+									"console.log(\"correlation id:\"+postman.getGlobalVariable(\"correlationID\"));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "IDS-SESSION-ID",
+								"value": "{{PodMDMUserSessionId}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "https://{{publicURL}}/business-entity/public/api/v1/relationship/colleague_of/30142898370355869488951068986?_showContentMeta=true",
+							"protocol": "https",
+							"host": [
+								"{{publicURL}}"
+							],
+							"path": [
+								"business-entity",
+								"public",
+								"api",
+								"v1",
+								"relationship",
+								"colleague_of",
+								"30142898370355869488951068986"
+							],
+							"query": [
+								{
+									"key": "_showContentMeta",
+									"value": "true"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Relationship Public API",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"postman.setEnvironmentVariable(\"modelVersion\", Math.round(new Date().getTime()));",
+									"postman.setGlobalVariable(\"corelationID\", 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) { var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8); return v.toString(16); }));",
+									"console.log(\"correlation id:\"+postman.getGlobalVariable(\"correlationID\"));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "IDS-SESSION-ID",
+								"value": "{{PodMDMUserSessionId}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"_from\": {\r\n        \"businessEntity\": \"c360.person\",\r\n        \"businessId\": \"30136693806248569236179512998\"\r\n    },\r\n    \"_to\": {\r\n        \"businessEntity\": \"c360.person\",\r\n        \"businessId\": \"30136693824695313309889064620\"\r\n    }\r\n}"
+						},
+						"url": {
+							"raw": "https://{{publicURL}}/business-entity/public/api/v1/relationship/colleague_of?sourceSystem=c360.default.system",
+							"protocol": "https",
+							"host": [
+								"{{publicURL}}"
+							],
+							"path": [
+								"business-entity",
+								"public",
+								"api",
+								"v1",
+								"relationship",
+								"colleague_of"
+							],
+							"query": [
+								{
+									"key": "sourceSystem",
+									"value": "c360.default.system"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Relationship Public API",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"postman.setEnvironmentVariable(\"modelVersion\", Math.round(new Date().getTime()));",
+									"postman.setGlobalVariable(\"corelationID\", 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) { var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8); return v.toString(16); }));",
+									"console.log(\"correlation id:\"+postman.getGlobalVariable(\"correlationID\"));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "IDS-SESSION-ID",
+								"value": "{{PodMDMUserSessionId}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"_from\": {\r\n        \"businessEntity\": \"c360.person\",\r\n        \"businessId\": \"30136693806248569236179512998\"\r\n    },\r\n    \"_to\": {\r\n        \"businessEntity\": \"c360.person\",\r\n        \"businessId\": \"30136693824695313309889064618\"\r\n    }\r\n}"
+						},
+						"url": {
+							"raw": "https://{{publicURL}}/business-entity/public/api/v1/relationship/colleague_of/30142988624312700702666680348?sourceSystem=c360.default.system",
+							"protocol": "https",
+							"host": [
+								"{{publicURL}}"
+							],
+							"path": [
+								"business-entity",
+								"public",
+								"api",
+								"v1",
+								"relationship",
+								"colleague_of",
+								"30142988624312700702666680348"
+							],
+							"query": [
+								{
+									"key": "sourceSystem",
+									"value": "c360.default.system"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Relationship Public API",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"postman.setEnvironmentVariable(\"modelVersion\", Math.round(new Date().getTime()));",
+									"postman.setGlobalVariable(\"corelationID\", 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) { var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8); return v.toString(16); }));",
+									"console.log(\"correlation id:\"+postman.getGlobalVariable(\"correlationID\"));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "IDS-SESSION-ID",
+								"value": "{{PodMDMUserSessionId}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "X-INFA-PROFILE-REQ",
+								"value": "true",
+								"type": "text"
+							},
+							{
+								"key": "INFA-MDM-CHANGELIST-ID",
+								"value": "60dafb3ede1ae26f1b7f3091",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "https://{{publicURL}}/business-entity/public/api/v1/relationship/colleague_of/30142786670219119049037064968?sourceSystem=c360.default.system",
+							"protocol": "https",
+							"host": [
+								"{{publicURL}}"
+							],
+							"path": [
+								"business-entity",
+								"public",
+								"api",
+								"v1",
+								"relationship",
+								"colleague_of",
+								"30142786670219119049037064968"
+							],
+							"query": [
+								{
+									"key": "sourceSystem",
+									"value": "c360.default.system"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Merge / UnMerge",
+			"item": [
+				{
+					"name": "Merge",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"postman.setEnvironmentVariable(\"modelVersion\", Math.round(new Date().getTime()));",
+									"postman.setGlobalVariable(\"corelationID\", 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) { var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8); return v.toString(16); }));",
+									"console.log(\"correlation id:\"+postman.getGlobalVariable(\"correlationID\"));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "IDS-SESSION-ID",
+								"value": "{{PodMDMUserSessionId}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n    {\n        \"sourcePKey\": \"KR_001\",\n        \"sourceSystem\": \"sales_force\"\n    },\n    {\n        \"sourcePKey\": \"KR_002\",\n        \"sourceSystem\": \"sales_force\"\n    },\n    {\n        \"sourcePKey\": \"KR_003\",\n        \"sourceSystem\": \"sales_force\"\n    }\n]"
+						},
+						"url": {
+							"raw": "https://{{publicURL}}/business-entity/public/api/v1/entity-group/c360.person",
+							"protocol": "https",
+							"host": [
+								"{{publicURL}}"
+							],
+							"path": [
+								"business-entity",
+								"public",
+								"api",
+								"v1",
+								"entity-group",
+								"c360.person"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Merge (Business ID)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"postman.setEnvironmentVariable(\"modelVersion\", Math.round(new Date().getTime()));",
+									"postman.setGlobalVariable(\"corelationID\", 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) { var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8); return v.toString(16); }));",
+									"console.log(\"correlation id:\"+postman.getGlobalVariable(\"correlationID\"));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "IDS-SESSION-ID",
+								"value": "{{PodMDMUserSessionId}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "X-INFA-PROFILE-REQ",
+								"value": "true",
+								"type": "text"
+							},
+							{
+								"key": "INFA-MDM-CHANGELIST-ID",
+								"value": "60dafb3ede1ae26f1b7f3091",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n    {\n        \"businessId\": \"30144671469908735024405177548\"\n    },\n    {\n        \"businessId\": \"30135930585603624912243111103\"\n    },\n    {\n        \"businessId\": \"30135877211979043715615298521\"\n    },\n    {\n        \"businessId\": \"30134664447033808753476201009\"\n    }\n]"
+						},
+						"url": {
+							"raw": "https://{{publicURL}}/business-entity/public/api/v1/entity-group/c360.person",
+							"protocol": "https",
+							"host": [
+								"{{publicURL}}"
+							],
+							"path": [
+								"business-entity",
+								"public",
+								"api",
+								"v1",
+								"entity-group",
+								"c360.person"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "UnMerge",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"postman.setEnvironmentVariable(\"modelVersion\", Math.round(new Date().getTime()));",
+									"postman.setGlobalVariable(\"corelationID\", 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) { var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8); return v.toString(16); }));",
+									"console.log(\"correlation id:\"+postman.getGlobalVariable(\"correlationID\"));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "IDS-SESSION-ID",
+								"value": "{{PodMDMUserSessionId}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n    {\n        \"sourcePKey\": \"KR_001\",\n        \"sourceSystem\": \"sales_force\"\n    },\n    {\n        \"sourcePKey\": \"KR_002\",\n        \"sourceSystem\": \"sales_force\"\n    },\n    {\n        \"sourcePKey\": \"KR_003\",\n        \"sourceSystem\": \"sales_force\"\n    }\n]"
+						},
+						"url": {
+							"raw": "https://{{publicURL}}/business-entity/public/api/v1/entity-group/c360.person/30144671469908735024405177548",
+							"protocol": "https",
+							"host": [
+								"{{publicURL}}"
+							],
+							"path": [
+								"business-entity",
+								"public",
+								"api",
+								"v1",
+								"entity-group",
+								"c360.person",
+								"30144671469908735024405177548"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "UnMerge (Business ID)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"postman.setEnvironmentVariable(\"modelVersion\", Math.round(new Date().getTime()));",
+									"postman.setGlobalVariable(\"corelationID\", 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) { var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8); return v.toString(16); }));",
+									"console.log(\"correlation id:\"+postman.getGlobalVariable(\"correlationID\"));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "IDS-SESSION-ID",
+								"value": "{{PodMDMUserSessionId}}",
+								"type": "text"
+							},
+							{
+								"key": "INFA-MDM-CORRELATION-ID",
+								"value": "{{corelationID}}",
+								"type": "text",
+								"disabled": true
+							},
+							{
+								"key": "MODEL_VERSION",
+								"value": "{{modelVersion}}",
+								"type": "text",
+								"disabled": true
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "X-INFA-PROFILE-REQ",
+								"value": "true",
+								"type": "text"
+							},
+							{
+								"key": "INFA-MDM-CHANGELIST-ID",
+								"value": "60dafb3ede1ae26f1b7f3091",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n    {\n        \"sourcePKey\": \"BJ_001\",\n        \"sourceSystem\": \"salesforce\"\n    }\n\n]"
+						},
+						"url": {
+							"raw": "https://{{publicURL}}/business-entity/public/api/v1/entity-group/c360.person/30136693824695313309889064622",
+							"protocol": "https",
+							"host": [
+								"{{publicURL}}"
+							],
+							"path": [
+								"business-entity",
+								"public",
+								"api",
+								"v1",
+								"entity-group",
+								"c360.person",
+								"30136693824695313309889064622"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "MetaData API",
+			"item": [
+				{
+					"name": "Meta Data API",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"postman.setEnvironmentVariable(\"modelVersion\", Math.round(new Date().getTime()));",
+									"postman.setGlobalVariable(\"corelationID\", 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) { var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8); return v.toString(16); }));",
+									"console.log(\"correlation id:\"+postman.getGlobalVariable(\"correlationID\"));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "IDS-SESSION-ID",
+								"value": "{{PodMDMUserSessionId}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "X-INFA-PROFILE-REQ",
+								"value": "true",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n    {\n        \"sourcePKey\": \"BJ_001\",\n        \"sourceSystem\": \"salesforce\"\n    }\n\n]"
+						},
+						"url": {
+							"raw": "https://{{publicURL}}/metadata/api/v2/objects/uiApplication/c360.c360",
+							"protocol": "https",
+							"host": [
+								"{{publicURL}}"
+							],
+							"path": [
+								"metadata",
+								"api",
+								"v2",
+								"objects",
+								"uiApplication",
+								"c360.c360"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Meta Data API 2",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"postman.setEnvironmentVariable(\"modelVersion\", Math.round(new Date().getTime()));",
+									"postman.setGlobalVariable(\"corelationID\", 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) { var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8); return v.toString(16); }));",
+									"console.log(\"correlation id:\"+postman.getGlobalVariable(\"correlationID\"));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "IDS-SESSION-ID",
+								"value": "{{PodMDMUserSessionId}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "X-INFA-PROFILE-REQ",
+								"value": "true",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "https://{{publicURL}}/metadata/api/v2/objects/relationship/?_limit=1000&name=Work+for",
+							"protocol": "https",
+							"host": [
+								"{{publicURL}}"
+							],
+							"path": [
+								"metadata",
+								"api",
+								"v2",
+								"objects",
+								"relationship",
+								""
+							],
+							"query": [
+								{
+									"key": "_limit",
+									"value": "1000"
+								},
+								{
+									"key": "name",
+									"value": "Work+for"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Meta Data API Relationship",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"postman.setEnvironmentVariable(\"modelVersion\", Math.round(new Date().getTime()));",
+									"postman.setGlobalVariable(\"corelationID\", 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) { var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8); return v.toString(16); }));",
+									"console.log(\"correlation id:\"+postman.getGlobalVariable(\"correlationID\"));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "IDS-SESSION-ID",
+								"value": "{{PodMDMUserSessionId}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "X-INFA-PROFILE-REQ",
+								"value": "true",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "https://{{publicURL}}/metadata/api/v2/objects/relationship/?_limit=1000&name=Work+for",
+							"protocol": "https",
+							"host": [
+								"{{publicURL}}"
+							],
+							"path": [
+								"metadata",
+								"api",
+								"v2",
+								"objects",
+								"relationship",
+								""
+							],
+							"query": [
+								{
+									"key": "_limit",
+									"value": "1000"
+								},
+								{
+									"key": "name",
+									"value": "Work+for"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Meta Data API 3",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"postman.setEnvironmentVariable(\"modelVersion\", Math.round(new Date().getTime()));",
+									"postman.setGlobalVariable(\"corelationID\", 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) { var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8); return v.toString(16); }));",
+									"console.log(\"correlation id:\"+postman.getGlobalVariable(\"correlationID\"));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "IDS-SESSION-ID",
+								"value": "{{PodMDMUserSessionId}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "X-INFA-PROFILE-REQ",
+								"value": "true",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n    {\n        \"sourcePKey\": \"BJ_001\",\n        \"sourceSystem\": \"salesforce\"\n    }\n\n]"
+						},
+						"url": {
+							"raw": "https://{{publicURL}}/metadata/api/v2/objects/tenantModel/datamodel",
+							"protocol": "https",
+							"host": [
+								"{{publicURL}}"
+							],
+							"path": [
+								"metadata",
+								"api",
+								"v2",
+								"objects",
+								"tenantModel",
+								"datamodel"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Meta Data API 3 Copy",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"postman.setEnvironmentVariable(\"modelVersion\", Math.round(new Date().getTime()));",
+									"postman.setGlobalVariable(\"corelationID\", 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) { var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8); return v.toString(16); }));",
+									"console.log(\"correlation id:\"+postman.getGlobalVariable(\"correlationID\"));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "IDS-SESSION-ID",
+								"value": "{{PodMDMUserSessionId}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "X-INFA-PROFILE-REQ",
+								"value": "true",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n    {\n        \"sourcePKey\": \"BJ_001\",\n        \"sourceSystem\": \"salesforce\"\n    }\n\n]"
+						},
+						"url": {
+							"raw": "https://{{publicURL}}/metadata/api/v2/objects/tenantModel/datamodel",
+							"protocol": "https",
+							"host": [
+								"{{publicURL}}"
+							],
+							"path": [
+								"metadata",
+								"api",
+								"v2",
+								"objects",
+								"tenantModel",
+								"datamodel"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Job Instance",
+			"item": [
+				{
+					"name": "Read Job",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"postman.setEnvironmentVariable(\"modelVersion\", Math.round(new Date().getTime()));",
+									"postman.setGlobalVariable(\"corelationID\", 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) { var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8); return v.toString(16); }));",
+									"console.log(\"correlation id:\"+postman.getGlobalVariable(\"correlationID\"));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "IDS-SESSION-ID",
+								"value": "{{PodMDMUserSessionId}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "X-INFA-PROFILE-REQ",
+								"value": "true",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "https://{{publicURL}}/job/public/api/v1/jobInstance/93d25c14-c874-438b-8ed0-442944a37a54",
+							"protocol": "https",
+							"host": [
+								"{{publicURL}}"
+							],
+							"path": [
+								"job",
+								"public",
+								"api",
+								"v1",
+								"jobInstance",
+								"93d25c14-c874-438b-8ed0-442944a37a54"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Read Jobs w details",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"postman.setEnvironmentVariable(\"modelVersion\", Math.round(new Date().getTime()));",
+									"postman.setGlobalVariable(\"corelationID\", 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) { var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8); return v.toString(16); }));",
+									"console.log(\"correlation id:\"+postman.getGlobalVariable(\"correlationID\"));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "IDS-SESSION-ID",
+								"value": "{{PodMDMUserSessionId}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "X-INFA-PROFILE-REQ",
+								"value": "true",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "https://{{publicURL}}/job/public/api/v1/jobInstance/684263924467920896?details=true",
+							"protocol": "https",
+							"host": [
+								"{{publicURL}}"
+							],
+							"path": [
+								"job",
+								"public",
+								"api",
+								"v1",
+								"jobInstance",
+								"684263924467920896"
+							],
+							"query": [
+								{
+									"key": "details",
+									"value": "true"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Job Search",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"postman.setEnvironmentVariable(\"modelVersion\", Math.round(new Date().getTime()));",
+									"postman.setGlobalVariable(\"corelationID\", 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) { var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8); return v.toString(16); }));",
+									"console.log(\"correlation id:\"+postman.getGlobalVariable(\"correlationID\"));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "IDS-SESSION-ID",
+								"value": "{{PodMDMUserSessionId}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "X-INFA-PROFILE-REQ",
+								"value": "true",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"search\": \"*\"\n}"
+						},
+						"url": {
+							"raw": "https://{{publicURL}}/job/public/api/v1/search",
+							"protocol": "https",
+							"host": [
+								"{{publicURL}}"
+							],
+							"path": [
+								"job",
+								"public",
+								"api",
+								"v1",
+								"search"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Job Search and Filter",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"postman.setEnvironmentVariable(\"modelVersion\", Math.round(new Date().getTime()));",
+									"postman.setGlobalVariable(\"corelationID\", 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) { var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8); return v.toString(16); }));",
+									"console.log(\"correlation id:\"+postman.getGlobalVariable(\"correlationID\"));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "IDS-SESSION-ID",
+								"value": "{{PodMDMUserSessionId}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "X-INFA-PROFILE-REQ",
+								"value": "true",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"search\": \"DEMO\",\n    \"pageSize\": 25,\n    \"pageOffset\": 0,\n    \"filters\": {\n        \"operator\": \"or\",\n        \"filter\": [\n            {\n                \"fieldName\": \"jobType\",\n                \"fieldValue\": \"c360.be.matchmerge\"\n            },\n            {\n                \"fieldName\": \"jobType\",\n                \"fieldValue\": \"c360.ingress.load\"\n            }\n        ]\n    }\n}"
+						},
+						"url": {
+							"raw": "https://{{publicURL}}/job/public/api/v1/search",
+							"protocol": "https",
+							"host": [
+								"{{publicURL}}"
+							],
+							"path": [
+								"job",
+								"public",
+								"api",
+								"v1",
+								"search"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Ingress",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;\r",
+									"var jsonData = JSON.parse(responseBody);\r",
+									"if (responseCode.code === 200 ) {\r",
+									"    console.log(\"get job instances details Successful\");\r",
+									"}\r",
+									"else{\r",
+									"    console.error(\"failed in instances details \"+ responseCode.code);\r",
+									"}\r",
+									"console.log(\" <=================== ResponseBody =================== >\");\r",
+									"console.log(jsonData);"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"postman.setEnvironmentVariable(\"modelVersion\", Math.round(new Date().getTime()));\r",
+									"postman.setGlobalVariable(\"corelationID\", 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) { var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8); return v.toString(16); }));\r",
+									"console.log(\"correlation id:\"+postman.getGlobalVariable(\"correlationID\"));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "IDS-SESSION-ID",
+								"value": "{{PodMDMUserSessionId}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"jobDefinitionId\": \"mdm_ingress\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{publicURL}}/job/public/api/v1/jobInstance/Ingress",
+							"protocol": "https",
+							"host": [
+								"{{publicURL}}"
+							],
+							"path": [
+								"job",
+								"public",
+								"api",
+								"v1",
+								"jobInstance",
+								"Ingress"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Match and Merge",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;\r",
+									"var jsonData = JSON.parse(responseBody);\r",
+									"if (responseCode.code === 200 ) {\r",
+									"    console.log(\"get job instances details Successful\");\r",
+									"}\r",
+									"else{\r",
+									"    console.error(\"failed in instances details \"+ responseCode.code);\r",
+									"}\r",
+									"console.log(\" <=================== ResponseBody =================== >\");\r",
+									"console.log(jsonData);"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"postman.setEnvironmentVariable(\"modelVersion\", Math.round(new Date().getTime()));\r",
+									"postman.setGlobalVariable(\"corelationID\", 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) { var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8); return v.toString(16); }));\r",
+									"console.log(\"correlation id:\"+postman.getGlobalVariable(\"correlationID\"));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "IDS-SESSION-ID",
+								"value": "{{PodMDMUserSessionId}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"jobDefinitionId\": \"demo_match_merge\",\r\n    \"matchModelId\": \"person.ruleset1\",\r\n    \"matchModelVersion\": 1,\r\n    \"businessEntity\": \"c360.person\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{publicURL}}/job/public/api/v1/jobInstance/MatchMerge",
+							"protocol": "https",
+							"host": [
+								"{{publicURL}}"
+							],
+							"path": [
+								"job",
+								"public",
+								"api",
+								"v1",
+								"jobInstance",
+								"MatchMerge"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Egress",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;\r",
+									"var jsonData = JSON.parse(responseBody);\r",
+									"if (responseCode.code === 200 ) {\r",
+									"    console.log(\"get job instances details Successful\");\r",
+									"}\r",
+									"else{\r",
+									"    console.error(\"failed in instances details \"+ responseCode.code);\r",
+									"}\r",
+									"console.log(\" <=================== ResponseBody =================== >\");\r",
+									"console.log(jsonData);"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"postman.setEnvironmentVariable(\"modelVersion\", Math.round(new Date().getTime()));\r",
+									"postman.setGlobalVariable(\"corelationID\", 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) { var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8); return v.toString(16); }));\r",
+									"console.log(\"correlation id:\"+postman.getGlobalVariable(\"correlationID\"));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "IDS-SESSION-ID",
+								"value": "{{PodMDMUserSessionId}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"jobDefinitionId\": \"egress_person\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{publicURL}}/job/public/api/v1/jobInstance/Egress",
+							"protocol": "https",
+							"host": [
+								"{{publicURL}}"
+							],
+							"path": [
+								"job",
+								"public",
+								"api",
+								"v1",
+								"jobInstance",
+								"Egress"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}

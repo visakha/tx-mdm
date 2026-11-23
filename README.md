@@ -4,8 +4,9 @@ A small app for running and watching Informatica IDMC jobs without the browser c
 
 - **Business 360 (MDM):** pick an ingress, egress or match-merge job definition and run it.
 - **Data Integration (CDI):** pick a mapping task or taskflow and run it.
-- **Results screen** (same for both): job name, status, start/end time, a short live log,
-  counts on one side, errors on the other.
+- **Results screen** (same for both): job name, status, "Requested" time (when this app
+  submitted the run), "Started in IDMC" time (as Informatica reports it), end time, a short
+  live log, counts on one side, errors on the other.
 
 ```
 frontend/  React + Vite + strict TypeScript, Vercel UI SDK (@ui-sdk/react) + agent bridge
@@ -19,6 +20,18 @@ backend/   Python FastAPI — owns EVERY Informatica call, holds the credentials
 
 CDI and MDM are separate concerns: separate modules, routers, sessions and lists. They share
 only the app shell (tabs) and the shape of a run result.
+
+### Repository layout
+
+| Folder | What |
+|---|---|
+| `backend/`, `frontend/` | The app |
+| `internal-docs/` | Reference material: B360 Postman collection, B360 REST API reference PDF (Oct 2026), transcribed `idmc_collection.http` (password masked), CDI and MDM API research notes, API map |
+| `internal-notes/` | Working notes for the agent maintaining this repo: layout, gotchas, verified vs unverified API facts, run/test commands, next steps, barebones-v2 ↔ CDI |
+| `methodology/` | Spec-Driven Development: constitution, six-phase lifecycle, operating procedures (incl. hill climbing), decision log, Python/TS review guide |
+| `specs/` | Current-state specs: CDI, MDM, shared behaviour, agent interface |
+| `changes/` | Change proposals (proposal / specs / design / tasks) and templates |
+| `idq-barebones-v2/` | Read-only snapshot of the Snowflake bare-bones package from github.com/visakha/idq-cli @ `adde845` |
 
 ## Setup
 
@@ -48,6 +61,12 @@ npm run dev                 # http://localhost:5173, proxies /api to :8000
 | `IDMC_PLATFORM_URL` | Optional override; empty = use `baseApiUrl` from the login response |
 | `MDM_RESOLVER_CACHE_SECONDS` | How long MDM job-id resolution is cached (default 600) |
 | `FRONTEND_ORIGIN` | CORS origin if you skip the Vite proxy |
+| `IDMC_PROXY_URL` | Outbound proxy for IDMC calls; empty = direct |
+| `HTTP_TRUST_ENV` | `false` (default): ignore `HTTP(S)_PROXY`/`NO_PROXY` env vars. `true`: honour them, falling back to `IDMC_PROXY_URL` with a warning if httpx cannot parse them |
+
+> **Proxy note.** The backend deliberately ignores ambient proxy env vars by default. A
+> `NO_PROXY` containing an IPv6 entry (e.g. `::1`) makes httpx raise
+> `InvalidURL: Invalid port` on every call. If you need a proxy, set `IDMC_PROXY_URL`.
 
 ### Try it without an IDMC org
 
@@ -86,6 +105,39 @@ recorded and **never retried**; an HTTP 429 from Informatica is a hard stop, sho
 a 401 triggers one fresh login and one resend of that request (the call never ran, so it is
 not a job retry). The password never goes to the browser and is never echoed in errors.
 
+## Agent interface (for AI agents driving the app)
+
+**Routes** (deep-linkable):
+
+| Path | Screen |
+|---|---|
+| `/mdm/jobs`, `/cdi/jobs` | Job list (`/` redirects to `/mdm/jobs`) |
+| `/mdm/jobs/:assetId`, `/cdi/jobs/:taskId` | One job with its Run button |
+| `/mdm/runs/:runKey`, `/cdi/runs/:runKey` | Results screen for a run |
+
+**Declared actions** on `window.txmdm` (call `txmdm.describe()` in the console):
+
+| Action | Does |
+|---|---|
+| `openSection(service)` | Show the `mdm` or `cdi` job list |
+| `listMdmJobs()` / `listCdiTasks()` | Read the metadata-driven lists |
+| `selectJob(service, jobId)` | Open one job |
+| `runJob(service, jobId, apiName?)` | Start one run **after a person confirms**, then open its results; never retries |
+| `openRun(service, runKey)` | Open a results screen |
+| `getRun(service, runKey)` | Read a run's status, counts, errors, log |
+| `currentRoute()` / `describe()` | Where am I / what can I call |
+
+The UI SDK agent bridge (`src/agent.ts`) is registered too; its allow-callback asks before any
+button press. **Stable selectors:** every key control has a `data-testid` and `aria-label`
+(full list in `specs/agent-interface.md`), e.g. `mdm-job-list`, `mdm-run`, `cdi-run`,
+`run-result` (carries `data-run-key` and `data-status`), `run-status`, `run-counts`,
+`run-errors`.
+
+**OpenAPI:** `http://127.0.0.1:8000/openapi.json` (and `/docs`). Every operation has an
+`operationId` (`cdi_list_tasks`, `cdi_start_run`, `cdi_get_run`, `mdm_list_jobs`,
+`mdm_start_run`, `mdm_get_run`, …), a summary, a description and typed response models — an
+agent can call the backend directly.
+
 ## Which Informatica calls are used
 
 | Step | CDI | MDM (Business 360) |
@@ -98,7 +150,7 @@ not a job retry). The password never goes to the browser and is never echoed in 
 
 ## Verified vs. not verified
 
-**Verified here:** backend unit/route tests (17, against a mocked IDMC), ruff + mypy strict
+**Verified here:** backend unit/route tests (20, against a mocked IDMC), ruff + mypy strict
 clean; frontend typecheck, unit tests, oxlint and production build clean.
 
 **Not yet verified against the real org** (no live calls have been made by this code):
@@ -117,3 +169,5 @@ clean; frontend typecheck, unit tests, oxlint and production build clean.
 5. Whether the org uses session-id auth or the newer JWT auth.
 6. Exact field names in the MDM `details=true` error payload (errors are collected
    defensively from any `errorMessage`-style field).
+
+Full, labelled list: `internal-notes/api-facts.md`.

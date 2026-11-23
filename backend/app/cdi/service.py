@@ -36,6 +36,8 @@ class CdiService:
             return run
         snapshot = self._client.check(handle)
         run.counts = snapshot.counts
+        if snapshot.started_at is not None:
+            run.idmc_started_at = snapshot.started_at
         for error in snapshot.errors:
             if error not in run.errors:
                 run.errors.append(error)

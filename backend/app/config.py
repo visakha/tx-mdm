@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     mdm_resolver_cache_seconds: int = 600
     frontend_origin: str = "http://localhost:5173"
     http_timeout_seconds: float = 30.0
+    # Outbound proxy for IDMC calls. Empty = direct. HTTP(S)_PROXY / NO_PROXY env vars are
+    # ignored unless http_trust_env is true (a malformed NO_PROXY, e.g. an IPv6 entry,
+    # otherwise makes httpx fail on every call).
+    idmc_proxy_url: str = ""
+    http_trust_env: bool = False
 
 
 @lru_cache

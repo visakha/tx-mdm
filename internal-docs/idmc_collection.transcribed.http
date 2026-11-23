@@ -1,0 +1,33 @@
+# Transcribed from Vamsi's VS Code REST Client file (lines 1-29). Password masked on purpose.
+@loginUrl = https://dm1-us.informaticacloud.com
+@baseURL = https://usw1-mdm.dm1-us.informaticacloud.com
+@username = VVamsi-IDMCDev
+@password = <your IDMC password - set locally, never commit>
+
+### Step 1: Authenticate to get IDS-SESSION-ID
+# @name login
+POST {{loginUrl}}/saas/public/core/v3/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+### Capture Session ID from response
+@sessionId = {{login.response.body.$.userInfo.sessionId}}
+@PodMDMUserSessionId = {{login.response.body.$.userInfo.sessionId}}
+
+@publicURL = https://usw1-mdm.dm1-us.informaticacloud.com
+### Search / Search & Filter Business Entity
+# NOTE: original line 23 was https://{{publicURL}}/... which doubles the scheme (https://https://...). Fixed below.
+POST {{publicURL}}/search/public/api/v1/search
+IDS-SESSION-ID: {{PodMDMUserSessionId}}
+Content-Type: application/json
+
+{
+  "entityType": "c360.organization",
+  "pageSize": 5
+  # ...rest cut off in photo
+}

@@ -59,7 +59,7 @@ class MdmService:
         snapshot = self._client.check(instance_id)
         run.counts = snapshot.counts
         if snapshot.started_at is not None:
-            run.started_at = snapshot.started_at
+            run.idmc_started_at = snapshot.started_at
         for error in snapshot.errors:
             if error not in run.errors:
                 run.errors.append(error)

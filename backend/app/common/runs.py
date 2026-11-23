@@ -43,12 +43,19 @@ class LogLine(BaseModel):
 class RunView(BaseModel):
     """What the results screen shows: name, status, start time, log, counts, errors."""
 
-    run_key: str
-    service: str  # "cdi" or "mdm"
+    run_key: str = Field(description="Backend id for this run; use it in GET .../runs/{run_key}.")
+    service: str = Field(description='"cdi" or "mdm".')
     job_name: str
-    job_kind: str
-    status: RunStatus
-    started_at: datetime | None = None
+    job_kind: str = Field(
+        description="MTT / WORKFLOW / TASKFLOW, or Ingress / Egress / MatchMerge."
+    )
+    status: RunStatus = Field(description="Final when SUCCESS, WARNING, FAILED or STOPPED.")
+    started_at: datetime | None = Field(
+        default=None, description="When this backend submitted the run (always set)."
+    )
+    idmc_started_at: datetime | None = Field(
+        default=None, description="Start time reported by IDMC, once IDMC reports one."
+    )
     ended_at: datetime | None = None
     log: list[LogLine] = Field(default_factory=list)
     counts: RunCounts = Field(default_factory=RunCounts)

@@ -3,7 +3,7 @@
 from datetime import datetime
 from enum import StrEnum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class CdiTaskType(StrEnum):
@@ -15,18 +15,20 @@ class CdiTaskType(StrEnum):
 class CdiTask(BaseModel):
     """One runnable asset from the v3 objects query. `id` is the taskFederatedId."""
 
-    id: str
+    id: str = Field(description="taskFederatedId; pass it as task_id to start a run.")
     name: str
-    path: str
+    path: str = Field(description="Project/folder path as shown in IDMC.")
     type: CdiTaskType
     description: str = ""
     updated_at: datetime | None = None
 
 
 class CdiRunRequest(BaseModel):
-    task_id: str
+    task_id: str = Field(description="CdiTask.id (taskFederatedId).")
     task_type: CdiTaskType
-    task_name: str
+    task_name: str = Field(
+        description="CdiTask.name, used for display and as the default API name."
+    )
     # Advanced taskflows only: the published API name. Defaults to task_name (UNVERIFIED).
     api_name: str | None = None
 

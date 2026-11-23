@@ -1,5 +1,6 @@
 import "@ui-sdk/core/web.css";
 import "./agent";
+import "./agentActions";
 import "./styles.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";

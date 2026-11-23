@@ -29,7 +29,10 @@ export interface RunView {
   job_name: string;
   job_kind: string;
   status: RunStatus;
+  /** When this backend submitted the run. */
   started_at: string | null;
+  /** Start time IDMC reports for the run (B360 job instance / CDI activity log), once known. */
+  idmc_started_at: string | null;
   ended_at: string | null;
   log: LogLine[];
   counts: RunCounts;

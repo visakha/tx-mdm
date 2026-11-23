@@ -1,0 +1,62 @@
+-- ============================================================================
+-- sp_snow_step_TRS_REL2_S30_ROUTER  --  BARE-BONES STEP (TRS)
+--
+-- Mapping: m_Tgt_C_S_TRS_Pty_Rle_Rel_2_Mem_To_PCP, workflow wf_TRS_Stage_Load_1_Ongoing.
+-- Step name: ROUTER_EXCEPTIONS. Produces: WRK_TRS_REL2_S3_ROUTER.
+-- Consumes (v2.1 declared inputs): WRK_TRS_REL2_S2_KEYED.
+-- Original params used: none; plus P_RUN_TS (run timestamp).
+--
+-- The CTAS below is the v2.1 step SELECT verbatim. The only removals
+-- were the work-table existence check and the step completion call.
+-- No exception block (errors propagate to the driver handler), no
+-- transactions, no target writes. Returns the row count.
+-- ============================================================================
+CREATE OR REPLACE PROCEDURE sp_snow_step_TRS_REL2_S30_ROUTER (
+
+    P_RUN_TS                 TIMESTAMP_NTZ DEFAULT NULL
+
+)
+RETURNS NUMBER
+LANGUAGE SQL
+EXECUTE AS CALLER
+AS
+$$
+DECLARE
+    l_rows       NUMBER DEFAULT 0;
+BEGIN
+
+    -- ---- Step 30: ROUTER_EXCEPTIONS (verbatim from current main)
+CREATE OR REPLACE TRANSIENT TABLE WRK_TRS_REL2_S3_ROUTER AS
+    WITH
+    lkp_exc AS (SELECT * FROM TABLE(fn_snow_helper40_common())),
+    router AS (
+        SELECT r.*,
+               CASE WHEN r.pty_rle_fk_1 IS NULL THEN 'Invalid_Member'
+                    WHEN r.pty_rle_fk_2 IS NULL THEN 'Invalid_PCP' END                 AS exc_default_code
+          FROM WRK_TRS_REL2_S2_KEYED r
+    ),
+    router_flagged AS (
+        SELECT r.*,
+               /* BAD DATA: unique key of EXC_STG_BAD_REC_MEMB, first row per key in this run */
+               ROW_NUMBER() OVER (PARTITION BY r.dates_reversed, r.INDV_ID, r.PROVIDER_NUM, r.pty_rle_fk_2
+                                      ORDER BY r.CREATE_DT DESC) = 1   AS uq_exc_dates,
+               ROW_NUMBER() OVER (PARTITION BY NOT r.is_valid AND NOT r.dates_reversed, r.INDV_ID,
+                                               r.PROVIDER_NUM, r.exc_default_code
+                                      ORDER BY r.CREATE_DT DESC) = 1   AS uq_exc_default
+          FROM router r
+    )
+    SELECT r.*,
+           'Member'                                      AS hierarchy_code,
+           'Effective Date'                              AS attr_dates,
+           'Provider'                                    AS attr_provider,
+           'Period_Start_Date_>_Period_End_Date'         AS exc_dates_code,
+           xd.EXCEPTION_DESC                             AS exc_dates_desc,
+           xd.EXCEPTION_TYPE                             AS exc_dates_type,
+           xx.EXCEPTION_DESC                             AS exc_default_desc,
+           xx.EXCEPTION_TYPE                             AS exc_default_type
+      FROM router_flagged r
+      LEFT JOIN lkp_exc xd ON xd.EXCEPTION_CODE = 'Period_Start_Date_>_Period_End_Date'
+      LEFT JOIN lkp_exc xx ON xx.EXCEPTION_CODE = r.exc_default_code;
+    SELECT COUNT(*) INTO :l_rows FROM WRK_TRS_REL2_S3_ROUTER;
+    RETURN :l_rows;
+END;$$;

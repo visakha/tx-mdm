@@ -1,0 +1,21 @@
+PUBLISH_DEACTIVATE / PUBLISH_REACTIVATE compile-only validation
+Database: DEACT_REACT_COMPILE_DB (scratch, CREATE only, no CALLs)
+Result: 17/17 files OK, 0 errors
+
+OK   TRS/publish_deactivate/sp_snow_pub_TRS_PTYDEACT_STG_TRS_DEACTIVED_MEMBERS.sql (1 statements)
+OK   TRS/publish_deactivate/sp_snow_pub_TRS_RELDEACT_STG_TRS_DEACTIVATED_RELATIONSHIPS.sql (1 statements)
+OK   ECI/publish_deactivate/sp_snow_pub_ECI_VAL_STG_ECI_PTY_INACTIVE_LOG_DEACTIVATION.sql (1 statements)
+OK   ECI/publish_deactivate/sp_snow_pub_ECI_VAL_STG_ECI_PTY_INACTIVE_STS.sql (1 statements)
+OK   ECI/publish_reactivate/sp_snow_pub_ECI_RFA_STG_ECI_D_FAMILY_ADDRESS.sql (1 statements)
+OK   ECI/publish_reactivate/sp_snow_pub_ECI_RFM_STG_ECI_D_MEDICAID.sql (1 statements)
+OK   ECI/publish_reactivate/sp_snow_pub_ECI_RFP_STG_ECI_D_FAMILY_PHONE.sql (1 statements)
+OK   ECI/publish_reactivate/sp_snow_pub_ECI_VAL_STG_ECI_PTY_INACTIVE_LOG_REACTIVATION.sql (1 statements)
+OK   WIC/publish_deactivate/sp_snow_pub_WIC_VAL_STG_WIC_PTY_INACTIVE_LOG_DEACTIVATION.sql (1 statements)
+OK   WIC/publish_deactivate/sp_snow_pub_WIC_VAL_STG_WIC_PTY_INACTIVE_STS.sql (1 statements)
+OK   WIC/publish_reactivate/sp_snow_pub_WIC_VAL_STG_WIC_PTY_INACTIVE_LOG_REACTIVATION.sql (1 statements)
+OK   TTF/publish_deactivate/sp_snow_pub_TTF_VAL_STG_TTF_PTY_INACTIVE_LOG_DEACTIVATION.sql (1 statements)
+OK   TTF/publish_deactivate/sp_snow_pub_TTF_VAL_STG_TTF_PTY_INACTIVE_STS.sql (1 statements)
+OK   TTF/publish_reactivate/sp_snow_pub_TTF_VAL_STG_TTF_PTY_INACTIVE_LOG_REACTIVATION.sql (1 statements)
+OK   FSS/publish_deactivate/sp_snow_pub_FSS_VAL_STG_FSS_PTY_INACTIVE_LOG.sql (1 statements)
+OK   FSS/publish_deactivate/sp_snow_pub_FSS_VAL_STG_FSS_PTY_INACTIVE_STS_NEW.sql (1 statements)
+OK   FSS/publish_reactivate/sp_snow_pub_FSS_VAL_STG_FSS_PTY_INACTIVE_STS_REACTIVATION.sql (1 statements)

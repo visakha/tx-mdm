@@ -18,6 +18,7 @@ class CdiRunSnapshot:
     note: str
     counts: RunCounts = field(default_factory=RunCounts)
     errors: list[str] = field(default_factory=list)
+    started_at: datetime | None = None
     ended_at: datetime | None = None
 
 
@@ -194,6 +195,7 @@ def snapshot_from_monitor(entry: dict[str, Any]) -> CdiRunSnapshot:
         status=MONITOR_STATES.get(state, RunStatus.RUNNING),
         note=f"Activity monitor: {state or 'running'}",
         counts=_counts(entry),
+        started_at=entry.get("startTimeUtc") or None,
     )
 
 
@@ -207,6 +209,7 @@ def snapshot_from_activity_log(entry: dict[str, Any]) -> CdiRunSnapshot:
         note=f"Activity log: {status.value}",
         counts=_counts(entry),
         errors=[error] if error else [],
+        started_at=entry.get("startTimeUtc") or None,
         ended_at=entry.get("endTimeUtc"),
     )
 

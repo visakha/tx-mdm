@@ -13,7 +13,7 @@ function count(value: number | null): string {
 
 function CountsTable({ counts }: { counts: RunCounts }): React.JSX.Element {
   return (
-    <table className="counts">
+    <table className="counts" data-testid="run-counts">
       <thead>
         <tr>
           <th />
@@ -45,20 +45,26 @@ export function RunResult({
   pollError: string | null;
 }): React.JSX.Element {
   return (
-    <section className="result" aria-label="Run result">
+    <section className="result" aria-label="Run result" data-testid="run-result" data-run-key={run.run_key} data-status={run.status}>
       <header>
-        <h2>{run.job_name}</h2>
-        <span className={`status ${statusTone(run.status)}`}>{run.status}</span>
+        <h2 data-testid="run-job-name">{run.job_name}</h2>
+        <span className={`status ${statusTone(run.status)}`} data-testid="run-status">{run.status}</span>
       </header>
       <dl className="times">
         <dt>Type</dt>
         <dd>{run.job_kind}</dd>
-        <dt>Started</dt>
-        <dd>{fmt(run.started_at)}</dd>
+        <dt>Requested</dt>
+        <dd data-testid="run-started" title="When this app submitted the run">
+          {fmt(run.started_at)}
+        </dd>
+        <dt>Started in IDMC</dt>
+        <dd data-testid="run-idmc-started" title="Start time reported by Informatica">
+          {run.idmc_started_at === null ? "not reported yet" : fmt(run.idmc_started_at)}
+        </dd>
         <dt>Ended</dt>
         <dd>{fmt(run.ended_at)}</dd>
       </dl>
-      <ol className="log">
+      <ol className="log" data-testid="run-log">
         {run.log.slice(-8).map((line, index) => (
           <li key={`${line.at}-${index}`}>
             <time>{new Date(line.at).toLocaleTimeString()}</time> {line.message}
@@ -76,7 +82,7 @@ export function RunResult({
           {run.errors.length === 0 ? (
             <p className="muted">None reported.</p>
           ) : (
-            <ul className="errors">
+            <ul className="errors" data-testid="run-errors">
               {run.errors.map((error) => (
                 <li key={error}>{error}</li>
               ))}

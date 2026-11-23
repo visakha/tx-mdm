@@ -3,7 +3,7 @@
 from datetime import datetime
 from enum import StrEnum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class MdmJobKind(StrEnum):
@@ -40,9 +40,9 @@ class MdmJob(BaseModel):
     job_definition_id: str | None = None
     job_type: str | None = None
     kind: MdmJobKind = MdmJobKind.UNKNOWN
-    runnable: bool = False
-    note: str = ""
+    runnable: bool = Field(default=False, description="True when the id and kind are resolved.")
+    note: str = Field(default="", description="Why a job is not runnable, if it is not.")
 
 
 class MdmRunRequest(BaseModel):
-    asset_id: str
+    asset_id: str = Field(description="MdmJob.asset_id of a runnable job.")
