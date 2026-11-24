@@ -304,7 +304,12 @@ page lists all assets of that type and, on click, shows created / updated / by a
 environment name. A taskflow lists the mapping tasks it uses with their own metadata. Read-only
 (`GET /api/design/...`, Swagger tag "design"). Spec: `specs/design.md`.
 
-0.9.17 (current version): only your own assets are listed - mappings starting `m_`, mapping
+0.9.18 (current version): modern styling pass, CSS only (`frontend/src/styles.css`) - tabs,
+text boxes, selects, buttons, checkboxes, list options and tables restyled; side-by-side fields
+align on the control bottom edge with labels above their box and one 34px control height. No
+markup, aria-label, role or data-* changes. Shipped without tests at the owner's request.
+
+0.9.17: only your own assets are listed - mappings starting `m_`, mapping
 tasks `mt_`, taskflows `tf_` (exact case; table `OWN_NAME_RULES` in `app/design/models.py`;
 `?include_all=true` returns everything). Connections and runtime environments are not filtered.
 Every asset list is keyboard driven: click it (or Tab to it), Up / Down / Home / End move the

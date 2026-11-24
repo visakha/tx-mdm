@@ -701,3 +701,24 @@ NOT OBSERVED in a browser (fake IDMC + vitest + typecheck only). Vamsi 08:49-08:
   of ..." and a list note says the same. Connections / runtime environments / DSS / WORKFLOW
   unfiltered.
 - Agent: `txmdm.designAssetCopyText(type, id)` returns the same labelled text (no clipboard).
+
+## v0.9.18 (2026-11-23 ~21:15 CST): modern styling pass (CSS only) + field alignment
+
+NOT OBSERVED in a browser and NOT TESTED: shipped untested at Vamsi's instruction (voice 21:09
+CST: "don't run any tests or anything. Just go ahead and do the styling"; his laptop was off,
+backend unreachable). Only `npm run build` (tsc + vite) was run - it passed.
+- Why it looked clunky: the UI SDK is unstyled by design (behaviour, focus, ARIA only), and
+  styles.css had no general rules for tabs / inputs / buttons, so most showed browser defaults.
+- New block at the end of styles.css, every selector inside :where() (zero specificity, so all
+  older class rules still win): text boxes / selects / textareas (6px radius, 34px height,
+  purple focus ring), buttons (neutral white; data-agent-confirm buttons = Run / Abort / Save /
+  Send get the purple primary look, selector only), SDK checkboxes, tabs (underline + purple
+  for the selected tab, hover tint), listbox option hover/selected, monitor/counts tables
+  (header tint, zebra rows, row hover), softer card corners.
+- Alignment (Vamsi 21:10 CST): rows (.toolbar, .row, .lookup-row, .tf-clear-row, .b360-filters
+  under .page) are flex with align-items: flex-end; a label wrapping a text box stacks its text
+  above the box (4px gap, 12px label text); inputs / selects / buttons share 34px height and
+  20px line-height so buttons match input height. .form-grid keeps its own 30px rule.
+- Guardrails: no TSX / markup / aria-label / role / data-* change; no display:none, visibility,
+  pointer-events, opacity or z-index rule added; existing section-hiding rules byte-for-byte.
+- To verify on his laptop: bridge test (snapshot / act on tabs, inputs, buttons) + Cypress.

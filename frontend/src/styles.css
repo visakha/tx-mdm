@@ -323,3 +323,135 @@ html[data-theme="dark"] { --system: #f06fcf; }
 .row-nav:focus { outline: 1px dotted currentColor; outline-offset: 2px; }
 .row-nav tr.highlighted { outline: 2px solid currentColor; outline-offset: -2px; }
 .row-nav tr.highlighted td { font-weight: 600; }
+
+/* ---- 0.9.18 modern styling pass (Vamsi voice 2026-11-23 21:09 CST: "the buttons the text boxes
+   look a little bit modern, not that clunky"). CSS only: no markup, aria-label, role or data-*
+   changes. Every selector is wrapped in :where() so it has zero specificity - all earlier,
+   more specific rules (row-open, sort-head, b360-entity, form-grid, tf-panel ...) still win.
+   No hiding, pointer-events, overlay or z-index rules here; focus stays visible. ---- */
+:root {
+  --radius: 6px;
+  --field-bg: #ffffff;
+  --field-border: #c9ced8;
+  --field-border-hover: #a9b0bd;
+  --focus-ring: 0 0 0 3px rgba(119, 25, 170, 0.22);
+  --btn-bg: #ffffff;
+  --btn-bg-hover: #f4f1f7;
+  --btn-bg-active: #ebe4f1;
+  --shadow-sm: 0 1px 2px rgba(20, 24, 33, 0.06);
+  --row-hover: #f7f3fa;
+  --head-bg: #f6f7f9;
+}
+
+/* Text boxes, selects, text areas */
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), select, textarea) {
+  font: inherit;
+  font-size: 14px;
+  color: inherit;
+  background: var(--field-bg);
+  border: 1px solid var(--field-border);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  height: 34px;
+  line-height: 20px;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+:where(textarea) { height: auto; min-height: 64px; line-height: 1.4; }
+:where(input, select, textarea):hover { border-color: var(--field-border-hover); }
+:where(input, select, textarea):focus { outline: none; border-color: var(--one); box-shadow: var(--focus-ring); }
+:where(input, select, textarea)::placeholder { color: #8a909c; }
+:where(input, select, textarea):disabled,
+:where(input, select, textarea)[data-disabled],
+:where(input, select, textarea)[readonly] { background: #f3f4f6; color: #6b7280; }
+:where(input, select, textarea)[aria-invalid="true"],
+:where(input, select, textarea)[data-invalid] { border-color: var(--bad); }
+
+/* Buttons (SDK Button renders a native button). Tabs and checkboxes are styled separately. */
+:where(button:not([role="tab"]):not([role="checkbox"]):not([role="switch"])) {
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: #2a2f3a;
+  background: var(--btn-bg);
+  border: 1px solid var(--field-border);
+  border-radius: var(--radius);
+  padding: 6px 14px;
+  height: 34px;
+  line-height: 20px;
+  white-space: nowrap;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+:where(button:not([role="tab"]):not([role="checkbox"]):not([role="switch"])):hover { background: var(--btn-bg-hover); border-color: var(--field-border-hover); }
+:where(button:not([role="tab"]):not([role="checkbox"]):not([role="switch"])):active { background: var(--btn-bg-active); }
+:where(button):focus-visible { outline: 2px solid var(--one); outline-offset: 2px; }
+:where(button):disabled,
+:where(button)[data-disabled] { cursor: default; color: #9aa0ab; background: #f3f4f6; border-color: var(--line); box-shadow: none; }
+/* Primary look for the main actions, picked by their existing data-agent-confirm label
+   (Run / Abort / Save / Send) - selector only, the attribute itself is untouched. */
+:where(button[data-agent-confirm]:not(:disabled)) { background: var(--one); border-color: var(--one); color: #ffffff; }
+:where(button[data-agent-confirm]:not(:disabled)):hover { background: #6a1698; border-color: #6a1698; }
+:where(button[data-agent-confirm]:not(:disabled)):active { background: #5c1384; }
+
+/* Checkboxes (SDK Checkbox) */
+:where(button[role="checkbox"]) {
+  width: 18px; height: 18px; padding: 0; border: 1px solid var(--field-border); border-radius: 4px;
+  background: var(--field-bg); cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+}
+:where(button[role="checkbox"][aria-checked="true"]) { background: var(--one); border-color: var(--one); color: #ffffff; }
+
+/* Tabs (ribbon tabs and page sub-tabs, SDK Tabs) */
+:where([role="tablist"]) {
+  display: flex; flex-wrap: wrap; gap: 2px; border-bottom: 1px solid var(--line); margin: 0 0 8px;
+}
+:where([role="tab"]) {
+  font: inherit; font-size: 14px; color: #4b5160; background: transparent;
+  border: 0; border-bottom: 2px solid transparent; border-radius: var(--radius) var(--radius) 0 0;
+  padding: 8px 14px; margin-bottom: -1px; cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+:where([role="tab"]):hover { color: var(--one); background: var(--one-soft); }
+:where([role="tab"][aria-selected="true"]),
+:where([role="tab"][data-selected]) { color: var(--one); font-weight: 600; border-bottom-color: var(--one); }
+:where([role="tab"]):focus-visible { outline: 2px solid var(--one); outline-offset: -2px; }
+:where([role="tab"]):disabled,
+:where([role="tab"])[data-disabled] { color: #9aa0ab; cursor: default; background: transparent; }
+
+/* Listbox options (SDK Listbox) - hover / highlight only */
+:where([role="option"]) { border-radius: 4px; }
+:where([role="option"]):hover,
+:where([role="option"][data-highlighted]) { background: var(--row-hover); }
+:where([role="option"][aria-selected="true"]) { background: var(--one-soft); }
+
+/* Tables */
+:where(table.monitor, table.counts) { font-size: 13px; border-collapse: separate; border-spacing: 0; }
+:where(table.monitor) th,
+:where(table.counts) thead th {
+  background: var(--head-bg); color: #3b4150; font-weight: 600; font-size: 12px;
+  text-transform: none; letter-spacing: 0.01em;
+}
+:where(table.monitor) th, :where(table.monitor) td { padding: 7px 10px; }
+:where(table.monitor) tbody tr:nth-child(even) td { background: #fbfbfc; }
+:where(table.monitor) tbody tr:hover td { background: var(--row-hover); }
+
+/* Cards and panels: a little softer */
+:where(.picker, .detail, .tf-run-box, .tf-history) { border-radius: 10px; box-shadow: var(--shadow-sm); }
+:where(code) { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 0.92em; }
+
+/* 0.9.18 alignment (Vamsi 21:10 CST): side-by-side fields were misaligned - a labelled field's
+   input sat lower than an unlabelled one, and buttons in the same row looked squished upward.
+   Rows now align on the control bottom edge; a label that wraps a text box stacks its text above
+   the box with a fixed 4px gap; inputs, selects and buttons share one 34px height (above). */
+.page :is(.toolbar, .row, .lookup-row, .tf-clear-row, .b360-filters) {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 10px;
+}
+.page :is(.toolbar, .row, .lookup-row, .tf-clear-row, .b360-filters) > label:has(> input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), > select, > textarea) {
+  display: inline-flex; flex-direction: column; align-items: stretch; gap: 4px;
+  font-size: 12px; font-weight: 500; color: #4b5160; line-height: 16px;
+}
+.page :is(.toolbar, .row, .lookup-row, .tf-clear-row, .b360-filters) > label > :is(input, select, textarea) { font-size: 14px; color: #1d2330; }
+.page .lookup-row > :first-child { flex: 1 1 auto; }
+.page .param-row { align-items: end; }

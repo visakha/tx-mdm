@@ -1,9 +1,9 @@
 """App version and the top three things in it. GET /api/about returns exactly this."""
 
-VERSION = "0.9.17"
+VERSION = "0.9.18"
 
 HIGHLIGHTS: tuple[str, str, str] = (
-    "Design notebook: only your own assets - mappings m_, mapping tasks mt_, taskflows tf_.",
-    "Design lists: Up / Down / Home / End move the highlight, Enter opens the asset.",
-    "Design lists: Ctrl+C copies the highlighted asset as labelled lines (with its detail).",
+    "Modern styling: tabs, text boxes, buttons and tables restyled (CSS only, no markup changes).",
+    "Side-by-side fields line up: labels above their box, inputs and buttons share one height.",
+    "Agent bridge untouched: same roles, aria-labels and components; shipped without tests.",
 )
