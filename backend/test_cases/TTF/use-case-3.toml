@@ -1,0 +1,41 @@
+# TTF use case 3. Human sections are copied to the Excel Home sheet, never interpreted.
+# Only [mock] is read by code (mock path behaviour + generated-data shape).
+
+[use_case]
+id = "use-case-3"
+source = "TTF"
+title = "Duplicate member"
+template_version = "1.0"
+author = "Muse (draft)"
+last_updated = "2026-11-23"
+
+[scenario]
+summary = "Two TTF clients with the same name and DOB."
+steps = ["Load the 4 TTF landing sheets", "Run tf_Ldg_MDM_CDI_TTF", "Run tf_Stg_MDM_CDI_TTF", "MDM ingress (tester)", "Match and merge", "Egress (tester)", "Read egress tables", "Compare"]
+
+[test_data]
+description = "Members come in pairs sharing FIRSTNAME, LASTNAME and DOB."
+rows = ["CLIENTS: N rows (pairs)", "DEMOGRAPHICS: N rows"]
+
+[expected.results]
+description = "Match and merge gives one master per pair, two sources each."
+
+[expected.validation]
+issues = ["All members pass validation"]
+
+[expected.data_issues]
+issues = []
+
+[notes]
+text = "Rows sharing EXPECT_MASTER_GROUP must end on one MASTER_ID."
+
+[mock]
+shape = "duplicate_pairs"
+match_rule = "name_dob"
+default_rows = 4
+
+[mock.steps.ingress]
+status = "SUCCESS"
+
+[mock.steps.egress]
+status = "SUCCESS"

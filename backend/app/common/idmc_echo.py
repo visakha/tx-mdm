@@ -19,7 +19,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
-from app.common.idmc_registry import LOGIN, IdmcCallSpec, SessionHeader
+from app.common.idmc_registry import IDMC_CALLS, LOGIN, IdmcCallSpec, SessionHeader
 
 ECHO_KEEP = 200
 MAX_CALLS_IN_SCRIPT = 25
@@ -65,6 +65,11 @@ class _Recorded(BaseModel):
 _CURRENT: ContextVar[_Recorded | None] = ContextVar("idmc_echo_current", default=None)
 _STORE: "OrderedDict[str, tuple[str, str, _Recorded]]" = OrderedDict()
 _LOCK = threading.Lock()
+
+
+def _extra_headers(call_id: str) -> tuple[tuple[str, str], ...]:
+    """0.10.0: fixed documented headers (e.g. Update-Mode: PARTIAL) come from the registry row."""
+    return next((s.extra_headers for s in IDMC_CALLS if s.id == call_id), ())
 
 
 def begin() -> _Recorded:
@@ -173,6 +178,7 @@ def powershell(login: LoginEcho | None, calls: list[IdmcCall]) -> str:
         args = [f"curl.exe -s -X {call.method} {_ps_quote(call.url)}"]
         args += [f'-H "{h.value}: {SESSION_VAR_PS}"' for h in call.session_headers]
         args.append(f'-H "Accept: {call.accept}"')
+        args += [f'-H "{k}: {v}"' for k, v in _extra_headers(call.call_id)]
         if call.body is not None:
             # Body via a file: Windows PowerShell 5 strips quotes from JSON passed to curl.exe.
             lines += ["$body = @'", call.body, "'@", "Set-Content -Path body.json -Value $body"]
@@ -203,6 +209,7 @@ def bash(login: LoginEcho | None, calls: list[IdmcCall]) -> str:
         args = [f"curl -s -X {call.method} {_sh_quote(call.url)}"]
         args += [f'-H "{h.value}: {SESSION_VAR_SH}"' for h in call.session_headers]
         args.append(f'-H "Accept: {call.accept}"')
+        args += [f'-H "{k}: {v}"' for k, v in _extra_headers(call.call_id)]
         if call.body is not None:
             args += ['-H "Content-Type: application/json"', "--data-binary @- <<'JSON'"]
             lines.append(" ".join(args))

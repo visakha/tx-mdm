@@ -27,3 +27,9 @@ frontend/cypress/videos/
 frontend/cypress/results/
 backend/openapi-typed.json
 backend/openapi-idmc.json
+
+# 0.10.0 testing harness: run folders (server) and the runner venv / tester folders
+backend/.test_runs/
+roadrunner-py/.venv/
+roadrunner-py/runs/
+roadrunner-py/*.egg-info/

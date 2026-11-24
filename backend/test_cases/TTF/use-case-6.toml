@@ -1,0 +1,41 @@
+# TTF use case 6. Human sections are copied to the Excel Home sheet, never interpreted.
+# Only [mock] is read by code (mock path behaviour + generated-data shape).
+
+[use_case]
+id = "use-case-6"
+source = "TTF"
+title = "Missing required field"
+template_version = "1.0"
+author = "Muse (draft)"
+last_updated = "2026-11-23"
+
+[scenario]
+summary = "A member arrives without DOB or without LASTNAME."
+steps = ["Load the 4 TTF landing sheets", "Run tf_Ldg_MDM_CDI_TTF", "Run tf_Stg_MDM_CDI_TTF", "MDM ingress (tester)", "Match and merge", "Egress (tester)", "Read egress tables", "Compare"]
+
+[test_data]
+description = "One control member plus members missing DOB or LASTNAME."
+rows = ["CLIENTS: N rows", "DEMOGRAPHICS: N rows (some blanks)"]
+
+[expected.results]
+description = "Members missing a required field are rejected at staging; no egress row."
+
+[expected.validation]
+issues = []
+
+[expected.data_issues]
+issues = ["Rejected at staging: missing DOB or LASTNAME"]
+
+[notes]
+text = "Error text is in the stg step of the run status."
+
+[mock]
+shape = "missing_field"
+match_rule = "name_dob"
+default_rows = 3
+
+[mock.steps.ingress]
+status = "SUCCESS"
+
+[mock.steps.egress]
+status = "SUCCESS"

@@ -1,0 +1,41 @@
+# TTF use case 7. Human sections are copied to the Excel Home sheet, never interpreted.
+# Only [mock] is read by code (mock path behaviour + generated-data shape).
+
+[use_case]
+id = "use-case-7"
+source = "TTF"
+title = "Orphan demographics row"
+template_version = "1.0"
+author = "Muse (draft)"
+last_updated = "2026-11-23"
+
+[scenario]
+summary = "A DEMOGRAPHICS row points to an FYCLIENTS id that does not exist."
+steps = ["Load the 4 TTF landing sheets", "Run tf_Ldg_MDM_CDI_TTF", "Run tf_Stg_MDM_CDI_TTF", "MDM ingress (tester)", "Match and merge", "Egress (tester)", "Read egress tables", "Compare"]
+
+[test_data]
+description = "Control members plus clients whose DEMOGRAPHICS row is orphaned."
+rows = ["CLIENTS: N rows", "DEMOGRAPHICS: N rows (some orphaned)"]
+
+[expected.results]
+description = "Orphan rows are rejected at staging; their client never reaches MDM."
+
+[expected.validation]
+issues = []
+
+[expected.data_issues]
+issues = ["Rejected at staging: orphan DEMOGRAPHICS"]
+
+[notes]
+text = "Orphan = FYCLIENTID with no FYCLIENTS row."
+
+[mock]
+shape = "orphan"
+match_rule = "name_dob"
+default_rows = 3
+
+[mock.steps.ingress]
+status = "SUCCESS"
+
+[mock.steps.egress]
+status = "SUCCESS"

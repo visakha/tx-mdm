@@ -149,6 +149,7 @@ class IdmcHttp:
         )
         headers = {"Accept": accept, "Content-Type": "application/json"}
         headers.update({name: session_id for name in session_headers})
+        headers.update(dict(spec.extra_headers))
         return self._http.request(method, url, headers=headers, json=json, params=params)
 
 

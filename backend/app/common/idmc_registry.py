@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 
-from pydantic import BaseModel, Field, JsonValue
+from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 from app.b360data import endpoints as b360_ep
 from app.cdi import endpoints as cdi_ep
@@ -287,6 +287,15 @@ class MappingWire(BaseModel):
     tasks: int | None = Field(default=None, description="Number of tasks that use the mapping.")
 
 
+class MtTaskRuntimePatch(BaseModel):
+    """0.10.0: partial-mode mtTask body that changes only the runtime environment."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    type_: str = Field(default="mtTask", alias="@type")
+    runtimeEnvironmentId: str
+
+
 class RuntimeEnvironmentWire(BaseModel):
     """v2 runtimeEnvironment object (pp. 79-83). agents is not modelled (not shown)."""
 
@@ -340,6 +349,8 @@ class IdmcCallSpec:
     response_array: bool = False  # 0.9.15: response body is a JSON array of response_model
     notes: str = ""
     path_params: tuple[str, ...] = field(default=())
+    # 0.10.0: fixed, documented request headers (never secrets), e.g. Update-Mode: PARTIAL.
+    extra_headers: tuple[tuple[str, str], ...] = ()
 
     @property
     def writes(self) -> bool:
@@ -355,6 +366,7 @@ class IdmcCallSpec:
 
 B360_REF = "Business 360 REST API Reference (Oct 2026)"
 IICS_REF = "IICS REST API Reference (Nov 2025)"
+IICS_JULY26_REF = "IDMC REST API Reference (July 2026)"
 
 LOGIN = IdmcCallSpec(
     "login",
@@ -817,6 +829,23 @@ CONNECTION_BY_ID = IdmcCallSpec(
     path_params=("connection_id",),
 )
 
+MTTASK_SET_RUNTIME = IdmcCallSpec(
+    "cdi-mttask-set-runtime",
+    Area.CDI,
+    HttpMethod.POST,
+    IdmcHost.PLATFORM,
+    cdi_ep.MTTASK_UPDATE,
+    SessionHeader.IC,
+    "Change ONLY a mapping task's runtime environment (partial update mode)",
+    f"{IICS_JULY26_REF}, Update modes p. 19 + Mapping tasks POST p. 486 (Update-Mode=PARTIAL)",
+    DocStatus.REFERENCE,
+    request_model=MtTaskRuntimePatch,
+    response_model=MtTaskWire,
+    path_params=("task_id",),
+    extra_headers=(("Update-Mode", "PARTIAL"),),
+    notes="tx-mdm reads the task first and reads it back after; refuses if it does not match.",
+)
+
 IDMC_CALLS: tuple[IdmcCallSpec, ...] = (
     LOGIN,
     PLATFORM_OBJECTS,
@@ -850,4 +879,5 @@ IDMC_CALLS: tuple[IdmcCallSpec, ...] = (
     RUNTIME_ENVIRONMENTS,
     CONNECTIONS,
     CONNECTION_BY_ID,
+    MTTASK_SET_RUNTIME,
 )

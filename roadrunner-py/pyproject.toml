@@ -1,0 +1,42 @@
+[project]
+name = "roadrunner"
+version = "0.10.0"
+description = "tx-mdm desktop test runner: talks to the tx-mdm backend over HTTP only."
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.27",
+    "pydantic>=2.8",
+    "pytest>=8",
+    "pytest-bdd>=9,<10",
+]
+
+[project.optional-dependencies]
+dev = ["ruff>=0.6", "pyrefly>=1.5"]
+
+[project.scripts]
+roadrunner = "roadrunner.cli:main"
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "N"]
+
+[tool.pyrefly]
+project-includes = ["src", "tests"]
+python-version = "3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+bdd_features_base_dir = "features"
+# Handshakes read the keyboard: no stdin / stdout capture.
+addopts = "--capture=no -p no:cacheprovider"
+filterwarnings = ["ignore::pytest.PytestAssertRewriteWarning"]

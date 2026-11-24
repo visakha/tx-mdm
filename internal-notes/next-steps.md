@@ -29,3 +29,11 @@ Open, in no fixed order (he picks):
 
 Optional, only if asked: persist runs (RunRegistry is in memory); link CDI tasks to the
 barebones-v2 tables (`barebones-v2-and-cdi.md`, "Not linked yet").
+
+8. **Linux-box Secure Agent** (2026-11-23 22:44, Vamsi): runtime environment hhsc4avmdm1d is the agent on his Linux box. Mapping tasks still on Vamsi-laptop-grp; switch to hhsc4avmdm1d for unattended real runs - not changed, his call.
+
+9. **Testing harness 0.10.0** (built 2026-11-23): mock path green for TTF use-case-1..11 and
+   MDM use-case-1..4. Real path needs: real source loader (Oracle/Snowflake), a match-merge job in
+   his org, the real "invalid phone" reason field, DEMOGRAPHICS phone -> x_phone mapping, MDM-group
+   job APIs, real egress tables. All test_config.toml values are Muse picks; MDM use cases are
+   drafts he has not reviewed. Runtime-environment PUT exists (item 8) but was not run on his org.

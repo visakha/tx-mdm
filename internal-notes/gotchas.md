@@ -206,3 +206,13 @@ documented beyond `c360person.firstName`; the backend reuses the prefix the last
   imports `app` from the editable install (the first checkout), not from this one: the
   generated types silently miss new routes. Run it as `PYTHONPATH=. python dev/gen_ts_types.py`
   (or use this checkout's own venv). pytest is fine (rootdir comes first on sys.path).
+
+## 0.10.0 testing harness (2026-11-23)
+- backend/tests/test_ascii_only.py checks git-TRACKED files only: `git add` new files before
+  trusting it.
+- Skipping a mock step leaves its SQLite table missing; the next step reports FAILED
+  "no input (earlier step skipped?)" instead of a 500.
+- Pre-flight failure with scripted or --auto answers stops the run (no retry loop); only a
+  human at the pause gets "fix and retry".
+- Echo scripts take extra headers (Update-Mode) from the registry, not a model field: adding a
+  field to the echo model changes frontend/src/b360/api-types.ts and fails test_b360_types.

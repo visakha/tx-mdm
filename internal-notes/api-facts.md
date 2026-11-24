@@ -381,3 +381,13 @@ numbers are the PDF's own). Nothing below is LIVE yet.
   DTEMPLATE 48 (14 start "m_"; the rest are product: dsst__*, B2B_Gateway_*, infacore_*,
   PreviewMapping_RULE_SPECIFICATION; several names appear more than once in different folders),
   MTT 11 (all mt_m_*), TASKFLOW 4 (all tf_*), CONNECTION 6, RUNTIME_ENVIRONMENT 8.
+
+## Mapping task runtime environment update (0.10.0, 2026-11-23)
+| Fact | Status |
+|---|---|
+| POST to a v2 resource updates it; full mode is the default (whole object required); partial mode via header `Update-Mode: PARTIAL`, JSON only, `@type` required in the body; partial mode is available for mttask (IDMC REST API Reference July 2026, p.19 "Update modes") | DOC |
+| Update a mapping task: `POST /api/v2/mttask/<id>` or `/api/v2/mttask/frs/<id>`; partial mode supported; mtTask `runtimeEnvironmentId` attribute (p.486 "Mapping tasks") | DOC |
+| Pattern GET mttask then POST with Update-Mode PARTIAL to change the agent: Informatica KB 564234 "Update the agent used in the Mapping configuration Task via API" | KB |
+| GET mttask: internal-docs/CDI_job_API_reference.md section 2d (S1 p.442, Nov 2025 edition) | DOC |
+| A partial body of only `@type` + `runtimeEnvironmentId` is accepted on his org | UNVERIFIED - KB 619257 says a few fields can be mandatory even in partial mode. tx-mdm reads back and answers 409 if the task did not change |
+| Live switch of any of his tasks to hhsc4avmdm1d | NOT DONE - his call; tested on the fake IDMC only |

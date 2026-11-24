@@ -21,6 +21,9 @@ from app.common.runs import JobAlreadyRunningError, RunNotFoundError
 from app.dependencies import get_b360_data_service
 from app.design.router import router as design_router
 from app.mdm.router import router as mdm_router
+from app.testing.models import RunPath
+from app.testing.router import make_router, preflight_failed, run_conflict
+from app.testing.runs import PreflightFailedError, RunConflictError
 from app.version import HIGHLIGHTS, VERSION
 
 log = logging.getLogger("tx_mdm")
@@ -65,13 +68,21 @@ def create_app(frontend_origin: str = "http://localhost:5173") -> FastAPI:
                 "name": "design",
                 "description": "CDI design assets: types, lists, metadata (read-only, 0.9.15).",
             },
+            {
+                "name": "test-mock",
+                "description": "Testing harness, mock path: SQLite + fake IDMC (0.10.0).",
+            },
+            {
+                "name": "test-real",
+                "description": "Testing harness, real path (NOT_CONFIGURED for now, 0.10.0).",
+            },
             {"name": "meta", "description": "Health."},
         ],
     )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[frontend_origin],
-        allow_methods=["GET", "POST"],
+        allow_methods=["GET", "POST", "PUT"],
         allow_headers=["Content-Type"],
         expose_headers=["X-Idmc-Echo-Id"],
     )
@@ -108,6 +119,10 @@ def create_app(frontend_origin: str = "http://localhost:5173") -> FastAPI:
     app.include_router(mdm_router)
     app.include_router(b360_router)
     app.include_router(design_router)
+    app.include_router(make_router(RunPath.MOCK))
+    app.include_router(make_router(RunPath.REAL))
+    app.add_exception_handler(PreflightFailedError, preflight_failed)  # type: ignore[arg-type]
+    app.add_exception_handler(RunConflictError, run_conflict)  # type: ignore[arg-type]
 
     @app.get("/api/health", tags=["meta"], operation_id="health", summary="Liveness check")
     def health() -> dict[str, str]:

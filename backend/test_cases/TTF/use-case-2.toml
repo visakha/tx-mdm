@@ -1,0 +1,41 @@
+# TTF use case 2. Human sections are copied to the Excel Home sheet, never interpreted.
+# Only [mock] is read by code (mock path behaviour + generated-data shape).
+
+[use_case]
+id = "use-case-2"
+source = "TTF"
+title = "Name and phone update"
+template_version = "1.0"
+author = "Muse (draft)"
+last_updated = "2026-11-23"
+
+[scenario]
+summary = "A member comes back in a later month with a new last name and phone."
+steps = ["Load the 4 TTF landing sheets", "Run tf_Ldg_MDM_CDI_TTF", "Run tf_Stg_MDM_CDI_TTF", "MDM ingress (tester)", "Match and merge", "Egress (tester)", "Read egress tables", "Compare"]
+
+[test_data]
+description = "Two DEMOGRAPHICS months per member; the later month changes LASTNAME and PHONE."
+rows = ["CLIENTS: N rows", "DEMOGRAPHICS: 2 rows per member"]
+
+[expected.results]
+description = "Master shows the later LASTNAME and only the later phone."
+
+[expected.validation]
+issues = ["All members pass validation"]
+
+[expected.data_issues]
+issues = []
+
+[notes]
+text = "Latest month wins for names and phones."
+
+[mock]
+shape = "update"
+match_rule = "name_dob"
+default_rows = 2
+
+[mock.steps.ingress]
+status = "SUCCESS"
+
+[mock.steps.egress]
+status = "SUCCESS"

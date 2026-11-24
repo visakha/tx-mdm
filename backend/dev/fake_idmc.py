@@ -17,7 +17,8 @@ B360 Data: metadata tenantModel/datamodel lists c360.person, c360.organization, 
 objects/businessEntity/<guid> gives fields + field groups; search returns 12 records each.
 Design (0.9.15): v3 objects for MTT / TASKFLOW / WORKFLOW / DTEMPLATE / DSS carry updateTime /
 updatedBy; objects/<id>/references (FED4 taskflow uses FED5 mapping task; FED5 uses MAP5 + a
-connection); v2 mttask (frs/<id>, <id>), mapping (<id>, search?name=), runtimeEnvironment (laptop
+connection); v2 mttask (frs/<id>, <id>; POST <id> partial/full, 0.10.0), mapping (<id>,
+search?name=), runtimeEnvironment (laptop, hhsc4avmdm1d
 + Cloud Hosted Agent), connection (one Oracle row WITH fake secrets, to prove they never show).
 """
 
@@ -26,7 +27,7 @@ import time
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
 
-from fastapi import Body, FastAPI, Query, Response
+from fastapi import Body, FastAPI, Header, Query, Response
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 app = FastAPI(title="fake IDMC")
@@ -153,6 +154,19 @@ _V2_RUNTIME = [
         "agents": [],
         "isShared": True,
         "federatedId": "RE0",
+    },
+    {
+        "id": "01000025000000000004",
+        "orgId": "fakeorg",
+        "name": "hhsc4avmdm1d",
+        "description": "Secure Agent on the Linux box (0.10.0 fake)",
+        "createTime": "2026-11-23T12:00:00.000Z",
+        "updateTime": "2026-11-23T12:00:00.000Z",
+        "createdBy": "VVamsi-idmcdev",
+        "updatedBy": "VVamsi-idmcdev",
+        "agents": [{"id": "01000008000000000004", "name": "hhsc4avmdm1d"}],
+        "isShared": False,
+        "federatedId": "RE4",
     },
 ]
 
@@ -283,6 +297,23 @@ def mttask_frs(federated_id: str) -> dict[str, Any] | JSONResponse:
 def mttask_id(task_id: str) -> dict[str, Any] | JSONResponse:
     task = next((t for t in _V2_MTTASK.values() if t["id"] == task_id), None)
     return task if task is not None else _not_found(f"mttask {task_id}")
+
+
+@app.post("/saas/api/v2/mttask/{task_id}", response_model=None)
+def mttask_update(
+    task_id: str,
+    body: dict[str, Any],
+    update_mode: Annotated[str, Header(alias="Update-Mode")] = "FULL",
+) -> dict[str, Any] | JSONResponse:
+    """0.10.0: partial mode merges the given fields; full mode replaces the object (pp. 19, 486)."""
+    task = next((t for t in _V2_MTTASK.values() if t["id"] == task_id), None)
+    if task is None:
+        return _not_found(f"mttask {task_id}")
+    if update_mode.upper() != "PARTIAL":
+        task.clear()
+    task.update({k: v for k, v in body.items() if k != "@type"})
+    task["id"] = task_id
+    return task
 
 
 @app.get("/saas/api/v2/mapping/search", response_model=None)

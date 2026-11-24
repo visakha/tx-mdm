@@ -67,6 +67,10 @@ def _operation(spec: IdmcCallSpec) -> JsonObj:
         }
         for q in spec.query
     ]
+    params += [
+        {"name": k, "in": "header", "required": True, "schema": {"type": "string", "const": v}}
+        for k, v in spec.extra_headers
+    ]
     if params:
         op["parameters"] = params
     if spec.auth is not None:

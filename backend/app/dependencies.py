@@ -9,6 +9,7 @@ import httpx
 
 from app.b360data.service import B360DataService
 from app.cdi.client import CdiClient
+from app.cdi.runtime_env import RuntimeEnvironmentService
 from app.cdi.service import CdiService
 from app.common.idmc_session import IdmcHttp, IdmcSession
 from app.common.portal import PortalLinks
@@ -50,6 +51,14 @@ def _new_session(settings: Settings) -> IdmcSession:
     return IdmcSession(
         get_http_client(), settings.idmc_login_url, settings.idmc_username, settings.idmc_password
     )
+
+
+@lru_cache
+def get_runtime_env_service() -> RuntimeEnvironmentService:
+    """0.10.0: one mapping task's runtime environment (read / change), own session."""
+    settings = get_settings()
+    http = IdmcHttp(get_http_client(), _new_session(settings))
+    return RuntimeEnvironmentService(http, settings.idmc_platform_url)
 
 
 @lru_cache

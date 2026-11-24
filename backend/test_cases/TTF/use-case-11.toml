@@ -1,0 +1,41 @@
+# TTF use case 11. Human sections are copied to the Excel Home sheet, never interpreted.
+# Only [mock] is read by code (mock path behaviour + generated-data shape).
+
+[use_case]
+id = "use-case-11"
+source = "TTF"
+title = "Member with several phones"
+template_version = "1.0"
+author = "Muse (draft)"
+last_updated = "2026-11-23"
+
+[scenario]
+summary = "A member arrives with two or more phones in the same month."
+steps = ["Load the 4 TTF landing sheets", "Run tf_Ldg_MDM_CDI_TTF", "Run tf_Stg_MDM_CDI_TTF", "MDM ingress (tester)", "Match and merge", "Egress (tester)", "Read egress tables", "Compare"]
+
+[test_data]
+description = "Two or three DEMOGRAPHICS rows in the same month per member, each with a different phone."
+rows = ["CLIENTS: N rows", "DEMOGRAPHICS: 2-3 rows per member"]
+
+[expected.results]
+description = "All phones land in x_phone with different types; none dropped."
+
+[expected.validation]
+issues = ["All members pass validation"]
+
+[expected.data_issues]
+issues = []
+
+[notes]
+text = "The set of phones is compared, order does not matter."
+
+[mock]
+shape = "multi_phone"
+match_rule = "name_dob"
+default_rows = 2
+
+[mock.steps.ingress]
+status = "SUCCESS"
+
+[mock.steps.egress]
+status = "SUCCESS"

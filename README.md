@@ -35,7 +35,46 @@ only the app shell (tabs) and the shape of a run result.
 | `methodology/` | Spec-Driven Development: constitution, six-phase lifecycle, operating procedures (incl. hill climbing), decision log, Python/TS review guide |
 | `specs/` | Current-state specs: CDI, MDM, shared behaviour, agent interface |
 | `changes/` | Change proposals (proposal / specs / design / tasks) and templates |
+| `roadrunner-py/` | Desktop test runner (0.10.0): pytest-bdd features, interactive pauses, talks HTTP to the backend only |
 | `idq-barebones-v2/` | Read-only snapshot of the Snowflake bare-bones package from github.com/visakha/idq-cli @ `adde845` |
+
+## Testing harness + roadrunner (0.10.0)
+
+Backend test API (typed, `/docs` tags test-mock and test-real), per group (TTF, MDM):
+
+| Method | Path (mock path shown; real path drops `/mock`) | Does |
+|---|---|---|
+| GET | `/api/test/mock/{group}/use-cases` | List use cases |
+| GET | `/api/test/mock/{group}/{uc}` | One use case (human TOML sections + sheets) |
+| GET | `/api/test/mock/{group}/{uc}/template?mode=empty\|generated&rows=N` | Excel template, Home sheet first |
+| POST | `/api/test/mock/{group}/{uc}/preflight` | Check a filled workbook without running |
+| POST | `/api/test/mock/{group}/{uc}/runs` | Upload filled xlsx -> run (422 pre-flight report, 409 run in progress) |
+| GET | `/api/test/mock/{group}/{uc}/runs/{run_id}` | Per-step status: load, ldg, stg, ingress, match-merge, egress, read, compare |
+| POST | `.../runs/{run_id}/continue` / `abort` / `handshakes` | Resume after a manual step, abort, record pause answers |
+| GET | `.../runs/{run_id}/comparison` / `result` | Typed comparison JSON / result xlsx (Home, Handshakes, actual vs expected) |
+
+- Use cases: `backend/test_cases/<GROUP>/use-case-N.toml` (human sections copied to the Home
+  sheet, never interpreted; only `[mock]` is read). TTF use-case-1..11, MDM use-case-1..4.
+- Placeholders (all Muse picks, 2026-11-23): `backend/test_cases/test_config.toml`. The real path
+  reports NOT_CONFIGURED and calls nothing until they are real.
+- Mock path: SQLite per run stands in for LDG_TTF_* and the egress tables
+  (EGR_ZLV_GUEST_TTF + child EGR_ZLV_GUEST_TTF_PHONE); IDMC steps and match-merge are mocked.
+- Run state lives on the server under `backend/.test_runs/<run_id>/` (resume by run_id).
+  `TXMDM_TEST_RUNS_DIR` moves it. No data cleanup and no run-id tagging anywhere.
+- Desktop runner: see [roadrunner-py/README.md](roadrunner-py/README.md).
+
+## Mapping task runtime environment (0.10.0)
+
+```
+GET /api/cdi/mapping-tasks/{task_id}/runtime-environment?id_kind=v2|frs
+PUT /api/cdi/mapping-tasks/{task_id}/runtime-environment?id_kind=v2|frs
+    body {"runtime_environment": "hhsc4avmdm1d"}   (name, id or federatedId)
+```
+
+One task per call. Reads the task, posts ONLY `@type` + `runtimeEnvironmentId` with
+`Update-Mode: PARTIAL` to `/api/v2/mttask/{id}`, reads it back; returns before / after /
+changed / verified. A read-back mismatch is a 409, an unknown environment a 400. Already on
+the target = nothing written. Tested on the fake IDMC only. Doc refs: `internal-notes/api-facts.md`.
 
 ## Setup
 
@@ -107,6 +146,7 @@ IDMC_PLATFORM_URL=http://127.0.0.1:8900/saas \
 
 ```bash
 cd backend  && .venv/bin/pytest -q && .venv/bin/ruff check . && .venv/bin/mypy app
+cd roadrunner-py && .venv/bin/ruff check . && .venv/bin/pyrefly check && TXMDM_LOCAL=1 TXMDM_BDD_AUTO=1 .venv/bin/pytest
 cd frontend && npm run typecheck && npm test && npm run lint && npm run build
 ```
 

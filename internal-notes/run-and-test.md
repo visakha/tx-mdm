@@ -89,3 +89,11 @@ Root cause they fix: the global uvicorn.exe in AppData\Roaming\Python\Python313
 ran instead of the venv, so faker (new in 0.9.8) was missing.
 Any new pickup card should point at these scripts. Not runnable here (no pwsh
 on the VM) - first real run is on his laptop.
+
+## Testing harness + roadrunner (0.10.0)
+    cd roadrunner-py && python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
+    .venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/pyrefly check
+    TXMDM_LOCAL=1 TXMDM_BDD_AUTO=1 .venv/bin/pytest          # 15 BDD scenarios, local mock backend
+    .venv/bin/roadrunner --local --auto run TTF --all          # same cases through the CLI
+--local needs backend/.venv (it runs uvicorn on port 8765 with dummy IDMC env and a temp
+TXMDM_TEST_RUNS_DIR). Windows: roadrunner-py\run.ps1 does the venv on first run.

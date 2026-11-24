@@ -1,0 +1,50 @@
+# tx-mdm testing harness - ONE place for names and tables (machine-read).
+# PLACEHOLDERS: every value below was picked by Muse on 2026-11-23 (Vamsi 22:18: "come up with
+# the names and the tables... I'm going to revisit and instruct you to change those").
+# Edit this file and restart the backend to change them. ASCII only.
+
+[source_db]
+kind = "sqlite"   # oracle | snowflake | sqlite. Mock path is always sqlite. Real loader: not built.
+schema = "LANDING"
+tables = ["LDG_TTF_CLIENTS", "LDG_TTF_FYCLIENTS", "LDG_TTF_DEMOGRAPHICS", "LDG_TTF_SUBMISSIONS"]
+
+[egress]
+table = "EGR_ZLV_GUEST_TTF"
+columns = ["MASTER_ID", "SOURCE_SYSTEM", "SOURCE_PKEY", "FIRST_NAME", "LAST_NAME", "MIDDLE_NAME",
+           "DOB", "ACTIVE", "VALIDATION_STATE", "VALIDATION_REASON", "MERGED_SOURCE_COUNT",
+           "EGRESS_TS"]
+phone_table = "EGR_ZLV_GUEST_TTF_PHONE"
+phone_columns = ["MASTER_ID", "SOURCE_PKEY", "CNTRY_CD", "PH_NUM", "PH_TYP", "NO_MRKT_CALLS",
+                 "VALIDATION_STATE", "VALIDATION_REASON"]
+
+[expected_sheet]
+columns = ["CLIENTCODE", "EXPECT_IN_MDM", "EXPECT_MASTER_GROUP", "FIRST_NAME", "LAST_NAME", "DOB",
+           "ACTIVE", "VALIDATION_STATE", "VALIDATION_REASON", "NOTES"]
+phone_columns = ["CLIENTCODE", "PH_NUM", "PH_TYP", "CNTRY_CD", "VALIDATION_STATE",
+                 "VALIDATION_REASON"]
+
+[pipeline.TTF]
+ldg_taskflow = "tf_Ldg_MDM_CDI_TTF"
+stg_taskflow = "tf_Stg_MDM_CDI_TTF"
+ingress_job = "zlv_ingr_guest-basic"
+egress_job = "Egress ZLV Guest basic Src_TTF"
+entity = "zlv_guest"
+source = "zlv_ttf"
+manual_steps = ["ingress", "egress"]   # the tester starts these; the runner pauses for them
+
+[pipeline.MDM]
+entity = "zlv_guest"
+source = "zlv_ttf"
+manual_steps = ["mdm-job"]
+
+[match_merge.zlv_guest]
+job_definition_id = "zlv_guest_match_merge"   # not created in his org yet
+match_model_id = "zlv_guest.ruleset1"
+match_model_version = 1
+
+[validation]
+reason_field = "VALIDATION_REASON"   # real path: zlv_guest field not identified yet
+
+[mock]
+phone_types = ["HOME", "CELL", "WORK"]   # mock-only; his org has an 11-code picklist
+country_code = "1"

@@ -7,6 +7,14 @@ from fastapi.responses import PlainTextResponse
 
 from app.cdi.models import CdiRunRequest, CdiTask, CdiTaskType
 from app.cdi.monitor import MonitorSnapshot
+from app.cdi.runtime_env import (
+    MappingTaskRuntime,
+    RuntimeChangeResult,
+    RuntimeEnvironmentChange,
+    RuntimeEnvironmentService,
+    RuntimeNotVerifiedError,
+    TaskIdKind,
+)
 from app.cdi.service import (
     CdiService,
     SessionLogNotFoundError,
@@ -24,11 +32,12 @@ from app.cdi.taskflow_runs import (
     TerminateResult,
 )
 from app.common.runs import RunView
-from app.dependencies import get_cdi_service
+from app.dependencies import get_cdi_service, get_runtime_env_service
 
 router = APIRouter(prefix="/api/cdi", tags=["cdi"])
 
 Service = Annotated[CdiService, Depends(get_cdi_service)]
+RuntimeService = Annotated[RuntimeEnvironmentService, Depends(get_runtime_env_service)]
 
 
 @router.get(
@@ -195,3 +204,37 @@ def terminate_taskflow(
     except TerminateError as exc:
         code = exc.status_code if 400 <= exc.status_code < 500 else 502
         raise HTTPException(status_code=code, detail=str(exc)) from exc
+
+
+@router.get(
+    "/mapping-tasks/{task_id}/runtime-environment",
+    operation_id="cdi_mapping_task_runtime",
+    summary="Which runtime environment one mapping task uses (name + id)",
+    description="v2 GET mttask/<id> (id_kind=v2) or mttask/frs/<id> (id_kind=frs), plus the v2 "
+    "runtimeEnvironment list for the name. Read-only.",
+)
+def mapping_task_runtime(
+    task_id: str, service: RuntimeService, id_kind: TaskIdKind = TaskIdKind.V2
+) -> MappingTaskRuntime:
+    return service.current(task_id, id_kind)
+
+
+@router.put(
+    "/mapping-tasks/{task_id}/runtime-environment",
+    operation_id="cdi_set_mapping_task_runtime",
+    summary="Move ONE mapping task to another runtime environment (read back + verified)",
+    description="Resolves the name (or id) from the v2 runtimeEnvironment list, reads the task, "
+    "POSTs only runtimeEnvironmentId with Update-Mode: PARTIAL (IDMC REST API Reference July 2026 "
+    "pp. 19, 486), reads it back. 409 if the read-back does not match. One task per call. "
+    "SIDE EFFECT: changes the task in IDMC.",
+)
+def set_mapping_task_runtime(
+    task_id: str,
+    body: RuntimeEnvironmentChange,
+    service: RuntimeService,
+    id_kind: TaskIdKind = TaskIdKind.V2,
+) -> RuntimeChangeResult:
+    try:
+        return service.change(task_id, id_kind, body.runtime_environment)
+    except RuntimeNotVerifiedError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc

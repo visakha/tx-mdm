@@ -1,0 +1,39 @@
+# MDM-only use case 1 (source independent). Human sections go to the Home sheet only.
+# Only [mock] is read by code. Real-path job API for this action: to confirm from the B360 reference.
+
+[use_case]
+id = "use-case-1"
+source = "MDM"
+title = "Match and merge only"
+template_version = "1.0"
+author = "Muse (draft)"
+last_updated = "2026-11-23"
+
+[scenario]
+summary = "Pre-seeded zlv_guest records are matched and merged."
+steps = ["Seed the MDM records", "Run the MDM job (tester)", "Read MDM", "Compare"]
+
+[test_data]
+description = "Pairs of records with the same name and DOB, plus singles."
+rows = ["MDM_RECORDS: N rows"]
+
+[expected.results]
+description = "Each pair ends on one master."
+
+[expected.validation]
+issues = []
+
+[expected.data_issues]
+issues = []
+
+[notes]
+text = "Draft by Muse 2026-11-23; Vamsi has not reviewed the MDM group yet."
+
+[mock]
+shape = "mdm_match_merge"
+action = "match_merge"
+match_rule = "name_dob"
+default_rows = 2
+
+[mock.steps.mdm-job]
+status = "SUCCESS"

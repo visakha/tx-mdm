@@ -8,6 +8,8 @@ JOB_RUN = "/api/v2/job"
 ACTIVITY_MONITOR = "/api/v2/activity/activityMonitor"
 ACTIVITY_LOG = "/api/v2/activity/activityLog"
 SESSION_LOG = "/api/v2/activity/activityLog/{log_id}/sessionLog"
+# 0.10.0 POST + Update-Mode: PARTIAL. IDMC REST API Reference July 2026, pp. 19 and 486.
+MTTASK_UPDATE = "/api/v2/mttask/{task_id}"
 
 # Advanced taskflows, relative to the pod host (baseApiUrl without /saas)
 TASKFLOW_RUN = "/active-bpel/rt/{api_name}"

@@ -1,0 +1,61 @@
+# TTF use case 9. Human sections are copied to the Excel Home sheet, never interpreted.
+# Only [mock] is read by code (mock path behaviour + generated-data shape).
+
+[use_case]
+id = "use-case-9"
+source = "TTF"
+title = "Junk phone numbers"
+template_version = "1.0"
+author = "Muse (draft)"
+last_updated = "2026-11-23"
+
+[scenario]
+summary = "Members arrive with junk phones (all-same digits, repeating sequences)."
+steps = ["Load the 4 TTF landing sheets", "Run tf_Ldg_MDM_CDI_TTF", "Run tf_Stg_MDM_CDI_TTF", "MDM ingress (tester)", "Match and merge", "Egress (tester)", "Read egress tables", "Compare"]
+
+[test_data]
+description = "Junk-phone members plus a control member with a good phone."
+rows = ["CLIENTS: N rows", "DEMOGRAPHICS: N rows"]
+
+[expected.results]
+description = "All members land in MDM as zlv_guest under zlv_ttf."
+
+[expected.validation]
+issues = ["Junk-phone members: validation failed, reason = invalid phone", "Control member: passes"]
+
+[expected.data_issues]
+issues = []
+
+[notes]
+text = "Junk patterns used: all-same digits (2222222222, 3333333333), repeating sequences (1231231234, 1234567890). Notes only - MDM does the validating."
+
+[mock]
+shape = "junk_phone"
+match_rule = "name_dob"
+default_rows = 3
+
+[mock.steps.ingress]
+status = "SUCCESS"
+
+[mock.steps.egress]
+status = "SUCCESS"
+
+[[mock.phone_validation]]
+ph_num = "2222222222"
+state = "FAILED"
+reason = "invalid phone"
+
+[[mock.phone_validation]]
+ph_num = "3333333333"
+state = "FAILED"
+reason = "invalid phone"
+
+[[mock.phone_validation]]
+ph_num = "1231231234"
+state = "FAILED"
+reason = "invalid phone"
+
+[[mock.phone_validation]]
+ph_num = "1234567890"
+state = "FAILED"
+reason = "invalid phone"
