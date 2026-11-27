@@ -10,6 +10,7 @@ class MdmJobKind(StrEnum):
     INGRESS = "Ingress"
     EGRESS = "Egress"
     MATCH_MERGE = "MatchMerge"
+    PUBLISH_EVENTS = "Publish"  # display name; the run path segment comes from settings
     UNKNOWN = "Unknown"
 
 
@@ -46,3 +47,27 @@ class MdmJob(BaseModel):
 
 class MdmRunRequest(BaseModel):
     asset_id: str = Field(description="MdmJob.asset_id of a runnable job.")
+
+
+class PublishRunRequest(BaseModel):
+    """0.10.1: start the Publish Business Events job by its name (default from settings)."""
+
+    job_name: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=255,
+        description="Job name as in the B360 Console. Empty = settings mdm_publish_job_name.",
+    )
+
+
+class PublishRunStarted(BaseModel):
+    """What POST /api/mdm/publish-events/runs returns."""
+
+    instance_id: str = Field(description="B360 job instance id; poll GET .../runs/{instance_id}.")
+    run_key: str = Field(description="This backend's run key (also in GET /api/mdm/runs).")
+    job_name: str
+    job_definition_id: str
+    job_type: str
+    run_path_kind: str = Field(description="The {kind} segment used in jobInstance/{kind}.")
+    started_at: datetime
+    portal_url: str | None = None

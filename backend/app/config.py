@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     # his browser sample 2026-11-23 03:44 CST). Empty = no CDI portal links.
     idmc_cdi_portal_url: str = "https://usw1.dm1-us.informaticacloud.com"
     mdm_resolver_cache_seconds: int = 600
+    # 0.10.1: Publish Business Events job (Vamsi, 2026-11-27). The run path segment
+    # (jobInstance/{kind}) for publish is UNVERIFIED - not in the Oct 2026 B360 reference.
+    # Override in .env as MDM_PUBLISH_RUN_KIND once the value from his tested call is known.
+    mdm_publish_job_name: str = "mdm_zlv_guest_pub_evts_001"
+    mdm_publish_run_kind: str = "Publish"
     frontend_origin: str = "http://localhost:5173"
     http_timeout_seconds: float = 30.0
     # Outbound proxy for IDMC calls. Empty = direct. HTTP(S)_PROXY / NO_PROXY env vars are

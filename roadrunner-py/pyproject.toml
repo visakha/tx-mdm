@@ -1,6 +1,6 @@
 [project]
 name = "roadrunner"
-version = "0.10.0"
+version = "0.10.1"
 description = "tx-mdm desktop test runner: talks to the tx-mdm backend over HTTP only."
 requires-python = ">=3.12"
 dependencies = [

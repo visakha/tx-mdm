@@ -22,8 +22,15 @@ class MdmRunSnapshot:
 
 
 class MdmClient:
-    def __init__(self, http: IdmcHttp, mdm_url: str, platform_url_override: str = "") -> None:
+    def __init__(
+        self,
+        http: IdmcHttp,
+        mdm_url: str,
+        platform_url_override: str = "",
+        publish_run_kind: str = "Publish",
+    ) -> None:
         self._http = http
+        self._publish_run_kind = publish_run_kind
         self._mdm_url = mdm_url.rstrip("/")
         self._platform_url_override = platform_url_override.rstrip("/")
 
@@ -89,12 +96,18 @@ class MdmClient:
         )
         return body if isinstance(body, dict) else {}
 
+    def run_path_kind(self, kind: MdmJobKind) -> str:
+        """The {kind} segment of jobInstance/{kind}; publish comes from settings (unverified)."""
+        if kind is MdmJobKind.PUBLISH_EVENTS:
+            return self._publish_run_kind
+        return kind.value
+
     def start(self, kind: MdmJobKind, job_definition_id: str) -> str:
         if kind is MdmJobKind.UNKNOWN:
             raise ValueError("job kind unknown; refusing to guess which run endpoint to call")
         body = self._http.request(
             idmc.JOB_INSTANCE_RUN,
-            self._mdm_url + ep.JOB_INSTANCE_RUN.format(kind=kind.value),
+            self._mdm_url + ep.JOB_INSTANCE_RUN.format(kind=self.run_path_kind(kind)),
             json={"jobDefinitionId": job_definition_id},
         )
         return str(body["id"])

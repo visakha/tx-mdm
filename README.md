@@ -76,6 +76,21 @@ One task per call. Reads the task, posts ONLY `@type` + `runtimeEnvironmentId` w
 changed / verified. A read-back mismatch is a 409, an unknown environment a 400. Already on
 the target = nothing written. Tested on the fake IDMC only. Doc refs: `internal-notes/api-facts.md`.
 
+## Publish Business Events (0.10.1)
+
+```
+POST /api/mdm/publish-events/runs                 body {} or {"job_name": "..."}
+GET  /api/mdm/publish-events/runs/{instance_id}
+```
+
+Starts the B360 job `mdm_zlv_guest_pub_evts_001` (Job Process Type "Publish Business Events",
+jobType `b360.businessevents.publish`, verified live 2026-11-27) and reads its status. The job
+is found by name in `/api/mdm/jobs`, which now lists it as kind `Publish`, runnable. The run call
+is `POST jobInstance/{kind}` with its jobDefinitionId; the `{kind}` segment for publish is NOT
+in the Oct 2026 reference, so it comes from `.env` `MDM_PUBLISH_RUN_KIND` (default `Publish`,
+UNVERIFIED). Default job name: `MDM_PUBLISH_JOB_NAME`. One active run per job (409), never
+retried. Tested on the fake IDMC only.
+
 ## Setup
 
 Prerequisites: Python 3.12+, Node 20+ (tested on 24).

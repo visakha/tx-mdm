@@ -3,7 +3,7 @@ import respx
 from app.common.idmc_session import IdmcHttp
 from app.common.runs import RunRegistry, RunStatus
 from app.mdm.client import MdmClient, snapshot_from_job_instance
-from app.mdm.models import MdmJobAsset, MdmJobKind, MdmRunRequest
+from app.mdm.models import MdmJobAsset, MdmJobKind, MdmRunRequest, PublishRunRequest
 from app.mdm.resolver import (
     JobSearchResolver,
     definitions_from_instances,
@@ -111,3 +111,133 @@ def test_ingress_run_end_to_end(idmc: respx.MockRouter, idmc_http: IdmcHttp):
     run = service.refresh(run.run_key)
     assert run.status is RunStatus.FAILED
     assert run.errors == ["Bad file"]
+
+
+# ---- 0.10.1: Publish Business Events --------------------------------------------------------
+
+PUBLISH_INSTANCES = [
+    {
+        "id": "1310857076615942144",
+        "name": "mdm_zlv_guest_pub_evts_001",
+        "jobType": "b360.businessevents.publish",
+        "jobDefinition": {"id": "mdm_zlv_guest_pub_evts_001"},
+    }
+]
+
+
+def _publish_fakes(idmc: respx.MockRouter) -> None:
+    idmc.get(f"{PLATFORM}/public/core/v3/objects").respond(
+        200,
+        json={
+            "objects": [
+                {"id": "P1", "path": "ZL_Vamsi/ZLV_MDM/mdm_zlv_guest_pub_evts_001"},
+                {"id": "P2", "path": "ZL_Vamsi/ZLV_MDM/never_run_job"},
+            ]
+        },
+    )
+    idmc.post(f"{MDM}/job/public/api/v1/search").respond(
+        200, json={"totalPages": 1, "jobInstances": PUBLISH_INSTANCES}
+    )
+
+
+def test_kind_from_job_type_publish():
+    assert kind_from_job_type("b360.businessevents.publish") is MdmJobKind.PUBLISH_EVENTS
+
+
+def test_publish_job_listed_as_runnable(idmc: respx.MockRouter, idmc_http: IdmcHttp):
+    _publish_fakes(idmc)
+    client = MdmClient(idmc_http, MDM)
+    service = MdmService(
+        client, JobSearchResolver(client.search_job_instances, 60), RunRegistry("mdm")
+    )
+    job = next(j for j in service.list_jobs() if j.asset_id == "P1")
+    assert job.runnable and job.kind is MdmJobKind.PUBLISH_EVENTS
+    assert job.job_type == "b360.businessevents.publish"
+    assert job.job_definition_id == "mdm_zlv_guest_pub_evts_001"
+
+
+def test_publish_start_and_status(idmc: respx.MockRouter, idmc_http: IdmcHttp):
+    _publish_fakes(idmc)
+    run_route = idmc.post(f"{MDM}/job/public/api/v1/jobInstance/PubKindFromSettings").respond(
+        200, json={"id": "777"}
+    )
+    idmc.get(f"{MDM}/job/public/api/v1/jobInstance/777").respond(
+        200,
+        json={
+            "id": "777",
+            "name": "mdm_zlv_guest_pub_evts_001",
+            "jobType": "b360.businessevents.publish",
+            "jobDefinition": {"id": "mdm_zlv_guest_pub_evts_001"},
+            "_meta": {"state": "SUCCESS", "startedAt": 1795760000000, "completedAt": 1795760015000},
+        },
+    )
+    client = MdmClient(idmc_http, MDM, publish_run_kind="PubKindFromSettings")
+    service = MdmService(
+        client, JobSearchResolver(client.search_job_instances, 60), RunRegistry("mdm")
+    )
+    started = service.start_publish(PublishRunRequest())
+    assert (
+        run_route.calls.last.request.content == b'{"jobDefinitionId":"mdm_zlv_guest_pub_evts_001"}'
+    )
+    assert started.instance_id == "777"
+    assert started.run_path_kind == "PubKindFromSettings"
+    assert started.portal_url == f"{MDM}/ui-config-app/main/jobDetails/777"
+    assert service.list_runs()[0].status is RunStatus.QUEUED
+
+    view = service.publish_status("777")
+    assert view.status is RunStatus.SUCCESS
+    assert view.kind is MdmJobKind.PUBLISH_EVENTS
+    assert view.ended_at is not None
+    assert service.list_runs()[0].status is RunStatus.SUCCESS  # guard released for the next run
+
+
+def test_publish_unknown_or_unresolved_name_is_400(idmc: respx.MockRouter, idmc_http: IdmcHttp):
+    _publish_fakes(idmc)
+    client = MdmClient(idmc_http, MDM)
+    service = MdmService(
+        client, JobSearchResolver(client.search_job_instances, 60), RunRegistry("mdm")
+    )
+    for name in ("no_such_job", "never_run_job"):
+        try:
+            service.start_publish(PublishRunRequest(job_name=name))
+        except LookupError as exc:
+            assert name in str(exc)
+        else:
+            raise AssertionError("expected LookupError")
+
+
+def test_publish_routes(idmc: respx.MockRouter, idmc_http: IdmcHttp):
+    from fastapi.testclient import TestClient
+
+    from app.dependencies import get_mdm_service
+    from app.main import create_app
+
+    _publish_fakes(idmc)
+    idmc.post(f"{MDM}/job/public/api/v1/jobInstance/Publish").respond(200, json={"id": "888"})
+    idmc.get(f"{MDM}/job/public/api/v1/jobInstance/888").respond(
+        200,
+        json={
+            "id": "888",
+            "jobType": "b360.businessevents.publish",
+            "jobDefinition": {"id": "mdm_zlv_guest_pub_evts_001"},
+            "_meta": {"state": "RUNNING", "startedAt": 1795760000000},
+        },
+    )
+    client = MdmClient(idmc_http, MDM)
+    service = MdmService(
+        client, JobSearchResolver(client.search_job_instances, 60), RunRegistry("mdm")
+    )
+    app = create_app()
+    app.dependency_overrides[get_mdm_service] = lambda: service
+    http = TestClient(app)
+
+    started = http.post("/api/mdm/publish-events/runs")
+    assert started.status_code == 200
+    assert started.json()["job_name"] == "mdm_zlv_guest_pub_evts_001"
+    assert started.json()["run_path_kind"] == "Publish"
+    assert http.post("/api/mdm/publish-events/runs", json={}).status_code == 409  # still active
+
+    status = http.get("/api/mdm/publish-events/runs/888").json()
+    assert status["status"] == "RUNNING" and status["kind"] == "Publish"
+    bad = http.post("/api/mdm/publish-events/runs", json={"job_name": "no_such_job"})
+    assert bad.status_code == 400

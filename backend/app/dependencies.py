@@ -74,9 +74,11 @@ def get_cdi_service() -> CdiService:
 def get_mdm_service() -> MdmService:
     settings = get_settings()
     http = IdmcHttp(get_http_client(), _new_session(settings))
-    client = MdmClient(http, settings.idmc_mdm_url, settings.idmc_platform_url)
+    client = MdmClient(
+        http, settings.idmc_mdm_url, settings.idmc_platform_url, settings.mdm_publish_run_kind
+    )
     resolver = JobSearchResolver(client.search_job_instances, settings.mdm_resolver_cache_seconds)
-    return MdmService(client, resolver, RunRegistry("mdm"))
+    return MdmService(client, resolver, RunRegistry("mdm"), settings.mdm_publish_job_name)
 
 
 @lru_cache

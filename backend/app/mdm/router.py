@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Path, Query
 from app.common.naming import Identifier64
 from app.common.runs import RunView
 from app.dependencies import get_mdm_monitor, get_mdm_service
-from app.mdm.models import MdmJob, MdmRunRequest
+from app.mdm.models import MdmJob, MdmRunRequest, PublishRunRequest, PublishRunStarted
 from app.mdm.monitor import MAX_ROW_LIMIT, MdmJobInstanceView, MdmMonitor, MdmMonitorSnapshot
 from app.mdm.service import MdmService
 
@@ -87,3 +87,34 @@ def lookup_job_instance(
     instance_id: Annotated[Identifier64, Path(min_length=1, max_length=64)],
 ) -> MdmJobInstanceView:
     return monitor.lookup(instance_id)
+
+
+@router.post(
+    "/publish-events/runs",
+    operation_id="mdm_start_publish_events",
+    summary="Start the Publish Business Events job (default mdm_zlv_guest_pub_evts_001)",
+    description="0.10.1. Finds the job by name in the B360 job list (kind Publish, jobType "
+    "b360.businessevents.publish), then POST jobInstance/{kind} with its jobDefinitionId. The "
+    "{kind} segment for publish comes from settings mdm_publish_run_kind (UNVERIFIED, not in "
+    "the Oct 2026 reference). 400 if the job is unknown or did not start, 409 if this backend "
+    "already has a run of it in progress. Never retried.",
+)
+def start_publish_events(
+    service: Service, request: PublishRunRequest | None = None
+) -> PublishRunStarted:
+    return service.start_publish(request or PublishRunRequest())
+
+
+@router.get(
+    "/publish-events/runs/{instance_id}",
+    operation_id="mdm_get_publish_events_run",
+    summary="Status of one Publish Business Events run by job instance id",
+    description="0.10.1. Read-only GET jobInstance/{id}?details=true: status, start/end, "
+    "counts, errors, portal link. Poll every few seconds until SUCCESS, WARNING, FAILED or "
+    "STOPPED.",
+)
+def get_publish_events_run(
+    service: Service,
+    instance_id: Annotated[Identifier64, Path(min_length=1, max_length=64)],
+) -> MdmJobInstanceView:
+    return service.publish_status(instance_id)

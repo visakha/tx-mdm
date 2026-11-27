@@ -31,6 +31,8 @@ def kind_from_job_type(job_type: str) -> MdmJobKind:
         return MdmJobKind.INGRESS
     if job_type == ep.JOB_TYPE_MATCH_MERGE or "matchmerge" in lowered:
         return MdmJobKind.MATCH_MERGE
+    if job_type == ep.JOB_TYPE_PUBLISH_EVENTS or ".businessevents.publish" in lowered:
+        return MdmJobKind.PUBLISH_EVENTS
     if "egress" in lowered:  # egress jobType undocumented: recognise it, don't hard-code it
         return MdmJobKind.EGRESS
     return MdmJobKind.UNKNOWN

@@ -391,3 +391,16 @@ numbers are the PDF's own). Nothing below is LIVE yet.
 | GET mttask: internal-docs/CDI_job_API_reference.md section 2d (S1 p.442, Nov 2025 edition) | DOC |
 | A partial body of only `@type` + `runtimeEnvironmentId` is accepted on his org | UNVERIFIED - KB 619257 says a few fields can be mandatory even in partial mode. tx-mdm reads back and answers 409 if the task did not change |
 | Live switch of any of his tasks to hhsc4avmdm1d | NOT DONE - his call; tested on the fake IDMC only |
+
+
+## Publish Business Events job (0.10.1, 2026-11-27)
+
+- Live job search (read-only, via his laptop backend): job `mdm_zlv_guest_pub_evts_001` has
+  jobDefinition.id `mdm_zlv_guest_pub_evts_001`, jobType `b360.businessevents.publish`.
+  `zlv_guest_publish_custom_test` has the same jobType. VERIFIED.
+- Run path `POST /job/public/api/v1/jobInstance/{kind}`: the Oct 2026 B360 reference and the
+  Postman collection only show Ingress / Egress / MatchMerge. The publish `{kind}` is
+  UNVERIFIED; settings `mdm_publish_run_kind` (default `Publish`). Vamsi said he tested a
+  publish trigger 2026-11-26 afternoon - take the exact segment from his call.
+- Seen 2026-11-27 ~02:10 CST: four publish instances still RUNNING for 2.5-3.5 h
+  (1310842653864103936, 1310828302004391936, 1310828193837486080, 1310827725736382464).
